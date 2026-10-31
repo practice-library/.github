@@ -28,10 +28,15 @@ salt="canary-$RANDOM-$RANDOM-$$"
 hash() { printf '%s' "$salt:$1" | python3 -I -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'; }
 term="$(hash zebracorn)"
 plain="{\"salt\":\"$salt\",\"sha256\":[\"$term\"]}"
-exempt="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"allowAuthorNames\":[\"$term\"]}"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# The maintainer's name is three words holding the term; its exemption comes from the hash tool itself.
+maintainer="Zebracorn Account Name"
+printf '%s\n' "$plain" > "$work/list.json"
+allow="$(printf '%s\n' "$maintainer" | bash "$root/scripts/denylist-hash.sh" --names "$work/list.json")" \
+  || { echo "FAIL scripts/denylist-hash.sh --names did not hash a three-word name"; exit 1; }
+exempt="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"allowAuthorNames\":[\"$allow\"]}"
 failed=0
 
 # scenario <name> <want 0|1> <event> <list> <author> <message> <added line> <merge author or "">
@@ -66,14 +71,15 @@ scenario() {
   fi
 }
 
-scenario push-maintainer-merge 0 push "$plain" "Contributor" "Add notes" "Clean notes." "Zebracorn"
-scenario push-maintainer-merge-exempt 0 push "$exempt" "Contributor" "Add notes" "Clean notes." "Zebracorn"
-scenario pull-request-maintainer-commit-exempt 0 pull_request "$exempt" "Zebracorn" "Add notes" "Clean notes." ""
-scenario push-maintainer-commit-exempt 0 push "$exempt" "Zebracorn" "Add notes" "Clean notes." ""
-scenario pull-request-maintainer-commit 1 pull_request "$plain" "Zebracorn" "Add notes" "Clean notes." ""
-scenario push-denied-author 1 push "$plain" "Zebracorn" "Add notes" "Clean notes." ""
-scenario exempt-author-term-in-message 1 pull_request "$exempt" "Zebracorn" "Zebracorn" "Clean notes." ""
-scenario exempt-author-term-in-line 1 pull_request "$exempt" "Zebracorn" "Add notes" "Zebracorn" ""
-scenario push-merge-term-in-line 1 push "$exempt" "Contributor" "Add notes" "Zebracorn" "Zebracorn"
+scenario push-maintainer-merge 0 push "$plain" "Contributor" "Add notes" "Clean notes." "$maintainer"
+scenario push-maintainer-merge-exempt 0 push "$exempt" "Contributor" "Add notes" "Clean notes." "$maintainer"
+scenario pull-request-maintainer-commit-exempt 0 pull_request "$exempt" "$maintainer" "Add notes" "Clean notes." ""
+scenario push-maintainer-commit-exempt 0 push "$exempt" "$maintainer" "Add notes" "Clean notes." ""
+scenario pull-request-maintainer-commit 1 pull_request "$plain" "$maintainer" "Add notes" "Clean notes." ""
+scenario push-denied-author 1 push "$plain" "$maintainer" "Add notes" "Clean notes." ""
+scenario exempt-author-other-name 1 pull_request "$exempt" "Zebracorn" "Add notes" "Clean notes." ""
+scenario exempt-author-name-in-message 1 pull_request "$exempt" "$maintainer" "$maintainer" "Clean notes." ""
+scenario exempt-author-name-in-line 1 pull_request "$exempt" "$maintainer" "Add notes" "$maintainer" ""
+scenario push-merge-term-in-line 1 push "$exempt" "Contributor" "Add notes" "Zebracorn" "$maintainer"
 echo "$failed failed"
 [ "$failed" -eq 0 ]

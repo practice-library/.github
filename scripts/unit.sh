@@ -8,6 +8,8 @@
 # {key: value}} sets git config in that repository first (a textconv driver, for instance). "author"
 # names the author of the head commit (default unit). "merge": {"author": name, "message": text} makes the
 # head commit on a side line and merges it into base with a merge commit by that author, which is HEAD.
+# "committer" names the head commit's committer (default: the author). "failGit": text makes every git
+# call whose arguments contain that text fail once the repository is built, to test a failed read.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
@@ -48,7 +50,9 @@ for case_path in "$unit_dir"/*/*.json; do
         git -C "$repo" add -A
         message="$side"; [ "$side" = head ] && message="$(jq -r '.repo.message // "head"' "$case_path")"
         author=unit; [ "$side" = head ] && author="$(jq -r '.repo.author // "unit"' "$case_path")"
-        git -C "$repo" -c user.name="$author" -c user.email=unit@example.invalid -c commit.gpgsign=false \
+        committer="$author"; [ "$side" = head ] && committer="$(jq -r --arg a "$author" '.repo.committer // $a' "$case_path")"
+        GIT_COMMITTER_NAME="$committer" GIT_COMMITTER_EMAIL=unit@example.invalid \
+          git -C "$repo" -c user.name="$author" -c user.email=unit@example.invalid -c commit.gpgsign=false \
           commit -q --allow-empty -m "$message"
         if [ "$side" = base ]; then MB="$(git -C "$repo" rev-parse HEAD)"; else HEAD="$(git -C "$repo" rev-parse HEAD)"; fi
       done
@@ -60,6 +64,15 @@ for case_path in "$unit_dir"/*/*.json; do
       fi
       export MB HEAD
       cd "$repo"
+      if jq -e '.repo | has("failGit")' "$case_path" > /dev/null; then
+        mkdir "$repo.bin"
+        trap 'rm -rf "$repo" "$repo.bin"' EXIT
+        { echo '#!/usr/bin/env bash'
+          printf 'case " $* " in *%q*) exit 128 ;; esac\n' "$(jq -r '.repo.failGit' "$case_path")"
+          printf 'exec %q "$@"\n' "$(command -v git)"; } > "$repo.bin/git"
+        chmod +x "$repo.bin/git"
+        PATH="$repo.bin:$PATH"
+      fi
     fi
     # shellcheck disable=SC1090 # the library is chosen by the case directory
     source "$lib"
