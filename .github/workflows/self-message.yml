@@ -1,0 +1,16 @@
+# Generated from templates/.github/workflows/self-message.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: self-message
+# Judges protocol v0 messages opened in this repository (docs/protocol.md).
+on:
+  issues:
+    types: [opened, edited, labeled]
+permissions:
+  contents: read
+jobs:
+  message:
+    permissions:
+      contents: read
+      issues: write
+    uses: ./.github/workflows/message-check.yml
+    with:
+      app-login: practice-library[bot]

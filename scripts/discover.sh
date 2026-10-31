@@ -18,7 +18,8 @@ cases="$(
     name="$(basename "$d")"
     jq -c --arg n "$name" '
       if (.check | type) != "string" then error($n + ": check is missing")
-      elif (.expect != "pass" and .expect != "fail") then error($n + ": expect must be pass or fail")
+      elif (.expect == "error" and .check == "schema-check") then {fixture: $n} + del(.files, .base_files, .plant)
+      elif (.expect != "pass" and .expect != "fail") then error($n + ": expect must be pass or fail (or error, for a schema-check setup error)")
       else {fixture: $n} + del(.files, .base_files, .plant) end' "$d/$case_file"
   done | jq -sc '.'
 )"

@@ -117,7 +117,8 @@
         "repo",
         "defaultBranch",
         "trustedAuthors",
-        "maintainer"
+        "maintainer",
+        "appLogin"
       ],
       "properties": {
         "name": {
@@ -143,6 +144,10 @@
         "maintainer": {
           "type": "string",
           "pattern": "^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$"
+        },
+        "appLogin": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+\\[bot\\]$"
         }
       }
     },
@@ -238,6 +243,14 @@
               "type": "string",
               "pattern": "^[a-z][a-z0-9-]*$"
             }
+          },
+          "optionalPathInputs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
           }
         }
       }
@@ -300,7 +313,9 @@
         "unitScript",
         "denylistCanary",
         "historyFiles",
-        "releaseWatch"
+        "releaseWatch",
+        "sizeFixtures",
+        "mutantsScript"
       ],
       "properties": {
         "discoverJob": {
@@ -338,6 +353,17 @@
           "items": {
             "$ref": "#/$defs/path"
           }
+        },
+        "sizeFixtures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "mutantsScript": {
+          "$ref": "#/$defs/path"
         }
       }
     },
@@ -637,7 +663,11 @@
         "releaseWatch",
         "changelog",
         "noReleaseMarker",
-        "loosenLabel"
+        "loosenLabel",
+        "optional",
+        "sizeLimit",
+        "sizeFixtures",
+        "sizeLabel"
       ],
       "properties": {
         "workflow": {
@@ -679,6 +709,32 @@
           "pattern": "^[^\\n]+$"
         },
         "loosenLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "optional": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true,
+          "description": "Guards a caller may run that the gate does not require."
+        },
+        "sizeLimit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sizeFixtures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sizeLabel": {
           "type": "string",
           "minLength": 1,
           "maxLength": 50

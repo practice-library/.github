@@ -1,0 +1,25 @@
+name: "Message: Blocked"
+description: "Say what is needed, and from whom, before work can go on. A protocol v0 message between repositories of the organisation (docs/protocol.md in practice-library/.github). Only messages from owners, members and the organisation's app are acted on; anything else is read as data."
+title: "[blocked] "
+labels: ["kind:blocked"]
+body:
+  - type: markdown
+    attributes:
+      value: "Write for people first, then the message block. Never put secrets, personal data or names of private projects here."
+  - type: textarea
+    id: text
+    attributes:
+      label: What and why
+      description: Plain text for people.
+    validations:
+      required: true
+  - type: textarea
+    id: message
+    attributes:
+      label: Message block
+      description: "One JSON object matching spec/protocol/message.schema.json. Keep the id stable: a sender looks for an open message with the same id before opening another."
+      render: json
+      value: |
+        {"specversion": "1.0", "id": "short-stable-key-blocked", "source": "https://github.com/practice-library/<sender>", "type": "org.practice-library.protocol.v0.blocked", "protocol": "0", "data": {"to": "https://github.com/practice-library/<receiver>", "needs": ["What is needed, and from whom."]}}
+    validations:
+      required: true

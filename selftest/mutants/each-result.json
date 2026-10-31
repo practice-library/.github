@@ -1,0 +1,17 @@
+[
+  {
+    "name": "no-files-pass",
+    "find": "if [ \"$n\" -eq 0 ]; then echo \"mixed 1\"",
+    "replace": "if false; then echo \"mixed 1\""
+  },
+  {
+    "name": "error-as-finding",
+    "find": "[ \"$rc\" = \"$FINDING\" ] || all_finding=false",
+    "replace": "[ \"$rc\" != 0 ] || all_finding=false"
+  },
+  {
+    "name": "error-as-pass",
+    "find": "[ \"$rc\" = 0 ] || all_pass=false",
+    "replace": "[ \"$rc\" = 0 ] || [ \"$rc\" != \"$FINDING\" ] || all_pass=false"
+  }
+]

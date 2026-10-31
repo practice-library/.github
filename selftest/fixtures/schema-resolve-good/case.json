@@ -1,0 +1,8 @@
+{
+  "check": "schema-check",
+  "expect": "pass",
+  "schema": "schema.json",
+  "instances": "instances",
+  "resolve": "other.json",
+  "resolve-ids": "https://example.com/spec/other/schema.json"
+}

@@ -1,6 +1,6 @@
 # Generated from templates/.github/workflows/guard.yml and policy/constants.json by scripts/render.sh. Do not edit.
 name: guard
-# Mechanical review checks, one per call: guard is one of denylist, removed-paths, release-note, schema-loosening.
+# Mechanical review checks, one per call: guard is one of denylist, removed-paths, release-note, schema-loosening, size.
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
 #                     on push, a merge commit's author name is not judged (whoever pressed merge)
@@ -8,11 +8,14 @@ name: guard
 #   release-note      a change under a watched path changes the changelog or says "Release: none"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "schema-loosening-approved" from someone other
 #                     than the author and not a bot; the caller's pull_request types include labeled
+#   size              (optional, the gate does not require it) the lines added or changed outside
+#                     fixtures are at most size-limit, or the label "size-approved" from someone
+#                     other than the author and not a bot lets more through
 on:
   workflow_call:
     inputs:
       guard:
-        description: 'The guard to run: one of denylist, removed-paths, release-note, schema-loosening.'
+        description: 'The guard to run: one of denylist, removed-paths, release-note, schema-loosening, size.'
         type: string
         required: true
       denylist:
@@ -35,6 +38,18 @@ on:
         description: The label that lets a loosened schema through.
         type: string
         default: schema-loosening-approved
+      size-limit:
+        description: size only. The most lines a pull request may add or change outside fixtures.
+        type: number
+        default: 600
+      size-fixtures:
+        description: size only. JSON array of fixture entries not counted; an entry starting and ending in / is a directory from the root, any other entry ending in / a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
+        type: string
+        default: '["selftest/","examples/","counter-examples/","tests/fixtures/"]'
+      size-label:
+        description: size only. The label that lets a larger pull request through.
+        type: string
+        default: size-approved
 permissions:
   contents: read
 jobs:
@@ -55,7 +70,7 @@ jobs:
         shell: bash
         env:
           GUARD: ${{ inputs.guard }}
-          GUARDS: '["denylist","removed-paths","release-note","schema-loosening"]'
+          GUARDS: '["denylist","removed-paths","release-note","schema-loosening","size"]'
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -280,22 +295,25 @@ jobs:
           MARKER: 'Release: none'
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the change touches no watched path, or changes the changelog, or a commit
-          # message holds the marker line; otherwise "missing ...".
+          # main: prints "ok ..." when the change touches no watched path, or adds a line with text to the
+          # changelog (a whitespace-only edit does not count), or a commit message holds the marker line;
+          # otherwise "missing ...".
           #   CHANGED    JSON array of changed paths, old and new
           #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
           #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
           #   MESSAGES   the change's commit messages
+          #   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character
           main() {
             local touched
+            [[ "${CHANGELOG_ADDED:-}" =~ ^[0-9]+$ ]] || { echo "invalid CHANGELOG_ADDED must be a count"; return 0; }
             if ! touched="$(jq -c --argjson w "$WATCH" '
                 [.[] | select(. as $f | any($w[]; . as $p
                   | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end))] | unique' <<<"$CHANGED" 2>/dev/null)"; then
               echo "invalid CHANGED and WATCH must be JSON arrays"; return 0
             fi
             if [ "$touched" = "[]" ]; then echo "ok no watched path changed"; return 0; fi
-            if jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
-              echo "ok $CHANGELOG changed"; return 0
+            if [ "$CHANGELOG_ADDED" -gt 0 ] && jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
+              echo "ok $CHANGELOG has $CHANGELOG_ADDED added lines"; return 0
             fi
             if printf '%s\n' "$MESSAGES" | sed 's/[[:space:]]*$//' | grep -qxF -- "$MARKER"; then
               echo "ok a commit message says: $MARKER"; return 0
@@ -304,7 +322,10 @@ jobs:
           }
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES
+          # Added lines of the changelog that hold text; a whitespace-only edit adds none.
+          CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
+            | { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -cE '^\+.*[^[:space:]]' || true; })"
+          export CHANGED MESSAGES CHANGELOG_ADDED
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -323,13 +344,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
+          # main: judges one changed JSON file. OLD_FILE is the file on the base commit; NEW_FILE the file on the
+          # head, or empty when the change deleted it. Prints "invalid ..." when OLD_FILE cannot be read, "skip ..."
+          # when it is not a JSON schema (its top-level $schema does not name a json-schema.org meta-schema, as an
+          # instance pointing at its own schema does not), loose ["(deleted)"] when a schema was deleted, and
+          # otherwise what compare prints.
+          main() {
+            [ -r "${OLD_FILE:-}" ] || { echo "invalid cannot read the base file"; return 0; }
+            if ! jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1; then
+              echo "skip not a JSON schema"; return 0
+            fi
+            if [ -z "${NEW_FILE:-}" ]; then echo 'loose ["(deleted)"]'; return 0; fi
+            compare
+          }
+
+          # compare: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
           # the rules below, otherwise "loose [<path>, ...]". Rules, at every place in the schema:
           #   a minimum (minItems, minLength, minProperties, minimum, exclusiveMinimum, minContains) lowered or removed;
           #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
           #   a required entry removed; an enum value added; additionalProperties false made anything else;
           #   const, pattern or format changed or removed.
-          main() {
+          compare() {
             local out
             if ! out="$(jq -cn --slurpfile o "$OLD_FILE" --slurpfile n "$NEW_FILE" '
                 $o[0] as $old | $n[0] as $new
@@ -359,29 +394,159 @@ jobs:
           while IFS=$'\t' read -r status old new; do
             new="${new:-$old}"
             OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
-            git cat-file blob "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
-            git cat-file blob "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
-            # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
-            jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
+            git cat-file blob "$MB:$old" > "$OLD_FILE" || { echo "::error file=$old::cannot read $old on the base"; exit 1; }
+            # A deleted schema accepts everything it used to refuse, so it counts as loosened.
+            if [ "$status" = D ]; then NEW_FILE=""
+            else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
             export OLD_FILE NEW_FILE
             result="$(main)"
             echo "$new: $result"
             case "$result" in
-              ok*) ;;
+              ok*|skip*) ;;
               loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
               *) echo "::error file=$new::$result"; exit 1 ;;
             esac
-          done < <(git diff --name-status -M --diff-filter=MR --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
+          done < <(git diff --name-status -M --diff-filter=MRD --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
-          if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" 'any($ls[]; . == $l)' > /dev/null; then
-            echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1
-          fi
-          by="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv" | tail -n 1)"
-          login="${by%%$'\t'*}"; type="${by#*$'\t'}"
-          if [ -z "$by" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
-            echo "::error::the label $LABEL must be added by someone other than the author and not by a bot (added by: ${login:-unknown})"; exit 1
-          fi
-          echo "ok loosening accepted: $LABEL added by $login"
+          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
+          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
+          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
+          # so removing it and adding it again changes the verdict.
+          #   LABEL   the approval label
+          #   LABELS  JSON array of the labels on the pull request now
+          #   AUTHOR  the pull request author's login
+          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          main() {
+            local last login type
+            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
+              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
+                echo "missing the label $LABEL is not on the pull request"; return 0
+              fi
+              echo "refused LABELS must be a JSON array"; return 0
+            fi
+            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
+            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
+              echo "refused no event shows who added $LABEL"; return 0
+            fi
+            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
+            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
+              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
+            fi
+            echo "ok approved by $login"
+          }
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
+            missing*) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac
+
+      - name: size
+        if: inputs.guard == 'size' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LIMIT: ${{ inputs.size-limit }}
+          FIXTURES: ${{ inputs.size-fixtures }}
+          LABEL: ${{ inputs.size-label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # main: prints "ok <n> non-fixture lines (limit <L>)" when the lines the change adds or changes outside
+          # fixtures are at most LIMIT, "over <n> non-fixture lines, more than <L>: split the pull request" when
+          # they are more, or "invalid ..." when an input cannot be used.
+          #   NUMSTAT   output of git diff --numstat -M: "<added><TAB><deleted><TAB><path>", a rename written as
+          #             "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>"; a binary file shows "-" and counts 0.
+          #             When NUMSTAT is unset, main reads it from git for MB..HEAD with the repository's own
+          #             .gitattributes ignored, so a change cannot mark its text files binary to hide them.
+          #   FIXTURES  JSON array of fixture entries. An entry starting and ending in / is a directory from the
+          #             root ("/rulesets/"); any other entry ending in / is a directory anywhere in the path
+          #             ("examples/" covers spec/x/examples/a.json); an entry with no / is a file name anywhere
+          #             ("INDEX.md"); any other entry is one exact path from the root, a leading / allowed.
+          #   LIMIT     the most non-fixture lines that pass, a whole number
+          # A changed line counts once, as an added line; a renamed file counts by its new path, once.
+          main() {
+            [[ "${LIMIT:-}" =~ ^[0-9]+$ ]] || { echo "invalid LIMIT must be a whole number"; return 0; }
+            jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0)' > /dev/null 2>&1 \
+              || { echo "invalid FIXTURES must be a JSON array of non-empty strings"; return 0; }
+            local n
+            if [ -z "${NUMSTAT+x}" ]; then
+              NUMSTAT="$(git --attr-source="$(git hash-object -t tree /dev/null)" diff --numstat -M --no-ext-diff --no-textconv "$MB" "$HEAD")" \
+                || { echo "invalid the diff could not be read"; return 0; }
+            fi
+            if ! n="$(printf '%s\n' "${NUMSTAT:-}" | jq -R --argjson f "$FIXTURES" -n '
+                def newpath:
+                  if test("\\{.* => .*\\}") then sub("\\{(?<a>[^{}]*) => (?<b>[^{}]*)\\}"; "\(.b)") | gsub("//"; "/")
+                  elif test(" => ") then sub("^.* => "; "") else . end;
+                def fixture($p):
+                  any($f[]; . as $e
+                    | if ($e | startswith("/")) and ($e | endswith("/")) then ($p | startswith($e | ltrimstr("/")))
+                      elif ($e | endswith("/")) then (("/" + $p) | contains("/" + $e))
+                      elif ($e | contains("/")) then $p == ($e | ltrimstr("/"))
+                      else ($p | split("/") | last) == $e end);
+                [inputs | select(length > 0) | split("\t")
+                  | if length < 3 or (.[0] | test("^([0-9]+|-)$") | not) then error("bad numstat line: " + join("\t")) else . end
+                  | {added: (if .[0] == "-" then 0 else (.[0] | tonumber) end), path: (.[2:] | join("\t") | newpath)}
+                  | select(fixture(.path) | not) | .added] | add // 0' 2>/dev/null)"; then
+              echo "invalid NUMSTAT is not git diff --numstat output"; return 0
+            fi
+            if [ "$n" -le "$LIMIT" ]; then echo "ok $n non-fixture lines (limit $LIMIT)"
+            else echo "over $n non-fixture lines, more than $LIMIT: split the pull request"; fi
+          }
+          export LIMIT FIXTURES MB HEAD
+          result="$(main)"
+          echo "$result"
+          case "$result" in
+            ok*) exit 0 ;;
+            over*) ;;
+            *) echo "::error::$result"; exit 1 ;;
+          esac
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
+          unset -f main
+          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
+          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
+          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
+          # so removing it and adding it again changes the verdict.
+          #   LABEL   the approval label
+          #   LABELS  JSON array of the labels on the pull request now
+          #   AUTHOR  the pull request author's login
+          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          main() {
+            local last login type
+            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
+              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
+                echo "missing the label $LABEL is not on the pull request"; return 0
+              fi
+              echo "refused LABELS must be a JSON array"; return 0
+            fi
+            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
+            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
+              echo "refused no event shows who added $LABEL"; return 0
+            fi
+            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
+            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
+              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
+            fi
+            echo "ok approved by $login"
+          }
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;
+            missing*) echo "::error::${result#over }; or a maintainer adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac

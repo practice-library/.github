@@ -1,0 +1,12 @@
+[
+  {
+    "name": "existing-dir-counts",
+    "find": "if [ ! -e \"$ROOT/$d\" ]; then",
+    "replace": "if true; then"
+  },
+  {
+    "name": "file-term-dropped",
+    "find": "      printf '%s\\n' \"$p\"\n",
+    "replace": "\n"
+  }
+]

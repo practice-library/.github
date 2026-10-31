@@ -1,0 +1,8 @@
+{
+  "expect": "over",
+  "env": {
+    "NUMSTAT": "601\t0\tmyselftest/a.sh",
+    "FIXTURES": "[\"selftest/\",\"examples/\",\"counter-examples/\",\"tests/fixtures/\",\"INDEX.md\"]",
+    "LIMIT": "600"
+  }
+}

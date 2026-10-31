@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/one.md"
+  },
+  "output": "ok {\"specversion\":\"1.0\",\"id\":\"x-123\"}"
+}

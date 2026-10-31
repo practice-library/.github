@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "env": {
+    "NUMSTAT": "700\t0\trulesets/main.json",
+    "FIXTURES": "[\"/rulesets/\"]",
+    "LIMIT": "600"
+  }
+}

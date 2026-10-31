@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/practice-library/.github/spec/node/schema.json",
   "title": "Fact node",
-  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
+  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote, and an optional basis) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
   "type": "object",
   "required": [
     "id",
@@ -31,12 +31,13 @@
     },
     "source": {
       "$ref": "#/$defs/url",
-      "description": "The official page the fact was read from; the quote is on this page."
+      "description": "Where the fact was read: the official page for a documented fact, or the run or record that measured it for an observed one. The quote is on this page or in this record."
     },
     "measuredAt": {
       "type": "string",
       "format": "date",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+      "pattern": "^(?:[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)$",
+      "description": "The date the fact was last confirmed: a real calendar date, YYYY-MM-DD."
     },
     "attrs": {
       "type": "object",
@@ -52,19 +53,30 @@
             "allowed",
             "denied",
             "limited",
-            "unknown"
-          ]
+            "unknown",
+            "absent"
+          ],
+          "description": "allowed, denied or limited: what the page states. unknown: it could not be confirmed. absent: the page was checked and does not state it; note names the page checked and quote is its nearest sentence, and there is no value."
         },
         "fetched_at": {
           "type": "string",
           "format": "date-time",
-          "pattern": "Z$"
+          "pattern": "^(?:[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)[Tt](?:[01][0-9]|2[0-3]):[0-5][0-9]:(?:[0-5][0-9]|60)(?:\\.[0-9]+)?Z$",
+          "description": "When the page was read, or for an observed fact when the measurement ran. UTC, a real calendar date and time (YYYY-MM-DDThh:mm:ssZ, optional fraction of a second; RFC 3339 allows a lower-case t)."
         },
         "quote": {
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
-          "description": "A short sentence copied exactly from the page."
+          "description": "A short sentence copied exactly from the page, or for an observed fact a line copied exactly from the run log or record."
+        },
+        "basis": {
+          "enum": [
+            "documented",
+            "observed"
+          ],
+          "description": "Where the number comes from: documented (the vendor states it) or observed (our own measurement). Absent means documented. A documented node and an observed node about the same quantity stay two nodes, linked by an observes edge from the observed one. A node with an observes edge must say basis observed.",
+          "default": "documented"
         },
         "value": {
           "type": "number",
@@ -126,7 +138,8 @@
               "supersedes",
               "hasRelease",
               "introducedIn",
-              "removedIn"
+              "removedIn",
+              "observes"
             ]
           },
           "to": {
@@ -143,5 +156,75 @@
       "format": "uri",
       "pattern": "^https://"
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "edges"
+        ],
+        "properties": {
+          "edges": {
+            "contains": {
+              "required": [
+                "rel"
+              ],
+              "properties": {
+                "rel": {
+                  "const": "observes"
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attrs": {
+            "required": [
+              "basis"
+            ],
+            "properties": {
+              "basis": {
+                "const": "observed"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "attrs"
+        ],
+        "properties": {
+          "attrs": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "const": "absent"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attrs": {
+            "required": [
+              "note"
+            ],
+            "not": {
+              "required": [
+                "value"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
 }

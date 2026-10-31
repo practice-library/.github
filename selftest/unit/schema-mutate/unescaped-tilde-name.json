@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "SCHEMA": "selftest/unit/schema-mutate/data/s.json",
+    "MUTANT": "{\"pointer\":\"/properties/t~\",\"mutation\":\"delete\"}"
+  }
+}

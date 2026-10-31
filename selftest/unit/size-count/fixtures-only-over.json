@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "env": {
+    "NUMSTAT": "5000\t0\tselftest/unit/x/a.json\n900\t0\tspec/x/examples/a.json\n900\t0\tspec/x/counter-examples/b.json\n700\t0\ttests/fixtures/c.json\n700\t0\tvendors/a/INDEX.md",
+    "FIXTURES": "[\"selftest/\",\"examples/\",\"counter-examples/\",\"tests/fixtures/\",\"INDEX.md\"]",
+    "LIMIT": "600"
+  }
+}

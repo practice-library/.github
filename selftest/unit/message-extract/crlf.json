@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/crlf.md"
+  },
+  "output": "ok {\"id\":\"x-123\"}"
+}

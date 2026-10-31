@@ -1,0 +1,7 @@
+{
+  "expect": "skip",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/embedded-url.json",
+    "NEW_FILE": ""
+  }
+}

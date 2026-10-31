@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "NUMSTAT": "5\t0",
+    "FIXTURES": "[\"selftest/\"]",
+    "LIMIT": "600"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "expect": "write",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/empty-reason.json",
+    "FOUND": "c",
+    "WRITE": "true"
+  },
+  "output": "write {\"ratchet\":1,\"check\":\"example-check\",\"entries\":[{\"key\":\"c\",\"reason\":\"\",\"owner\":\"maintainers\"}]}"
+}

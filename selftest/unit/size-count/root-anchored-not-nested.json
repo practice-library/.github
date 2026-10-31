@@ -1,0 +1,8 @@
+{
+  "expect": "over",
+  "env": {
+    "NUMSTAT": "700\t0\tspec/README.md",
+    "FIXTURES": "[\"/README.md\"]",
+    "LIMIT": "600"
+  }
+}

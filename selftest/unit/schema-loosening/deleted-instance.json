@@ -1,0 +1,7 @@
+{
+  "expect": "skip",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/instance.json",
+    "NEW_FILE": ""
+  }
+}

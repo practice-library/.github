@@ -5,6 +5,7 @@
     "WATCH": "[]",
     "CHANGELOG": "CHANGELOG.md",
     "MARKER": "Release: none",
-    "MESSAGES": "x"
+    "MESSAGES": "x",
+    "CHANGELOG_ADDED": "0"
   }
 }

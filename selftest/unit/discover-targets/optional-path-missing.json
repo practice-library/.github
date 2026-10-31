@@ -1,0 +1,6 @@
+{
+  "expect": "error",
+  "env": {
+    "ROW": "{\"id\": \"schema-check\", \"workflow\": \"schema-check.yml\", \"tool\": \"jsonschema\", \"inputs\": [\"schema\", \"instances\"], \"optionalPathInputs\": [\"resolve\", \"guards\"], \"optionalInputs\": [\"expect\", \"each\", \"mode\", \"resolve-ids\"], \"targetFile\": \"paths-missing.json\"}"
+  }
+}

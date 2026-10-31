@@ -1,0 +1,9 @@
+{
+  "expect": "write",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/clean.json",
+    "FOUND": "a\nx",
+    "WRITE": "true"
+  },
+  "output": "write {\"ratchet\":1,\"check\":\"example-check\",\"entries\":[{\"key\":\"a\",\"reason\":\"Known, tracked in issue 1.\",\"owner\":\"maintainers\"},{\"key\":\"x\",\"reason\":\"\",\"owner\":\"\"}]}"
+}

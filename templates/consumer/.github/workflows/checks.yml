@@ -25,11 +25,9 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.discover.outputs.targets) }}
     uses: @@org.name@@/@@org.repo@@/.github/workflows/schema-check.yml@__PIN__ # __REF__
+    # Every key a check.json row may carry, generated from the checks row so none is dropped.
     with:
-      schema: ${{ matrix.schema }}
-      instances: ${{ matrix.instances }}
-      expect: ${{ matrix.expect }}
-      each: ${{ matrix.each }}
+      #@gen with.schema-check
   leak-scan:
     uses: @@org.name@@/@@org.repo@@/.github/workflows/leak-scan.yml@__PIN__ # __REF__
   denylist:

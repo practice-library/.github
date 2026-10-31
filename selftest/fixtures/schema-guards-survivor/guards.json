@@ -1,0 +1,14 @@
+{
+  "examples": "examples",
+  "counter-examples": "counter-examples",
+  "mutants": [
+    {
+      "pointer": "/properties/a/maximum",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/properties/a/minimum",
+      "mutation": "delete"
+    }
+  ]
+}

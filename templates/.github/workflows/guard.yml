@@ -7,6 +7,9 @@ name: guard
 #   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "@@guards.loosenLabel@@" from someone other
 #                     than the author and not a bot; the caller's pull_request types include labeled
+#   size              (optional, the gate does not require it) the lines added or changed outside
+#                     fixtures are at most size-limit, or the label "@@guards.sizeLabel@@" from someone
+#                     other than the author and not a bot lets more through
 on:
   workflow_call:
     inputs:
@@ -34,6 +37,18 @@ on:
         description: The label that lets a loosened schema through.
         type: string
         default: @@guards.loosenLabel@@
+      size-limit:
+        description: size only. The most lines a pull request may add or change outside fixtures.
+        type: number
+        default: @@guards.sizeLimit@@
+      size-fixtures:
+        description: size only. JSON array of fixture entries not counted; an entry starting and ending in / is a directory from the root, any other entry ending in / a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
+        type: string
+        default: '@@json:guards.sizeFixtures@@'
+      size-label:
+        description: size only. The label that lets a larger pull request through.
+        type: string
+        default: @@guards.sizeLabel@@
 permissions:
   contents: read
 jobs:
@@ -54,7 +69,7 @@ jobs:
         shell: bash
         env:
           GUARD: ${{ inputs.guard }}
-          GUARDS: '@@json:guards.ids@@'
+          GUARDS: '@@gen:guardidsjson@@'
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -146,7 +161,10 @@ jobs:
           #@include release-note.sh
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES
+          # Added lines of the changelog that hold text; a whitespace-only edit adds none.
+          CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
+            | { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -cE '^\+.*[^[:space:]]' || true; })"
+          export CHANGED MESSAGES CHANGELOG_ADDED
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -170,29 +188,69 @@ jobs:
           while IFS=$'\t' read -r status old new; do
             new="${new:-$old}"
             OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
-            git cat-file blob "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
-            git cat-file blob "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
-            # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
-            jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
+            git cat-file blob "$MB:$old" > "$OLD_FILE" || { echo "::error file=$old::cannot read $old on the base"; exit 1; }
+            # A deleted schema accepts everything it used to refuse, so it counts as loosened.
+            if [ "$status" = D ]; then NEW_FILE=""
+            else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
             export OLD_FILE NEW_FILE
             result="$(main)"
             echo "$new: $result"
             case "$result" in
-              ok*) ;;
+              ok*|skip*) ;;
               loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
               *) echo "::error file=$new::$result"; exit 1 ;;
             esac
-          done < <(git diff --name-status -M --diff-filter=MR --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
+          done < <(git diff --name-status -M --diff-filter=MRD --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
-          if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" 'any($ls[]; . == $l)' > /dev/null; then
-            echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1
-          fi
-          by="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv" | tail -n 1)"
-          login="${by%%$'\t'*}"; type="${by#*$'\t'}"
-          if [ -z "$by" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
-            echo "::error::the label $LABEL must be added by someone other than the author and not by a bot (added by: ${login:-unknown})"; exit 1
-          fi
-          echo "ok loosening accepted: $LABEL added by $login"
+          #@include label-approval.sh
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
+            missing*) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac
+
+      - name: size
+        if: inputs.guard == 'size' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LIMIT: ${{ inputs.size-limit }}
+          FIXTURES: ${{ inputs.size-fixtures }}
+          LABEL: ${{ inputs.size-label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          #@include size-count.sh
+          export LIMIT FIXTURES MB HEAD
+          result="$(main)"
+          echo "$result"
+          case "$result" in
+            ok*) exit 0 ;;
+            over*) ;;
+            *) echo "::error::$result"; exit 1 ;;
+          esac
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
+          unset -f main
+          #@include label-approval.sh
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;
+            missing*) echo "::error::${result#over }; or a maintainer adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac

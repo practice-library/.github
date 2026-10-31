@@ -7,21 +7,37 @@ on:
         type: string
         required: true
       instances:
-        description: A JSON file or a directory of JSON files to validate against the schema.
+        description: validate mode. A JSON file or a directory of JSON files to validate against the schema.
         type: string
-        required: true
+        default: ''
       _selftest-fixture:
         description: Self-test only. A fixture directory under @@selftest.fixturesDir@@ that schema and instances are relative to.
         type: string
         default: ''
       expect:
-        description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code.
+        description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code. A setup error, such as a wrong resolve-ids pin, fails the check whatever expect says; only a self-test fixture may set error to expect one.
         type: string
         default: pass
       each:
         description: true to validate every JSON file under instances on its own; expect then has to hold for each file, so a folder of counter-examples passes only when every one of them is rejected.
         type: string
         default: 'false'
+      mode:
+        description: validate (default) checks instances against schema; metaschema checks schema (a file, or every *.json under a directory) against its own $schema; guards applies each mutant in the guards file to schema and passes only when every mutant turns an example or a counter-example red.
+        type: string
+        default: validate
+      resolve:
+        description: Extra schemas the validator may resolve by $id, one path per line, besides the shared node envelope. For a schema pinned from another repository, check that repository out at a tag or commit and list the file here.
+        type: string
+        default: ''
+      resolve-ids:
+        description: The $id each resolve path must carry, one per line in the same order; a file with another $id is a finding, so a wrong pin fails loudly.
+        type: string
+        default: ''
+      guards:
+        description: 'guards mode. A JSON file: {"examples": <dir or [dirs]>, "counter-examples": <dir or [dirs]>, "mutants": [{"pointer": "/...", "mutation": "delete" | "true"} or {"pointer": "/...", "set": <value>}, ...]}, directories relative to the file.'
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
@@ -44,7 +60,12 @@ jobs:
           FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: @@selftest.fixturesDir@@
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
+          EXPECT: ${{ inputs.expect }}
           EACH: ${{ inputs.each }}
+          MODE: ${{ inputs.mode }}
+          RESOLVE: ${{ inputs.resolve }}
+          RESOLVE_IDS: ${{ inputs.resolve-ids }}
+          GUARDS: ${{ inputs.guards }}
           NODE_SPEC: '@@render:spec/node/schema.json@@'
         run: |
           set -uo pipefail
@@ -52,26 +73,97 @@ jobs:
           #@include each-result.sh
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
+          # A setup error (any other exit) ends the step red, except in a self-test fixture that expects it.
+          finish() { echo "rc=$1" >> "$GITHUB_OUTPUT"; [ "$1" -eq 0 ] || [ "$1" -eq "$FINDING_RC" ] || { [ -n "$FIXTURE" ] && [ "$EXPECT" = error ]; }; exit; }
+          lines() { printf '%s\n' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d'; }
           # The shared fact-node envelope (@@spec.nodeSchemaId@@) is always resolvable, so a domain
           # schema can reference it without keeping a copy.
           printf '%s' "$NODE_SPEC" > "$RUNNER_TEMP/node-spec.json"
           resolve=(--resolve "$RUNNER_TEMP/node-spec.json")
-          if [ "$EACH" = true ]; then
-            RCS=""
-            while IFS= read -r -d '' file; do
-              one=0
-              "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
-              echo "exit $one: ${file#"$base"/}"
-              RCS="$RCS $one"
-            done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
-            FINDING="$FINDING_RC"
-            result="$(main)"
-            echo "$result"
-            rc="${result##* }"
-          else
-            rc=0
-            "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          mapfile -t paths < <(lines "$RESOLVE")
+          mapfile -t ids < <(lines "$RESOLVE_IDS")
+          if [ "${#ids[@]}" -gt 0 ] && [ "${#ids[@]}" -ne "${#paths[@]}" ]; then
+            echo "::error::resolve-ids lists ${#ids[@]} ids for ${#paths[@]} resolve paths"; finish 1
           fi
-          echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
+          for k in "${!paths[@]}"; do
+            p="$base/${paths[$k]}"
+            [ -f "$p" ] || { echo "::error::resolve: no file ${paths[$k]}"; finish 1; }
+            if [ "${#ids[@]}" -gt 0 ]; then
+              got="$(jq -r '.["$id"] // ""' "$p" 2>/dev/null)" || { echo "::error file=${paths[$k]}::not JSON"; finish 1; }
+              if [ "$got" != "${ids[$k]}" ]; then
+                echo "::error file=${paths[$k]}::its \$id is '$got', expected '${ids[$k]}' (a wrong pin?)"; finish 1
+              fi
+            fi
+            resolve+=(--resolve "$p")
+          done
+          case "${MODE:-validate}" in
+            validate)
+              [ -n "$INSTANCES" ] || { echo "::error::validate mode needs instances"; finish 1; }
+              if [ "$EACH" = true ]; then
+                RCS=""
+                while IFS= read -r -d '' file; do
+                  one=0
+                  "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
+                  echo "exit $one: ${file#"$base"/}"
+                  RCS="$RCS $one"
+                done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
+                FINDING="$FINDING_RC"
+                result="$(main)"
+                echo "$result"
+                finish "${result##* }"
+              fi
+              rc=0
+              "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+              finish "$rc" ;;
+            metaschema)
+              rc=0
+              "$JSONSCHEMA" metaschema "$base/$SCHEMA" || rc=$?
+              finish "$rc" ;;
+            guards)
+              [ -n "$GUARDS" ] || { echo "::error::guards mode needs guards"; finish 1; }
+              gfile="$base/$GUARDS"; gdir="$(dirname "$gfile")"
+              dirs='def dirs: if type == "string" then [.] elif type == "array" and length > 0 and all(.[]; type == "string") then . else error("") end;'
+              jq -e "$dirs"' (.examples | dirs) and (.["counter-examples"] | dirs) and (.mutants | type) == "array" and (.mutants | length) > 0' "$gfile" > /dev/null 2>&1 \
+                || { echo "::error file=$GUARDS::guards must be {\"examples\": dir or [dirs], \"counter-examples\": dir or [dirs], \"mutants\": [at least one]}"; finish 1; }
+              for key in examples counter-examples; do
+                while IFS= read -r d; do
+                  [ -d "$gdir/$d" ] || { echo "::error file=$GUARDS::$key: no directory $d"; finish 1; }
+                done < <(jq -r "$dirs"' .["'"$key"'"] | dirs[]' "$gfile")
+              done
+              collect() { local d; while IFS= read -r d; do find "$gdir/$d" -type f -name '*.json' -print0; done < <(jq -r "$dirs"' .["'"$1"'"] | dirs[]' "$gfile") | sort -z; }
+              mapfile -d '' examples < <(collect examples)
+              mapfile -d '' counters < <(collect counter-examples)
+              [ "${#examples[@]}" -gt 0 ] && [ "${#counters[@]}" -gt 0 ] || { echo "::error::guards needs at least one example and one counter-example"; finish 1; }
+              # judge <schema>: prints "red <file>" for the first example that fails or counter-example that
+              # passes, "green" when none does, or "error <file>" when the validator cannot run.
+              judge() {
+                local f one
+                for f in "${examples[@]}"; do one=0; "$JSONSCHEMA" validate "${resolve[@]}" "$1" "$f" > /dev/null 2>&1 || one=$?
+                  case "$one" in 0) ;; "$FINDING_RC") echo "red ${f#"$gdir"/}"; return ;; *) echo "error ${f#"$gdir"/}"; return ;; esac; done
+                for f in "${counters[@]}"; do one=0; "$JSONSCHEMA" validate "${resolve[@]}" "$1" "$f" > /dev/null 2>&1 || one=$?
+                  case "$one" in 0) echo "red ${f#"$gdir"/}"; return ;; "$FINDING_RC") ;; *) echo "error ${f#"$gdir"/}"; return ;; esac; done
+                echo green
+              }
+              baseline="$(judge "$base/$SCHEMA")"
+              [ "$baseline" = green ] || { echo "::error::the unmutated schema already gives $baseline; fix the fixtures first"; finish 1; }
+              unset -f main
+              #@include schema-mutate.sh
+              survived=0
+              SCHEMA="$base/$SCHEMA"; export SCHEMA
+              while IFS= read -r MUTANT; do
+                export MUTANT
+                mutated="$(main)"
+                case "$mutated" in invalid*) echo "::error::$MUTANT: ${mutated#invalid }"; finish 1 ;; esac
+                printf '%s\n' "$mutated" > "$RUNNER_TEMP/mutant.json"
+                verdict="$(judge "$RUNNER_TEMP/mutant.json")"
+                case "$verdict" in
+                  red*) echo "caught $MUTANT by ${verdict#red }" ;;
+                  green) echo "::error::survived $MUTANT: no example or counter-example turned red"; survived=$((survived + 1)) ;;
+                  *) echo "::error::$MUTANT: the validator could not run on ${verdict#error }"; finish 1 ;;
+                esac
+              done < <(jq -c '.mutants[]' "$gfile")
+              if [ "$survived" -gt 0 ]; then finish "$FINDING_RC"; fi
+              finish 0 ;;
+            *) echo "::error::mode must be validate, metaschema or guards, got $MODE"; finish 1 ;;
+          esac
       #@expect jsonschema

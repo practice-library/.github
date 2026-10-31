@@ -1,0 +1,7 @@
+{
+  "expect": "loose",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/draft7-http.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/draft7-http-loose.json"
+  }
+}

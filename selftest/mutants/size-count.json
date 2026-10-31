@@ -1,0 +1,67 @@
+[
+  {
+    "name": "limit-exclusive",
+    "find": "[ \"$n\" -le \"$LIMIT\" ]",
+    "replace": "[ \"$n\" -lt \"$LIMIT\" ]"
+  },
+  {
+    "name": "fixture-dir-prefix-only",
+    "find": "((\"/\" + $p) | contains(\"/\" + $e))",
+    "replace": "($p | startswith($e))"
+  },
+  {
+    "name": "fixture-dir-substring",
+    "find": "((\"/\" + $p) | contains(\"/\" + $e))",
+    "replace": "($p | contains($e))"
+  },
+  {
+    "name": "fixture-name-substring",
+    "find": "($p | split(\"/\") | last) == $e",
+    "replace": "($p | contains($e))"
+  },
+  {
+    "name": "rename-old-path",
+    "find": "\"\\(.b)\")",
+    "replace": "\"\\(.a)\")"
+  },
+  {
+    "name": "binary-counts",
+    "find": "if .[0] == \"-\" then 0 else",
+    "replace": "if .[0] == \"-\" then 9999 else"
+  },
+  {
+    "name": "deleted-lines-count",
+    "find": "{added: (if",
+    "replace": "{added: ((.[1]|tonumber? // 0) + (if"
+  },
+  {
+    "name": "fixtures-ignored",
+    "find": "| select(fixture(.path) | not)",
+    "replace": ""
+  },
+  {
+    "name": "limit-check-off",
+    "find": "[[ \"${LIMIT:-}\" =~ ^[0-9]+$ ]] ||",
+    "replace": "true ||"
+  },
+  {
+    "name": "numstat-check-off",
+    "find": "if length < 3 or (.[0] | test(\"^([0-9]+|-)$\") | not) then error(\"bad numstat line: \" + join(\"\\t\")) else . end",
+    "replace": "."
+  },
+  {
+    "name": "leading-slash-kept",
+    "find": "$p == ($e | ltrimstr(\"/\"))",
+    "replace": "$p == $e"
+  },
+  {
+    "name": "attributes-honoured",
+    "find": "git --attr-source=\"$(git hash-object -t tree /dev/null)\" diff",
+    "replace": "git diff"
+  },
+  {
+    "name": "root-dir-anywhere",
+    "find": "($p | startswith($e | ltrimstr(\"/\")))",
+    "replace": "((\"/\" + $p) | contains($e))"
+  }
+]

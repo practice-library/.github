@@ -1,0 +1,11 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\"spec/node/schema.json\",\"CHANGELOG.md\"]",
+    "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Widen the envelope",
+    "CHANGELOG_ADDED": "1"
+  }
+}

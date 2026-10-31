@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "NUMSTAT": "hello",
+    "FIXTURES": "[\"selftest/\",\"examples/\",\"counter-examples/\",\"tests/fixtures/\",\"INDEX.md\"]",
+    "LIMIT": "600"
+  }
+}

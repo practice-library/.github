@@ -1,0 +1,7 @@
+{
+  "expect": "fail",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/no-reason.json",
+    "FOUND": "c"
+  }
+}

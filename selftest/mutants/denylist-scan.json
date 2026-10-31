@@ -1,0 +1,17 @@
+[
+  {
+    "name": "spaced-pair-dropped",
+    "find": "            terms.add(a + \" \" + b)\n",
+    "replace": ""
+  },
+  {
+    "name": "joined-pair-dropped",
+    "find": "            terms.add(a + b)\n",
+    "replace": ""
+  },
+  {
+    "name": "pairs-not-adjacent",
+    "find": "zip(words, words[1:])",
+    "replace": "zip(words, words[2:])"
+  }
+]

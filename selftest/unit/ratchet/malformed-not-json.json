@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/not-json.json",
+    "FOUND": "a"
+  }
+}

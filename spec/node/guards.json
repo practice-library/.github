@@ -1,0 +1,160 @@
+{
+  "examples": [
+    "../../selftest/fixtures/schema-node-basis/instances",
+    "../../selftest/fixtures/schema-node-dates/instances",
+    "../../selftest/fixtures/schema-node-absent/instances",
+    "../../selftest/fixtures/schema-node-edges/instances"
+  ],
+  "counter-examples": [
+    "../../selftest/fixtures/schema-node-basis-bad/instances",
+    "../../selftest/fixtures/schema-node-dates-bad/instances",
+    "../../selftest/fixtures/schema-node-absent-bad/instances",
+    "../../selftest/fixtures/schema-node-edge-unknown/instances"
+  ],
+  "mutants": [
+    {
+      "pointer": "/properties/attrs/properties/basis",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/properties/attrs/properties/basis",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/properties/attrs/properties/basis/enum",
+      "set": [
+        "documented",
+        "observed",
+        "measured"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/basis/enum",
+      "set": [
+        "documented",
+        "observed",
+        "Observed"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/basis/enum",
+      "set": [
+        "observed"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/basis/enum",
+      "set": [
+        "documented"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "observe"
+      ]
+    },
+    {
+      "pointer": "/allOf/0",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/allOf/0/then/properties/attrs/properties/basis/const",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/allOf/0/then/properties/attrs/required",
+      "set": []
+    },
+    {
+      "pointer": "/allOf/0/if",
+      "set": true
+    },
+    {
+      "pointer": "/allOf/1",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/allOf/1/then/properties/attrs/not",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/allOf/1/then/properties/attrs/required",
+      "set": []
+    },
+    {
+      "pointer": "/properties/attrs/properties/verdict/enum",
+      "set": [
+        "allowed",
+        "denied",
+        "limited",
+        "unknown"
+      ]
+    },
+    {
+      "pointer": "/properties/measuredAt/pattern",
+      "set": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    {
+      "pointer": "/properties/attrs/properties/fetched_at/pattern",
+      "set": "Z$"
+    },
+    {
+      "pointer": "/properties/attrs/properties/quote/maxLength",
+      "set": 501
+    },
+    {
+      "pointer": "/properties/attrs/properties/quote/maxLength",
+      "set": 499
+    },
+    {
+      "pointer": "/properties/attrs/properties/quote/minLength",
+      "set": 0
+    },
+    {
+      "pointer": "/properties/attrs/required",
+      "set": [
+        "verdict",
+        "fetched_at"
+      ]
+    },
+    {
+      "pointer": "/$defs/url/pattern",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/properties/attrs/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/additionalProperties",
+      "set": true
+    }
+  ]
+}

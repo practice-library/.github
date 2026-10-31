@@ -1,0 +1,9 @@
+{
+  "expect": "ok",
+  "output": "ok no removed path is mentioned",
+  "env": {
+    "DELETED": "[\"old/index.md\"]",
+    "ROOT": "selftest/unit/removed-refs/tree-dir-kept",
+    "HISTORY": "[]"
+  }
+}

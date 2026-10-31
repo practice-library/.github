@@ -5,6 +5,7 @@
     "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
     "CHANGELOG": "CHANGELOG.md",
     "MARKER": "Release: none",
-    "MESSAGES": "Widen the envelope"
+    "MESSAGES": "Widen the envelope",
+    "CHANGELOG_ADDED": "0"
   }
 }

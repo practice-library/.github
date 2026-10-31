@@ -1,0 +1,42 @@
+[
+  {
+    "name": "two-blocks-take-first",
+    "find": "elif (.blocks | length) > 1 then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "unclosed-accepted",
+    "find": "if .cur != null then \"invalid a ```json block is not closed\"",
+    "replace": "if false then \"\""
+  },
+  {
+    "name": "control-allowed",
+    "find": "elif (.blocks[0] | test(\"[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]\")) then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "bidi-allowed",
+    "find": "elif (.blocks[0] | test(\"[\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]\")) then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "size-unlimited",
+    "find": "[ \"$size\" -le 65536 ]",
+    "replace": "true"
+  },
+  {
+    "name": "size-off-by-one",
+    "find": "[ \"$size\" -le 65536 ]",
+    "replace": "[ \"$size\" -lt 65536 ]"
+  },
+  {
+    "name": "array-accepted",
+    "find": "if ($j | type) == \"object\"",
+    "replace": "if ($j | type) == \"object\" or ($j | type) == \"array\""
+  },
+  {
+    "name": "fence-suffix-accepted",
+    "find": "test(\"^```json[ \\t]*$\")",
+    "replace": "test(\"^```json\")"
+  }
+]

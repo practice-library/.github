@@ -1,5 +1,5 @@
 {
-  "expect": "ok",
+  "expect": "invalid",
   "env": {
     "CHANGED": "[\"spec/node/schema.json\",\"CHANGELOG.md\"]",
     "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",

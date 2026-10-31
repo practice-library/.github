@@ -5,11 +5,13 @@
 #   <indent>#@expect <tool>   fragments/expect.yml for tools.<tool>, indented
 #   <indent>#@include <file>  fragments/<file> as it is, indented
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
+#   #@gen with.<check id>     the with: lines for that checks row, every input and optional input from matrix (consumer kit)
 #   @@gen:needs@@             the gate's needs: static self jobs, then each check and its self-test
 #   @@gen:context@@           the required check name, callerJob / innerJob, after proving both are rendered job ids
 #   @@render:<template>@@     that template rendered, as compact JSON for a single-quoted YAML scalar
 #   @@gen:unowned@@           one CODEOWNERS line per auto-merge allowlist path, with no owner
-#   @@gen:guardids@@          the guard ids, comma separated (guard.yml)
+#   @@gen:guardids@@          the guard ids, required and optional, comma separated (guard.yml)
+#   @@gen:guardidsjson@@      the same ids as a JSON array
 # Inputs: $c (constants, --slurpfile), $frags (fragment name -> text), $all (template path -> text), $t (this template).
 
 def lookup($k):
@@ -44,7 +46,7 @@ def withlines($inputs):
   $inputs | map("      " + . + ": ${{ matrix." + . + " }}");
 
 def checkjob($k; $id; $output; $extra):
-  ( $extra + withlines($k.inputs + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
+  ( $extra + withlines($k.inputs + ($k.optionalPathInputs // []) + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
   | [ "  " + $id + ":",
       "    needs: [" + lookup("self.discoverJob") + "]",
       "    strategy:",
@@ -65,7 +67,14 @@ def checkjobs:
               "      " + lookup("tools." + $k.tool + ".expectInput") + ": ${{ matrix.expect }}" ]))
   | join("\n\n");
 
-def genjobs: gsub("(?m)^  #@gen jobs$"; checkjobs);
+def genwith:
+  gsub("(?m)^      #@gen with\\.(?<id>[a-z-]+)$";
+    .id as $id
+    | ([lookup("checks")[] | select(.id == $id)] | first // error("no checks row: " + $id))
+    | withlines(.inputs + (.optionalPathInputs // []) + (.optionalInputs // []))
+    | join("\n"));
+
+def genjobs: gsub("(?m)^  #@gen jobs$"; checkjobs) | genwith;
 
 def selfneeds: lookup("self.staticJobs") + (lookup("checks") | map(.id, "selftest-" + .id));
 
@@ -88,7 +97,8 @@ def gen:
     if .k == "needs" then selfneeds | tojson
     elif .k == "context" then context
     elif .k == "checkids" then lookup("checks") | map(.id) | join(", ")
-    elif .k == "guardids" then lookup("guards.ids") | join(", ")
+    elif .k == "guardids" then (lookup("guards.ids") + lookup("guards.optional")) | join(", ")
+    elif .k == "guardidsjson" then (lookup("guards.ids") + lookup("guards.optional")) | tojson
     elif .k == "outputs" then
       lookup("checks") | map(.id as $id | ("targets", "fixtures")
         | . + "-" + $id + ": ${{ steps.list.outputs." + . + "-" + $id + " }}") | join("\n      ")

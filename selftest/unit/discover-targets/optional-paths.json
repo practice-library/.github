@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "output": "ok [{\"target\":\"selftest/unit/discover-targets/data/sub\",\"schema\":\"selftest/unit/discover-targets/data/sub/s.json\",\"instances\":\"selftest/unit/discover-targets/data/sub/i\",\"resolve\":\"selftest/unit/discover-targets/data/sub/a.json\\nselftest/unit/discover-targets/data/sub/b/c.json\",\"guards\":\"selftest/unit/discover-targets/data/sub/g.json\",\"mode\":\"guards\"}]",
+  "env": {
+    "ROW": "{\"id\": \"schema-check\", \"workflow\": \"schema-check.yml\", \"tool\": \"jsonschema\", \"inputs\": [\"schema\", \"instances\"], \"optionalPathInputs\": [\"resolve\", \"guards\"], \"optionalInputs\": [\"expect\", \"each\", \"mode\", \"resolve-ids\"], \"targetFile\": \"paths-target.json\"}"
+  }
+}

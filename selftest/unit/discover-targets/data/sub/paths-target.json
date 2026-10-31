@@ -1,0 +1,7 @@
+{
+  "schema": "s.json",
+  "instances": "i",
+  "resolve": "a.json\nb/c.json",
+  "guards": "g.json",
+  "mode": "guards"
+}

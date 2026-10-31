@@ -1,0 +1,45 @@
+{
+  "examples": "examples",
+  "counter-examples": "counter-examples",
+  "mutants": [
+    {
+      "pointer": "/properties/ratchet/const",
+      "set": 2
+    },
+    {
+      "pointer": "/properties/ratchet",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/properties/check/minLength",
+      "set": 0
+    },
+    {
+      "pointer": "/properties/entries/items/required",
+      "set": []
+    },
+    {
+      "pointer": "/properties/entries/items/properties/key/pattern",
+      "set": "^.*$"
+    },
+    {
+      "pointer": "/properties/entries/items/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/properties/entries/items/properties/reason",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/required",
+      "set": [
+        "ratchet",
+        "check"
+      ]
+    }
+  ]
+}

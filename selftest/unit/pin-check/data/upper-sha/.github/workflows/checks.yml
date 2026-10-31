@@ -1,0 +1,3 @@
+jobs:
+  a:
+    uses: practice-library/.github/.github/workflows/gate.yml@3267684C2FBF40A655A64942437E806423CCE9FB

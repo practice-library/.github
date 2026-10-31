@@ -7,7 +7,8 @@
     "trustedAuthors": [
       "practice-library[bot]"
     ],
-    "maintainer": "@practice-library/maintainers"
+    "maintainer": "@practice-library/maintainers",
+    "appLogin": "practice-library[bot]"
   },
   "runner": {
     "image": "ubuntu-24.04",
@@ -67,7 +68,13 @@
       "tool": "jsonschema",
       "optionalInputs": [
         "expect",
-        "each"
+        "each",
+        "mode",
+        "resolve-ids"
+      ],
+      "optionalPathInputs": [
+        "resolve",
+        "guards"
       ]
     }
   ],
@@ -91,7 +98,8 @@
       "denylist",
       "removed-paths",
       "release-note",
-      "schema-loosening"
+      "schema-loosening",
+      "size"
     ],
     "discoverScript": "scripts/discover.sh",
     "unitScript": "scripts/unit.sh",
@@ -105,7 +113,25 @@
       "spec/",
       ".github/workflows/",
       "rulesets/"
-    ]
+    ],
+    "sizeFixtures": [
+      "selftest/",
+      "examples/",
+      "counter-examples/",
+      "tests/fixtures/",
+      "/README.md",
+      "docs/new-repo-checklist.md",
+      "/.github/workflows/",
+      ".github/automerge-paths.json",
+      ".github/CODEOWNERS",
+      ".github/dependabot.yml",
+      ".github/required-checks.json",
+      ".gitleaks.toml",
+      "/consumer/",
+      "/rulesets/",
+      "spec/node/schema.json"
+    ],
+    "mutantsScript": "scripts/mutants.sh"
   },
   "render": {
     "script": "scripts/render.sh",
@@ -210,6 +236,17 @@
     "releaseWatch": [],
     "changelog": "CHANGELOG.md",
     "noReleaseMarker": "Release: none",
-    "loosenLabel": "schema-loosening-approved"
+    "loosenLabel": "schema-loosening-approved",
+    "optional": [
+      "size"
+    ],
+    "sizeLimit": 600,
+    "sizeFixtures": [
+      "selftest/",
+      "examples/",
+      "counter-examples/",
+      "tests/fixtures/"
+    ],
+    "sizeLabel": "size-approved"
   }
 }
