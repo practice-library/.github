@@ -1,0 +1,9 @@
+# Copy to .github/dependabot.yml in a repository that calls @@org.name@@/@@org.repo@@'s workflows.
+# Dependabot then proposes new pins for the reusable workflows and actions it uses.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: @@dependabot.interval@@
+    open-pull-requests-limit: @@dependabot.openPullRequestsLimit@@
