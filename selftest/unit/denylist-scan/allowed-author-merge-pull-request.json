@@ -1,0 +1,20 @@
+{
+  "expect": "ok",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"53b48689254d028ad6d6cf865394ad59ea74ee7d072d8d0c0756ea81d9412fd8\",\"d427bfe3aaeeb39fbac9a49e6250903a6d77d0a9d06ead47d23fc66b489763dc\",\"d728da035591f33dea210032999f3c466a8eeef3ef946d2451f33f7770529fd8\"],\"allowAuthorNames\":[\"53b48689254d028ad6d6cf865394ad59ea74ee7d072d8d0c0756ea81d9412fd8\"]}",
+    "EVENT": "pull_request"
+  },
+  "repo": {
+    "base": {
+      "README.md": "Base.\n"
+    },
+    "head": {
+      "notes.md": "Clean notes.\n"
+    },
+    "message": "Add notes",
+    "merge": {
+      "author": "Zebracorn",
+      "message": "Merge the notes"
+    }
+  }
+}
