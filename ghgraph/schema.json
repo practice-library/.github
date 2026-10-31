@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GitHub fact node",
+  "description": "One file under ghgraph/graph/nodes/, named <id>.json. That every edge target exists is checked by the graph checker, not by this schema.",
+  "type": "object",
+  "required": ["id", "type", "name", "source", "measuredAt", "attrs", "edges"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" },
+    "type": { "enum": ["product", "plan", "limit", "rate-limit", "permission", "rule", "feature", "term"] },
+    "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "source": { "$ref": "#/$defs/url", "description": "The official page the fact was read from." },
+    "measuredAt": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "attrs": {
+      "type": "object",
+      "required": ["verdict", "url", "fetched_at", "quote"],
+      "additionalProperties": false,
+      "properties": {
+        "verdict": { "enum": ["allowed", "denied", "limited", "unknown"] },
+        "url": { "$ref": "#/$defs/url", "description": "The same page as source." },
+        "fetched_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
+        "quote": { "type": "string", "minLength": 1, "maxLength": 500, "description": "A short sentence copied exactly from the page." },
+        "value": { "type": ["number", "string"] },
+        "unit": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "window": { "type": "string", "minLength": 1 }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["rel", "to"],
+        "additionalProperties": false,
+        "properties": {
+          "rel": { "enum": ["availableOn", "requires", "grantedBy", "limits", "appliesTo", "prohibitedBy", "supersedes"] },
+          "to": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z0-9][a-z0-9-]*)+$" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "url": { "type": "string", "format": "uri", "pattern": "^https://" }
+  }
+}
