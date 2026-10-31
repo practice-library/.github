@@ -409,7 +409,8 @@
         "requireCodeOwnerReview",
         "strictStatusChecks",
         "dismissStaleReviews",
-        "requireLastPushApproval"
+        "requireLastPushApproval",
+        "extraApprovalForUnattributedChanges"
       ],
       "properties": {
         "name": {
@@ -450,6 +451,9 @@
           "type": "boolean"
         },
         "requireLastPushApproval": {
+          "type": "boolean"
+        },
+        "extraApprovalForUnattributedChanges": {
           "type": "boolean"
         }
       }
