@@ -14,6 +14,7 @@ Do these once, in order, when a repository joins practice-library. The automatio
 - [ ] Private vulnerability reporting: `gh api -X PUT repos/$R/private-vulnerability-reporting`. Confirm: a `GET` of the same path returns `"enabled": true`.
 - [ ] Secret scanning and push protection: `gh api -X PATCH repos/$R -f 'security_and_analysis[secret_scanning][status]=enabled' -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'`. Confirm: both show `enabled` in `GET repos/$R`.
 - [ ] Dependabot alerts: `gh api -X PUT repos/$R/vulnerability-alerts`. Confirm: a `GET` of the same path returns 204.
+- [ ] A denylist, `.github/denylist.json` (`{"salt": "<random hex>", "sha256": []}`, then `scripts/denylist-hash.sh .github/denylist.json < terms` for the entries); without one, `denylist` fails as unguarded. Confirm: the file has at least one entry.
 - [ ] The label `schema-loosening-approved`, which lets a loosened JSON schema through: `gh api -X POST repos/$R/labels -f name=schema-loosening-approved -f color=d93f0b`. Confirm: `GET repos/$R/labels/schema-loosening-approved` returns it.
 
 ## 2. Merge settings

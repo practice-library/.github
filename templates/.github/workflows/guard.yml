@@ -1,7 +1,7 @@
 name: guard
 # Mechanical review checks, one per call: guard is one of @@gen:guardids@@.
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
-#                     the list (salted sha256 entries) is read from the base commit
+#                     the list (salted sha256 entries) is read from the base commit; no list fails
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "@@guards.loosenLabel@@" from someone other
@@ -14,7 +14,7 @@ on:
         type: string
         required: true
       denylist:
-        description: The denylist file, read from the base commit; the guard passes when it is absent there.
+        description: The denylist file, read from the base commit (or from the change that adds it); the guard fails when there is none.
         type: string
         default: @@guards.denylistFile@@
       history:
@@ -74,9 +74,10 @@ jobs:
           { echo "none=false"; echo "base=$base"; echo "mb=$mb"; echo "head=$head"; } >> "$GITHUB_OUTPUT"
 
       - name: denylist
-        if: inputs.guard == 'denylist' && steps.range.outputs.none == 'false'
+        if: inputs.guard == 'denylist'
         shell: bash
         env:
+          NONE: ${{ steps.range.outputs.none }}
           BASE: ${{ steps.range.outputs.base }}
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -84,21 +85,22 @@ jobs:
         run: |
           set -euo pipefail
           #@include denylist-scan.sh
-          if ! git cat-file -e "$BASE:$LIST" 2>/dev/null; then echo "ok no $LIST on the base commit"; exit 0; fi
-          DENY="$(git show "$BASE:$LIST")"
-          TEXT_FILE="$RUNNER_TEMP/denylist-text"
-          {
-            git diff --unified=0 --no-color --no-ext-diff "$MB" "$HEAD" | awk '
-              /^\+\+\+ / { f = substr($0, 7); next }
-              /^@@/ { match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-              /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
-            # An added path is reported by its place in the list, since the path may hold the term.
-            git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
-            git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
-              /^::guard-commit:: / { c = substr($0, 18); next }
-              { print "commit " c "\t" $0 }'
-          } > "$TEXT_FILE"
-          export DENY TEXT_FILE
+          if [ "$NONE" = true ]; then
+            # Nothing to compare, but a repository without a list is still unguarded.
+            if git cat-file -e "HEAD:$LIST" 2>/dev/null; then echo "ok nothing to compare; $LIST is present"; exit 0; fi
+            echo "unguarded no $LIST: add one (scripts/denylist-hash.sh)"; exit 1
+          fi
+          # The list comes from the base commit, so a change cannot edit the list it is checked against.
+          # Only when the base has none and the change adds it is the change's own list used.
+          DENY=""
+          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then
+            DENY="$(git cat-file blob "$BASE:$LIST")"
+          elif git cat-file -e "$HEAD:$LIST" 2>/dev/null; then
+            echo "$LIST is new in this change; it is checked with that list."
+            DENY="$(git cat-file blob "$HEAD:$LIST")"
+          fi
+          unset TEXT_FILE
+          export DENY MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -158,8 +160,8 @@ jobs:
           while IFS=$'\t' read -r status old new; do
             new="${new:-$old}"
             OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
-            git show "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
-            git show "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
+            git cat-file blob "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
+            git cat-file blob "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
             # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
             jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
             export OLD_FILE NEW_FILE
