@@ -1,0 +1,358 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "constants.schema.json",
+  "title": "Every limit, name, pin and URL the .github repository uses",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "org",
+    "runner",
+    "actions",
+    "tools",
+    "leakScan",
+    "schemas",
+    "selftest",
+    "render",
+    "gate",
+    "automerge",
+    "ruleset"
+  ],
+  "$defs": {
+    "sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/][^\\s]*$"
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "version",
+        "sha"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha": {
+          "$ref": "#/$defs/sha1"
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "required": [
+        "version",
+        "url",
+        "sha256",
+        "archive",
+        "bin",
+        "findingExitCode"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "archive": {
+          "enum": [
+            "tar.gz",
+            "zip"
+          ]
+        },
+        "bin": {
+          "$ref": "#/$defs/path"
+        },
+        "findingExitCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 125
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "org": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "repo",
+        "defaultBranch",
+        "trustedAuthors"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "defaultBranch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trustedAuthors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image",
+        "timeoutMinutes"
+      ],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/action"
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/tool"
+      }
+    },
+    "leakScan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "schemas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "schema",
+          "instances"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "schema": {
+            "$ref": "#/$defs/path"
+          },
+          "instances": {
+            "$ref": "#/$defs/path"
+          }
+        }
+      }
+    },
+    "selftest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixturesDir",
+        "caseFile",
+        "builder",
+        "lister",
+        "author"
+      ],
+      "properties": {
+        "fixturesDir": {
+          "$ref": "#/$defs/path"
+        },
+        "caseFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "builder": {
+          "$ref": "#/$defs/path"
+        },
+        "lister": {
+          "$ref": "#/$defs/path"
+        },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "email"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "email": {
+              "type": "string",
+              "pattern": "@example\\.invalid$"
+            }
+          }
+        }
+      }
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "script",
+        "templatesDir",
+        "fragmentsDir"
+      ],
+      "properties": {
+        "script": {
+          "$ref": "#/$defs/path"
+        },
+        "templatesDir": {
+          "$ref": "#/$defs/path"
+        },
+        "fragmentsDir": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callerJob",
+        "innerJob",
+        "context",
+        "actionsIntegrationId"
+      ],
+      "properties": {
+        "callerJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "innerJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "context": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actionsIntegrationId": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "automerge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mergeMethod",
+        "protectedPaths"
+      ],
+      "properties": {
+        "mergeMethod": {
+          "enum": [
+            "merge",
+            "squash",
+            "rebase"
+          ]
+        },
+        "protectedPaths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/path"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "enforcement",
+        "requiredApprovals",
+        "allowedMergeMethods"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "enum": [
+            "active",
+            "evaluate",
+            "disabled"
+          ]
+        },
+        "requiredApprovals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "allowedMergeMethods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "merge",
+              "squash",
+              "rebase"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  }
+}
