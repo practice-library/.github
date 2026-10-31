@@ -1,0 +1,13 @@
+- name: Compare the result with the expectation
+  shell: bash
+  env:
+    EXPECT: ${{ inputs.expect }}
+    RC: ${{ steps.run.outputs.rc }}
+    FINDING_RC: @@tool.findingExitCode@@
+  run: |
+    set -euo pipefail
+    case "$EXPECT" in
+      pass) [ "$RC" = 0 ] || { echo "::error::@@toolname@@ reported findings (exit $RC)"; exit 1; } ;;
+      fail) [ "$RC" = "$FINDING_RC" ] || { echo "::error::expected @@toolname@@ to report a finding (exit $FINDING_RC), got exit $RC"; exit 1; } ;;
+      *) echo "::error::expect must be pass or fail, got $EXPECT"; exit 1 ;;
+    esac
