@@ -86,9 +86,17 @@ jobs:
           set -euo pipefail
           #@include denylist-scan.sh
           if [ "$NONE" = true ]; then
-            # Nothing to compare, but a repository without a list is still unguarded.
-            if git cat-file -e "HEAD:$LIST" 2>/dev/null; then echo "ok nothing to compare; $LIST is present"; exit 0; fi
-            echo "unguarded no $LIST: add one (scripts/denylist-hash.sh)"; exit 1
+            # Nothing to compare, but a repository whose list is missing, empty or unreadable is still
+            # unguarded: main checks the list against no text at all.
+            echo "Nothing to compare; checking $LIST only."
+            DENY=""
+            if git cat-file -e "HEAD:$LIST" 2>/dev/null; then DENY="$(git cat-file blob "HEAD:$LIST")"; fi
+            TEXT_FILE=/dev/null
+            export DENY TEXT_FILE
+            result="$(main)"
+            echo "$result"
+            [ "${result%% *}" = ok ]
+            exit
           fi
           # The list comes from the base commit, so a change cannot edit the list it is checked against.
           # Only when the base has none and the change adds it is the change's own list used.
