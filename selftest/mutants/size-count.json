@@ -48,5 +48,10 @@
     "name": "numstat-check-off",
     "find": "if length < 3 or (.[0] | test(\"^([0-9]+|-)$\") | not) then error(\"bad numstat line: \" + join(\"\\t\")) else . end",
     "replace": "."
+  },
+  {
+    "name": "leading-slash-kept",
+    "find": "$p == ($e | ltrimstr(\"/\"))",
+    "replace": "$p == $e"
   }
 ]

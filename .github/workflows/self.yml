@@ -90,7 +90,7 @@ jobs:
     uses: ./.github/workflows/guard.yml
     with:
       guard: size
-      size-fixtures: '["selftest/","examples/","counter-examples/","tests/fixtures/","README.md","docs/new-repo-checklist.md",".github/workflows/",".github/automerge-paths.json",".github/CODEOWNERS",".github/dependabot.yml",".github/required-checks.json",".gitleaks.toml","consumer/","rulesets/","spec/node/schema.json"]'
+      size-fixtures: '["selftest/","examples/","counter-examples/","tests/fixtures/","/README.md","docs/new-repo-checklist.md",".github/workflows/",".github/automerge-paths.json",".github/CODEOWNERS",".github/dependabot.yml",".github/required-checks.json",".gitleaks.toml","consumer/","rulesets/","spec/node/schema.json"]'
 
   discover:
     name: discover

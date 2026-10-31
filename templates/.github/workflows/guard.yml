@@ -42,7 +42,7 @@ on:
         type: number
         default: @@guards.sizeLimit@@
       size-fixtures:
-        description: size only. JSON array of fixture entries not counted; an entry ending in / is a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path.
+        description: size only. JSON array of fixture entries not counted; an entry ending in / is a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
         type: string
         default: '@@json:guards.sizeFixtures@@'
       size-label:

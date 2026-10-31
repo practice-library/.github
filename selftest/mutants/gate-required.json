@@ -1,0 +1,27 @@
+[
+  {
+    "name": "empty-list-allowed",
+    "find": "and ($r | length) > 0 and",
+    "replace": "and"
+  },
+  {
+    "name": "needs-type-ignored",
+    "find": "'($n | type) == \"object\"'",
+    "replace": "'true'"
+  },
+  {
+    "name": "mandatory-ignored",
+    "find": "if [ \"$absent\" != \"[]\" ]",
+    "replace": "if false"
+  },
+  {
+    "name": "missing-ignored",
+    "find": "if [ \"$missing\" != \"[]\" ]",
+    "replace": "if false"
+  },
+  {
+    "name": "unlisted-ignored",
+    "find": "if [ \"$unlisted\" != \"[]\" ]",
+    "replace": "if false"
+  }
+]

@@ -43,7 +43,7 @@ on:
         type: number
         default: 600
       size-fixtures:
-        description: size only. JSON array of fixture entries not counted; an entry ending in / is a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path.
+        description: size only. JSON array of fixture entries not counted; an entry ending in / is a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
         type: string
         default: '["selftest/","examples/","counter-examples/","tests/fixtures/"]'
       size-label:
@@ -485,7 +485,7 @@ jobs:
                 def fixture($p):
                   any($f[]; . as $e
                     | if ($e | endswith("/")) then (("/" + $p) | contains("/" + $e))
-                      elif ($e | contains("/")) then $p == $e
+                      elif ($e | contains("/")) then $p == ($e | ltrimstr("/"))
                       else ($p | split("/") | last) == $e end);
                 [inputs | select(length > 0) | split("\t")
                   | if length < 3 or (.[0] | test("^([0-9]+|-)$") | not) then error("bad numstat line: " + join("\t")) else . end

@@ -10,12 +10,12 @@ Additive; the breaking surface is unchanged (workflow file names, every existing
   - `attrs.basis`, optional, `documented` (the default) or `observed`. An observed node's `source` is the https run or record that measured it, its `quote` a line copied exactly from that log, and its `fetched_at` when the measurement ran. Any other `basis` value fails.
   - A new edge kind, `observes`, links an observed node to the documented node about the same quantity, so the two are never merged; a node with an `observes` edge must say `basis: "observed"`.
   - A fifth verdict, `absent`: the page was checked and does not state the fact. It needs a `note` naming the page and has no `value`.
-  - `measuredAt` and `attrs.fetched_at` must be real calendar dates and times, as `format` always said; 2026-02-31 now fails.
+  - `measuredAt` and `attrs.fetched_at` must be real calendar dates and times, as `format` always said; 2026-02-31 now fails. The `T` in `fetched_at` may be lower case, as RFC 3339 allows.
 - spec/refresh-report and spec/sources: moved here from practice-library/graphs, with `$id`s under this repository, real calendar dates, and a robots.txt that answers 429 recorded as `unreachable` (never `absent`).
 - spec/ratchet: a shrink-only baseline format with a reference reconciler, `spec/ratchet/reconcile.sh`.
 - spec/protocol/message.schema.json and docs/protocol.md: protocol v0, issue-based messages with CloudEvents field names; issue forms for request, answer and blocked; `message-check.yml`, the guard for `issues` events.
-- schema-check.yml: optional inputs `mode` (`validate`, `metaschema`, `guards`), `resolve`, `resolve-ids` and `guards`; `instances` is needed only in `validate` mode.
-- guard.yml: `guard: size`, optional (the gate does not require it), with the optional inputs `size-limit`, `size-fixtures` and `size-label`; the label `size-approved`. The `schema-loosening` guard now counts a deleted schema as loosened and fails on a base file it cannot read. The `release-note` guard counts only a changelog edit that adds a line with text.
+- schema-check.yml: optional inputs `mode` (`validate`, `metaschema`, `guards`), `resolve`, `resolve-ids` and `guards`; `instances` is needed only in `validate` mode. A `$id` that does not match `resolve-ids` is a setup error that fails the check even when `expect` is `fail`.
+- guard.yml: `guard: size`, optional (the gate does not require it), with the optional inputs `size-limit`, `size-fixtures` (an entry with a `/` is one path from the root, and may start with `/`) and `size-label`; the label `size-approved`. The `schema-loosening` guard now counts a deleted schema as loosened and fails on a base file it cannot read. The `release-note` guard counts only a changelog edit that adds a line with text.
 - gate.yml: refuses a practice-library `uses:` pinned to anything but a full commit.
 - CONTRIBUTING.md: a ready-for-review self-check; .github/pull_request_template.md carries it as numbers.
 

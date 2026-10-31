@@ -118,5 +118,6 @@ jobs:
           case "${EXPECT:-pass}" in
             pass) [ "$RC" = 0 ] || { echo "::error::gitleaks reported findings (exit $RC)"; exit 1; } ;;
             fail) [ "$RC" = "$FINDING_RC" ] || { echo "::error::expected gitleaks to report a finding (exit $FINDING_RC), got exit $RC"; exit 1; } ;;
+            error) [ "$RC" != 0 ] && [ "$RC" != "$FINDING_RC" ] || { echo "::error::expected gitleaks to stop on a setup error, got exit $RC"; exit 1; } ;;
             *) echo "::error::expect must be pass or fail, got $EXPECT"; exit 1 ;;
           esac

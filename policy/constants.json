@@ -119,7 +119,7 @@
       "examples/",
       "counter-examples/",
       "tests/fixtures/",
-      "README.md",
+      "/README.md",
       "docs/new-repo-checklist.md",
       ".github/workflows/",
       ".github/automerge-paths.json",

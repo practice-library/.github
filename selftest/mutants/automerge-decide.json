@@ -1,0 +1,42 @@
+[
+  {
+    "name": "draft-unknown-allowed",
+    "find": "if [ \"${DRAFT:-}\" != false ]",
+    "replace": "if [ \"${DRAFT:-}\" = true ]"
+  },
+  {
+    "name": "untrusted-allowed",
+    "find": "if [ \"$trusted\" != true ]; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "cut-off-list-allowed",
+    "find": "if [ \"$listed\" -ge \"$MAX\" ]",
+    "replace": "if [ \"$listed\" -gt \"$MAX\" ]"
+  },
+  {
+    "name": "fewer-listed-allowed",
+    "find": "if [ \"$listed\" -lt \"$CHANGED\" ]",
+    "replace": "if false"
+  },
+  {
+    "name": "no-files-allowed",
+    "find": "if [ \"$listed\" -eq 0 ]",
+    "replace": "if false"
+  },
+  {
+    "name": "old-name-ignored",
+    "find": ".filename, (.previous_filename // empty)",
+    "replace": ".filename"
+  },
+  {
+    "name": "prefix-without-slash",
+    "find": "if ($p | endswith(\"/\")) then ($f | startswith($p)) else $f == $p end",
+    "replace": "($f | startswith($p))"
+  },
+  {
+    "name": "outside-ignored",
+    "find": "if [ \"$outside\" != \"[]\" ]",
+    "replace": "if false"
+  }
+]

@@ -21,7 +21,7 @@ main() {
       def fixture($p):
         any($f[]; . as $e
           | if ($e | endswith("/")) then (("/" + $p) | contains("/" + $e))
-            elif ($e | contains("/")) then $p == $e
+            elif ($e | contains("/")) then $p == ($e | ltrimstr("/"))
             else ($p | split("/") | last) == $e end);
       [inputs | select(length > 0) | split("\t")
         | if length < 3 or (.[0] | test("^([0-9]+|-)$") | not) then error("bad numstat line: " + join("\t")) else . end

@@ -15,7 +15,7 @@ on:
         type: string
         default: ''
       expect:
-        description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code.
+        description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code. A setup error, such as a wrong resolve-ids pin, fails the check whatever expect says; only a self-test fixture may set error to expect one.
         type: string
         default: pass
       each:
@@ -60,6 +60,7 @@ jobs:
           FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: @@selftest.fixturesDir@@
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
+          EXPECT: ${{ inputs.expect }}
           EACH: ${{ inputs.each }}
           MODE: ${{ inputs.mode }}
           RESOLVE: ${{ inputs.resolve }}
@@ -72,7 +73,8 @@ jobs:
           #@include each-result.sh
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
-          finish() { echo "rc=$1" >> "$GITHUB_OUTPUT"; [ "$1" -eq 0 ] || [ "$1" -eq "$FINDING_RC" ]; exit; }
+          # A setup error (any other exit) ends the step red, except in a self-test fixture that expects it.
+          finish() { echo "rc=$1" >> "$GITHUB_OUTPUT"; [ "$1" -eq 0 ] || [ "$1" -eq "$FINDING_RC" ] || { [ -n "$FIXTURE" ] && [ "$EXPECT" = error ]; }; exit; }
           lines() { printf '%s\n' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d'; }
           # The shared fact-node envelope (@@spec.nodeSchemaId@@) is always resolvable, so a domain
           # schema can reference it without keeping a copy.
@@ -89,7 +91,7 @@ jobs:
             if [ "${#ids[@]}" -gt 0 ]; then
               got="$(jq -r '.["$id"] // ""' "$p" 2>/dev/null)" || { echo "::error file=${paths[$k]}::not JSON"; finish 1; }
               if [ "$got" != "${ids[$k]}" ]; then
-                echo "::error file=${paths[$k]}::its \$id is '$got', expected '${ids[$k]}' (a wrong pin?)"; finish "$FINDING_RC"
+                echo "::error file=${paths[$k]}::its \$id is '$got', expected '${ids[$k]}' (a wrong pin?)"; finish 1
               fi
             fi
             resolve+=(--resolve "$p")

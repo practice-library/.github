@@ -1,0 +1,32 @@
+[
+  {
+    "name": "unsupported-ignored",
+    "find": "if $bad != null then",
+    "replace": "if false then"
+  },
+  {
+    "name": "star-ignored",
+    "find": "select($p == \"*\" or $a == $q",
+    "replace": "select($a == $q"
+  },
+  {
+    "name": "first-line-wins",
+    "find": "| last) as $hit",
+    "replace": "| first) as $hit"
+  },
+  {
+    "name": "no-owner-counts",
+    "find": "($hit.value.owners | length) > 0",
+    "replace": "($hit.value.owners | length) >= 0"
+  },
+  {
+    "name": "comments-kept",
+    "find": "| sub(\"#.*$\"; \"\") ",
+    "replace": "| "
+  },
+  {
+    "name": "file-in-dir-missed",
+    "find": "or ($a | startswith(($q | rtrimstr(\"/\")) + \"/\"))",
+    "replace": ""
+  }
+]
