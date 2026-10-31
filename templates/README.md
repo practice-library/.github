@@ -22,7 +22,7 @@ jobs:
       required: '@@json:gate.requiredJobs@@'
 ```
 
-Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required inputs `allow-paths` and `trusted-authors`. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge.
+Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required inputs `allow-paths` and `trusted-authors`. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge. Branches need not be up to date with `@@org.defaultBranch@@` before merging (strict status checks off): a workflow can only update a branch with its own token, and pushes made with that token start no checks, so strict checks would leave automation pull requests waiting forever. The run on `@@org.defaultBranch@@` after every merge shows any combination that breaks.
 
 ## Contract
 
