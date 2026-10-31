@@ -2,6 +2,12 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
+## v1.1.0
+
+Additive; the breaking surface is unchanged (workflow file names, input and output names, the `gate / gate` context, the keys of `check.json` and the formats of the `.github` files stay as in v1.0.0). A repository pinned to v1.0.0 is unaffected.
+
+- spec/node/schema.json: three new edge kinds, `hasRelease` (product to release), `introducedIn` (capability to release) and `removedIn` (capability to release); an edge kind outside the list still fails. schema-check.yml carries the updated copy of the envelope; its inputs and outputs do not change.
+
 ## v1.0.0
 
 The first release. Its breaking surface, which a later change may alter only in a major release:
