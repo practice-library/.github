@@ -37,4 +37,5 @@ The breaking surface is: input and output names of the reusable workflows, their
 - A pin, limit or path: edit `policy/constants.json`, then run `scripts/render.sh`.
 - A schema to check: put a `check.json` (`{"schema": ..., "instances": ...}`, paths relative to it) next to the schema; nothing else changes.
 - A new kind of check: a reusable workflow plus one row in `checks` in `policy/constants.json`.
+- A new repository: follow `docs/new-repo-checklist.md`; `PIN=<sha> scripts/onboard.sh <repo>` applies steps 1, 2 and 5 and prints the files to add.
 - A self-test case: add a directory under `selftest/fixtures` with a `case.json`.
