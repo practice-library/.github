@@ -6,7 +6,7 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "fetched_at": "2026-10-31T11:49:26Z",
+    "fetched_at": "2026-10-31T14:10:23Z",
     "quote": "Each job in a workflow can run for up to 6 hours of execution time. If a job reaches this limit, the job is terminated and fails.",
     "value": 6,
     "unit": "hours",
