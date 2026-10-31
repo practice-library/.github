@@ -1,0 +1,32 @@
+[
+  {
+    "name": "author-allowed",
+    "find": "[ \"$login\" = \"$AUTHOR\" ] ||",
+    "replace": ""
+  },
+  {
+    "name": "bot-type-allowed",
+    "find": "[ \"$type\" = Bot ] ||",
+    "replace": ""
+  },
+  {
+    "name": "bot-login-allowed",
+    "find": "|| [[ \"$login\" == *\"[bot]\" ]]",
+    "replace": ""
+  },
+  {
+    "name": "first-event-counts",
+    "find": "awk 'NF { l = $0 } END { print l }'",
+    "replace": "awk 'NF && !l { l = $0 } END { print l }'"
+  },
+  {
+    "name": "no-event-accepted",
+    "find": "if [ -z \"$last\" ] || [[ \"$last\" != *$'\\t'* ]]; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "label-presence-ignored",
+    "find": "and any($ls[]; . == $l)'",
+    "replace": "'"
+  }
+]

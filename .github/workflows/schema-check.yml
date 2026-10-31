@@ -36,7 +36,7 @@ on:
         type: string
         default: ''
       guards:
-        description: 'guards mode. A JSON file: {"examples": <dir>, "counter-examples": <dir>, "mutants": [{"pointer": "/...", "mutation": "delete" | "true"} or {"pointer": "/...", "set": <value>}, ...]}, directories relative to the file.'
+        description: 'guards mode. A JSON file: {"examples": <dir or [dirs]>, "counter-examples": <dir or [dirs]>, "mutants": [{"pointer": "/...", "mutation": "delete" | "true"} or {"pointer": "/...", "set": <value>}, ...]}, directories relative to the file.'
         type: string
         default: ''
 permissions:
@@ -150,11 +150,17 @@ jobs:
             guards)
               [ -n "$GUARDS" ] || { echo "::error::guards mode needs guards"; finish 1; }
               gfile="$base/$GUARDS"; gdir="$(dirname "$gfile")"
-              jq -e '(.examples | type) == "string" and (.["counter-examples"] | type) == "string" and (.mutants | type) == "array" and (.mutants | length) > 0' "$gfile" > /dev/null 2>&1 \
-                || { echo "::error file=$GUARDS::guards must be {\"examples\": dir, \"counter-examples\": dir, \"mutants\": [at least one]}"; finish 1; }
-              ex="$gdir/$(jq -r '.examples' "$gfile")"; cx="$gdir/$(jq -r '.["counter-examples"]' "$gfile")"
-              mapfile -d '' examples < <(find "$ex" -type f -name '*.json' -print0 2>/dev/null | sort -z)
-              mapfile -d '' counters < <(find "$cx" -type f -name '*.json' -print0 2>/dev/null | sort -z)
+              dirs='def dirs: if type == "string" then [.] elif type == "array" and length > 0 and all(.[]; type == "string") then . else error("") end;'
+              jq -e "$dirs"' (.examples | dirs) and (.["counter-examples"] | dirs) and (.mutants | type) == "array" and (.mutants | length) > 0' "$gfile" > /dev/null 2>&1 \
+                || { echo "::error file=$GUARDS::guards must be {\"examples\": dir or [dirs], \"counter-examples\": dir or [dirs], \"mutants\": [at least one]}"; finish 1; }
+              for key in examples counter-examples; do
+                while IFS= read -r d; do
+                  [ -d "$gdir/$d" ] || { echo "::error file=$GUARDS::$key: no directory $d"; finish 1; }
+                done < <(jq -r "$dirs"' .["'"$key"'"] | dirs[]' "$gfile")
+              done
+              collect() { local d; while IFS= read -r d; do find "$gdir/$d" -type f -name '*.json' -print0; done < <(jq -r "$dirs"' .["'"$1"'"] | dirs[]' "$gfile") | sort -z; }
+              mapfile -d '' examples < <(collect examples)
+              mapfile -d '' counters < <(collect counter-examples)
               [ "${#examples[@]}" -gt 0 ] && [ "${#counters[@]}" -gt 0 ] || { echo "::error::guards needs at least one example and one counter-example"; finish 1; }
               # judge <schema>: prints "red <file>" for the first example that fails or counter-example that
               # passes, "green" when none does, or "error <file>" when the validator cannot run.

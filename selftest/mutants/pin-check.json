@@ -1,0 +1,37 @@
+[
+  {
+    "name": "short-sha-accepted",
+    "find": "length(ref) != 40",
+    "replace": "length(ref) < 39"
+  },
+  {
+    "name": "upper-hex-accepted",
+    "find": "ref !~ /^[0-9a-f]+$/",
+    "replace": "ref !~ /^[0-9a-fA-F]+$/"
+  },
+  {
+    "name": "owner-case-sensitive",
+    "find": "if (tolower(owner) != org",
+    "replace": "if (owner != org"
+  },
+  {
+    "name": "quotes-kept",
+    "find": "v = substr(v, 2, length(v) - 2)",
+    "replace": "v = v"
+  },
+  {
+    "name": "yaml-extension-skipped",
+    "find": "\"$dir\"/*.yml \"$dir\"/*.yaml",
+    "replace": "\"$dir\"/*.yml"
+  },
+  {
+    "name": "no-ref-accepted",
+    "find": "else ref = \"(none)\"",
+    "replace": "else ref = \"0123456789abcdef0123456789abcdef01234567\""
+  },
+  {
+    "name": "empty-org-accepted",
+    "find": "[ -n \"${ORG:-}\" ] ||",
+    "replace": "true ||"
+  }
+]

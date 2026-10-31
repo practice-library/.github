@@ -1,0 +1,37 @@
+[
+  {
+    "name": "reason-not-needed",
+    "find": "def told($e): (($e.reason // \"\") | test(\"\\\\S\")) and",
+    "replace": "def told($e): true and"
+  },
+  {
+    "name": "owner-not-needed",
+    "find": "and (($e.owner // \"\") | test(\"\\\\S\"));",
+    "replace": "and true;"
+  },
+  {
+    "name": "duplicates-allowed",
+    "find": "elif (.entries | map(.key) | length) != (.entries | map(.key) | unique | length) then error(\"a key is listed twice\")",
+    "replace": ""
+  },
+  {
+    "name": "missing-file-empty",
+    "find": "[ -r \"${BASELINE:-}\" ] || { echo \"invalid cannot read the baseline ${BASELINE:-}\"; return 0; }",
+    "replace": "[ -r \"${BASELINE:-}\" ] || BASELINE=/dev/null"
+  },
+  {
+    "name": "paid-off-passes",
+    "find": "if ($r.fresh + $r.unexplained + $r.paidOff) == []",
+    "replace": "if ($r.fresh + $r.unexplained) == []"
+  },
+  {
+    "name": "write-fills-reason",
+    "find": "{key: ., reason: \"\", owner: \"\"}",
+    "replace": "{key: ., reason: \"auto\", owner: \"auto\"}"
+  },
+  {
+    "name": "version-unchecked",
+    "find": "elif .ratchet != 1 then error(\"ratchet must be 1\")",
+    "replace": ""
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "schema-gate-off",
+    "find": "if ! jq -e 'type == \"object\" and ((.[\"$schema\"]",
+    "replace": "if false && jq -e 'type == \"object\" and ((.[\"$schema\"]"
+  },
+  {
+    "name": "deleted-not-loose",
+    "find": "if [ -z \"${NEW_FILE:-}\" ]; then echo 'loose [\"(deleted)\"]'; return 0; fi",
+    "replace": ""
+  },
+  {
+    "name": "schema-url-unanchored",
+    "find": "test(\"^https?://json-schema",
+    "replace": "test(\"https?://json-schema"
+  },
+  {
+    "name": "unreadable-base-accepted",
+    "find": "[ -r \"${OLD_FILE:-}\" ] ||",
+    "replace": "true ||"
+  }
+]

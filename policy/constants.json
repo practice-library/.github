@@ -130,7 +130,8 @@
       "consumer/",
       "rulesets/",
       "spec/node/schema.json"
-    ]
+    ],
+    "mutantsScript": "scripts/mutants.sh"
   },
   "render": {
     "script": "scripts/render.sh",

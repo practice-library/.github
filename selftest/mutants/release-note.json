@@ -1,0 +1,17 @@
+[
+  {
+    "name": "whitespace-edit-counts",
+    "find": "[ \"$CHANGELOG_ADDED\" -gt 0 ] &&",
+    "replace": "true &&"
+  },
+  {
+    "name": "count-check-off",
+    "find": "[[ \"${CHANGELOG_ADDED:-}\" =~ ^[0-9]+$ ]] ||",
+    "replace": "true ||"
+  },
+  {
+    "name": "one-line-not-enough",
+    "find": "[ \"$CHANGELOG_ADDED\" -gt 0 ]",
+    "replace": "[ \"$CHANGELOG_ADDED\" -gt 1 ]"
+  }
+]

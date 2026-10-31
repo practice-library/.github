@@ -314,7 +314,8 @@
         "denylistCanary",
         "historyFiles",
         "releaseWatch",
-        "sizeFixtures"
+        "sizeFixtures",
+        "mutantsScript"
       ],
       "properties": {
         "discoverJob": {
@@ -360,6 +361,9 @@
             "minLength": 1
           },
           "uniqueItems": true
+        },
+        "mutantsScript": {
+          "$ref": "#/$defs/path"
         }
       }
     },

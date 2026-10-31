@@ -21,7 +21,7 @@ main() {
       elif (.blocks | length) == 0 then "none no ```json block"
       elif (.blocks | length) > 1 then "invalid \(.blocks | length) ```json blocks; a message has one"
       elif (.blocks[0] | test("[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]")) then "invalid a control character in the block"
-      elif (.blocks[0] | test("[‎‏‪-‮⁦-⁩]")) then "invalid a bidirectional-override character in the block"
+      elif (.blocks[0] | test("[\u200e\u200f\u202a-\u202e\u2066-\u2069]")) then "invalid a bidirectional-override character in the block"
       else (.blocks[0] | try fromjson catch null) as $j
         | if ($j | type) == "object" then "ok " + ($j | tojson) else "invalid the block is not one JSON object" end
       end' "$BODY_FILE"

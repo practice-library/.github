@@ -1,0 +1,27 @@
+[
+  {
+    "name": "missing-place-accepted",
+    "find": "else .ok = false end end",
+    "replace": "else .path += [$k] end end"
+  },
+  {
+    "name": "tilde-unescaped",
+    "find": "| map(if test(\"~([^01]|$)\") then error(\"~ must be written ~0 or ~1\") else gsub(\"~1\"; \"/\") | gsub(\"~0\"; \"~\") end)",
+    "replace": "| map(gsub(\"~1\"; \"/\") | gsub(\"~0\"; \"~\"))"
+  },
+  {
+    "name": "leading-zero-index",
+    "find": "test(\"^(0|[1-9][0-9]*)$\")",
+    "replace": "test(\"^[0-9]+$\")"
+  },
+  {
+    "name": "set-and-mutation-allowed",
+    "find": "elif ($m | has(\"set\")) and ($m | has(\"mutation\")) then error(\"a mutant has either mutation or set\")",
+    "replace": ""
+  },
+  {
+    "name": "true-becomes-delete",
+    "find": "elif $m.mutation == \"true\" then $doc | setpath($r.path; true)",
+    "replace": "elif $m.mutation == \"true\" then $doc | delpaths([$r.path])"
+  }
+]

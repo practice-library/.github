@@ -1,0 +1,78 @@
+{
+  "examples": "examples",
+  "counter-examples": "counter-examples",
+  "mutants": [
+    {
+      "pointer": "/properties/specversion/const",
+      "set": "0.3"
+    },
+    {
+      "pointer": "/properties/protocol/const",
+      "set": "1"
+    },
+    {
+      "pointer": "/properties/type/enum",
+      "set": [
+        "org.practice-library.protocol.v0.request",
+        "org.practice-library.protocol.v0.answer",
+        "org.practice-library.protocol.v0.status",
+        "org.practice-library.protocol.v0.blocked",
+        "org.practice-library.protocol.v0.decision",
+        "org.practice-library.protocol.v0.proposal",
+        "org.practice-library.protocol.v0.order"
+      ]
+    },
+    {
+      "pointer": "/properties/source/pattern",
+      "set": "^https://github\\.com/[A-Za-z0-9-]+/[A-Za-z0-9._-]+$"
+    },
+    {
+      "pointer": "/properties/data/required",
+      "set": []
+    },
+    {
+      "pointer": "/properties/id/pattern",
+      "set": "^[A-Za-z0-9][A-Za-z0-9._: -]{1,127}$"
+    },
+    {
+      "pointer": "/properties/data/properties/refs/items/pattern",
+      "set": "^[A-Za-z0-9-]+/[A-Za-z0-9._-]+(#[0-9]+)?$"
+    },
+    {
+      "pointer": "/properties/data/properties/needs/maxItems",
+      "set": 11
+    },
+    {
+      "pointer": "/properties/data/properties/needs/maxItems",
+      "set": 9
+    },
+    {
+      "pointer": "/properties/data/properties/needs/items/maxLength",
+      "set": 201
+    },
+    {
+      "pointer": "/properties/data/properties/needs/items/maxLength",
+      "set": 199
+    },
+    {
+      "pointer": "/allOf/0",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/allOf/0/then/properties/data/properties/needs/minItems",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/allOf/1",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/properties/time/pattern",
+      "set": "^.*Z?$"
+    }
+  ]
+}

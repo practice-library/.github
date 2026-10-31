@@ -1,0 +1,12 @@
+[
+  {
+    "name": "optional-paths-not-prefixed",
+    "find": "($row.inputs + ($row.optionalPathInputs // [])) as $paths",
+    "replace": "$row.inputs as $paths"
+  },
+  {
+    "name": "optional-paths-unchecked",
+    "find": "'.[] | .[($row.inputs + ($row.optionalPathInputs // []))[]] // empty | split(\"\\n\")[]'",
+    "replace": "'.[] | .[$row.inputs[]]'"
+  }
+]
