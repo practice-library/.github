@@ -100,16 +100,11 @@
   },
   "automerge": {
     "mergeMethod": "merge",
-    "protectedPaths": [
-      ".github/workflows/",
-      ".gitleaks.toml",
-      "policy/",
-      "rulesets/",
-      "scripts/",
-      "selftest/",
-      "templates/",
-      "ghgraph/schema.json"
-    ]
+    "allowPaths": [
+      "ghgraph/graph/nodes/",
+      "ghgraph/INDEX.md"
+    ],
+    "maxListedFiles": 3000
   },
   "ruleset": {
     "name": "default-branch",

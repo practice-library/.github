@@ -2,7 +2,7 @@ name: self-automerge
 # pull_request_target runs this file as it is on @@org.defaultBranch@@, never the pull request's copy.
 on:
   pull_request_target:
-    types: [opened, reopened, synchronize, ready_for_review]
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
     branches: [@@org.defaultBranch@@]
 permissions:
   contents: write
@@ -10,3 +10,6 @@ permissions:
 jobs:
   automerge:
     uses: ./.github/workflows/automerge.yml
+    with:
+      allow-paths: '@@json:automerge.allowPaths@@'
+      trusted-authors: '@@json:org.trustedAuthors@@'

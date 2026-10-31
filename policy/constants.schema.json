@@ -358,7 +358,8 @@
       "additionalProperties": false,
       "required": [
         "mergeMethod",
-        "protectedPaths"
+        "allowPaths",
+        "maxListedFiles"
       ],
       "properties": {
         "mergeMethod": {
@@ -368,13 +369,17 @@
             "rebase"
           ]
         },
-        "protectedPaths": {
+        "allowPaths": {
           "type": "array",
           "minItems": 1,
+          "uniqueItems": true,
           "items": {
             "$ref": "#/$defs/path"
-          },
-          "uniqueItems": true
+          }
+        },
+        "maxListedFiles": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
