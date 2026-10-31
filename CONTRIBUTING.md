@@ -9,6 +9,15 @@ Thank you for helping. Corrections matter most: if a fact is wrong, open a **Cor
 - Never commit secrets, tokens, personal data or the names of private projects. Every pull request is scanned and fails on a finding.
 - A pull request merges only when every required check has passed.
 
+## The facts graph
+
+Each fact is one file in `ghgraph/graph/nodes/`, named after its id, and must match `ghgraph/schema.json`. `ghgraph/INDEX.md` is generated, never edited by hand. After adding or changing a fact, regenerate it and check the graph:
+
+```sh
+et network index --graph ghgraph
+et network check --graph ghgraph
+```
+
 ## Security
 
 Do not report security problems in issues or pull requests. See [SECURITY.md](SECURITY.md).
