@@ -121,7 +121,7 @@
     "requireCodeOwnerReview": true,
     "strictStatusChecks": true,
     "dismissStaleReviews": true,
-    "requireLastPushApproval": true,
+    "requireLastPushApproval": false,
     "extraApprovalForUnattributedChanges": true
   },
   "dependabot": {
