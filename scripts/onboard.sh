@@ -7,7 +7,7 @@
 #   GH   the command used for API calls, default "gh"; set it to run as the automation account,
 #        for example GH="et app exec --item <key item> --account <account> --app-id <id> --installation <id> -- gh"
 #   PIN  the commit of this repository the callers pin, default origin/<default branch>
-#   REF  the label written after the pin, default the default branch name (use the release tag once cut)
+#   REF  the label written after the pin, default the current release tag (release.tag)
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
@@ -21,7 +21,7 @@ repo="$org/$1"
 read -r -a gh <<<"${GH:-gh}"
 default_branch="$(c org.defaultBranch)"
 pin="${PIN:-$(git -C "$root" rev-parse "origin/$default_branch")}"
-ref="${REF:-$default_branch}"
+ref="${REF:-$(c release.tag)}"
 
 api() { "${gh[@]}" api "$@"; }
 write() {

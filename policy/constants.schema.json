@@ -19,7 +19,9 @@
     "ruleset",
     "dependabot",
     "canary",
-    "spec"
+    "spec",
+    "tagRuleset",
+    "release"
   ],
   "$defs": {
     "sha1": {
@@ -557,6 +559,49 @@
         },
         "nodeSchemaPath": {
           "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "tagRuleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "enforcement",
+        "include"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "enum": [
+            "active",
+            "evaluate",
+            "disabled"
+          ]
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^refs/tags/"
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
         }
       }
     }

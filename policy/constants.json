@@ -168,5 +168,15 @@
   "spec": {
     "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
     "nodeSchemaPath": "spec/node/schema.json"
+  },
+  "tagRuleset": {
+    "name": "release-tags",
+    "enforcement": "active",
+    "include": [
+      "refs/tags/v*"
+    ]
+  },
+  "release": {
+    "tag": "v1.0.0"
   }
 }

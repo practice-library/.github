@@ -26,7 +26,7 @@ Auto-merge is a second workflow on `pull_request_target` that calls `automerge.y
 
 ## Contract
 
-Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Until release tags exist, pin a full commit SHA.
+Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Pin the full commit SHA of a release with the tag as a comment, for example `@<sha> # v1.0.0`; Dependabot proposes the bumps (`consumer/.github/dependabot.yml`). Release tags matching ["refs/tags/v*"] can be neither deleted nor moved (`rulesets/tags.json`).
 
 The breaking surface is: input and output names of the reusable workflows, their file names, the required check name `gate / gate`, the keys of `check.json`, and the formats of `.github/required-checks.json` and `.github/automerge-paths.json`. Any change to it is a line in `CHANGELOG.md`. A Dependabot config for repositories that call these workflows is in `consumer/.github/dependabot.yml`.
 
