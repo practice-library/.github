@@ -26,7 +26,7 @@ main() {
 compare() {
   local out list entry path pair hash loose="[]" tightened="[]"
   list="${TIGHTEN-[]}"
-  if ! jq -e 'type == "array" and all(.[]; type == "object" and (.sha256 | type == "string" and test("^[0-9a-f]{64}$")) and (.why | type == "string" and length > 0))' <<<"$list" > /dev/null 2>&1; then
+  if ! jq -se 'length == 1 and (.[0] | type == "array" and all(.[]; type == "object" and (.sha256 | type == "string" and test("^[0-9a-f]{64}$")) and (.why | type == "string" and length > 0)))' <<<"$list" > /dev/null 2>&1; then
     echo "invalid TIGHTEN must be a JSON array of {sha256, why}"; return 0
   fi
   if ! out="$(jq -cn --slurpfile o "$OLD_FILE" --slurpfile n "$NEW_FILE" '

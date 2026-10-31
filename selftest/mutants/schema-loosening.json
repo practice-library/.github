@@ -31,7 +31,7 @@
   },
   {
     "name": "list-unchecked",
-    "find": "if ! jq -e 'type == \"array\" and all(.[]; type == \"object\" and (.sha256 | type == \"string\" and test(\"^[0-9a-f]{64}$\")) and (.why | type == \"string\" and length > 0))' <<<\"$list\" > /dev/null 2>&1; then",
+    "find": "if ! jq -se 'length == 1 and (.[0] | type == \"array\" and all(.[]; type == \"object\" and (.sha256 | type == \"string\" and test(\"^[0-9a-f]{64}$\")) and (.why | type == \"string\" and length > 0)))' <<<\"$list\" > /dev/null 2>&1; then",
     "replace": "if false; then"
   },
   {
@@ -48,5 +48,10 @@
     "name": "empty-list-default-missing",
     "find": "list=\"${TIGHTEN-[]}\"",
     "replace": "list=\"${TIGHTEN:-[]}\""
+  },
+  {
+    "name": "several-values-accepted",
+    "find": "jq -se 'length == 1 and (.[0] | ",
+    "replace": "jq -se 'true and (.[-1] | "
   }
 ]

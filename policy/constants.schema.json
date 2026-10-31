@@ -758,7 +758,9 @@
               },
               "why": {
                 "type": "string",
-                "minLength": 1
+                "minLength": 1,
+                "pattern": "^[^'$]+$",
+                "description": "Plain text: no ' or $, since it is rendered into a single-quoted YAML scalar that Actions also reads for expressions."
               }
             }
           }

@@ -259,7 +259,7 @@
       },
       {
         "sha256": "ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d",
-        "why": "v2.1.0 refresh-report and sources $defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"
+        "why": "v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"
       }
     ]
   }
