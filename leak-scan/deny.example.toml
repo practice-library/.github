@@ -1,0 +1,15 @@
+# Template for the private deny-list. Copy it OUTSIDE every repository, fill in the
+# names, and never commit the filled copy. It adds one rule to the public .gitleaks.toml.
+title = "practice-library deny-list"
+
+[extend]
+# Absolute path to the public config in the checkout being scanned.
+path = "/absolute/path/to/checkout/.gitleaks.toml"
+
+[[rules]]
+id = "deny-list"
+description = "A name that must never appear in a public repository"
+# One alternative per name, case-insensitive, whole words.
+regex = '''(?i)\b(example-name-one|example-name-two)\b'''
+# The same names in lower case; gitleaks only runs the regex on text holding one of them.
+keywords = ["example-name-one", "example-name-two"]
