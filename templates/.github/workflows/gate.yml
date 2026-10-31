@@ -58,7 +58,7 @@ jobs:
         env:
           ROOT: .
           ORG: @@org.name@@
-          YQ: ${{ runner.temp }}/tools/yq/@@tools.yq.bin@@
+          YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: |
           set -euo pipefail
           #@include pin-check.sh

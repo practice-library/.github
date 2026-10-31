@@ -22,7 +22,8 @@
     "spec",
     "tagRuleset",
     "release",
-    "guards"
+    "guards",
+    "helpers"
   ],
   "$defs": {
     "sha1": {
@@ -67,7 +68,9 @@
         "url",
         "sha256",
         "archive",
-        "bin"
+        "bin",
+        "findingExitCode",
+        "expectInput"
       ],
       "properties": {
         "version": {
@@ -100,8 +103,40 @@
           "pattern": "^_?[a-z][a-z0-9-]*$"
         }
       },
-      "additionalProperties": false,
-      "description": "A tool fetched by URL and pinned by sha256. findingExitCode and expectInput are needed only by a tool a check runs (#@expect); render fails when one is missing there."
+      "additionalProperties": false
+    },
+    "helper": {
+      "type": "object",
+      "required": [
+        "version",
+        "url",
+        "sha256",
+        "archive",
+        "bin"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "archive": {
+          "enum": [
+            "tar.gz",
+            "zip"
+          ]
+        },
+        "bin": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -764,6 +799,13 @@
             }
           }
         }
+      }
+    },
+    "helpers": {
+      "description": "Programs a workflow runs to do its job, not checks: fetched by URL and pinned by sha256 like tools (#@fetch), with no finding exit code or expect input.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/helper"
       }
     }
   }

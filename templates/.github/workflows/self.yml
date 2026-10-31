@@ -44,7 +44,7 @@ jobs:
       #@fetch yq
       - name: Unit cases for the logic the workflows embed
         env:
-          YQ: ${{ runner.temp }}/tools/yq/@@tools.yq.bin@@
+          YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: bash @@self.unitScript@@
       - name: The shipped tightening list is exactly the reviewed fixture pairs and clears nothing else
         env:
@@ -68,7 +68,7 @@ jobs:
           echo "shipped tightenings: $(wc -l <<<"$shipped" | tr -d ' '), each a fixture pair"
       - name: Every library has mutants, and each mutant turns a case red
         env:
-          YQ: ${{ runner.temp }}/tools/yq/@@tools.yq.bin@@
+          YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: bash @@self.mutantsScript@@
       - name: The denylist step on a simulated maintainer merge
         run: bash @@self.denylistCanary@@
