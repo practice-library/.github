@@ -1,0 +1,7 @@
+{
+  "check": "leak-scan",
+  "expect": "pass",
+  "files": {
+    "notes.md": "Plain notes with no credentials in them."
+  }
+}

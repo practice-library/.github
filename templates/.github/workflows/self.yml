@@ -1,0 +1,84 @@
+name: self
+# This repository's own checks: it calls its reusable workflows exactly as any other repository
+# would, runs every fixture under @@selftest.fixturesDir@@ through them, and ends in the gate.
+on:
+  pull_request:
+    branches: [@@org.defaultBranch@@]
+  push:
+    branches: [@@org.defaultBranch@@]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: self-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  leak-scan:
+    uses: ./.github/workflows/leak-scan.yml
+
+  schema:
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON('@@json:schemas@@') }}
+    uses: ./.github/workflows/schema-check.yml
+    with:
+      schema: ${{ matrix.schema }}
+      instances: ${{ matrix.instances }}
+
+  render:
+    name: render
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          persist-credentials: false
+      - name: Generated files match policy/constants.json
+        run: bash @@render.script@@ --check
+
+  fixtures:
+    name: fixtures
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    outputs:
+      leak-scan: ${{ steps.list.outputs.leak-scan }}
+      schema-check: ${{ steps.list.outputs.schema-check }}
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          persist-credentials: false
+      - name: List the fixtures by the check they exercise
+        id: list
+        run: bash @@selftest.lister@@ @@selftest.fixturesDir@@ @@selftest.caseFile@@ >> "$GITHUB_OUTPUT"
+
+  selftest-leak-scan:
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.fixtures.outputs.leak-scan) }}
+    uses: ./.github/workflows/leak-scan.yml
+    with:
+      fixture: ${{ matrix.fixture }}
+      expect: ${{ matrix.expect }}
+
+  selftest-schema-check:
+    needs: fixtures
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.fixtures.outputs.schema-check) }}
+    uses: ./.github/workflows/schema-check.yml
+    with:
+      fixture: ${{ matrix.fixture }}
+      expect: ${{ matrix.expect }}
+      schema: ${{ matrix.schema }}
+      instances: ${{ matrix.instances }}
+
+  @@gate.callerJob@@:
+    if: always()
+    needs: [leak-scan, schema, render, fixtures, selftest-leak-scan, selftest-schema-check]
+    uses: ./.github/workflows/gate.yml
+    with:
+      needs: ${{ toJSON(needs) }}
