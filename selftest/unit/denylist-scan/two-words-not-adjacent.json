@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"d427bfe3aaeeb39fbac9a49e6250903a6d77d0a9d06ead47d23fc66b489763dc\"]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/not-adjacent.txt"
+  }
+}

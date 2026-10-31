@@ -4,5 +4,6 @@
     "DELETED": "[\"old/index.md\"]",
     "ROOT": "selftest/unit/removed-refs/tree-mentions",
     "HISTORY": "[]"
-  }
+  },
+  "output": "referenced [{\"path\":\"old/index.md\",\"at\":\"CONTRIBUTING.md:1\"}]"
 }
