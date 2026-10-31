@@ -1,0 +1,31 @@
+# Canary: proves the public-CI assumptions before any real code is published.
+# It reads nothing private, writes nothing, and holds no secrets.
+name: canary
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 1'   # weekly, also keeps the repo active
+permissions:
+  contents: read
+concurrency:
+  group: canary
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    steps:
+      - name: Facts (no secrets are available to read)
+        run: |
+          echo "shard=${{ matrix.shard }} started=$(date -u +%FT%TZ)"
+          echo "cpus=$(nproc) mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+          echo "token_permissions_contents_only=true"
+          echo "secrets_present=$([ -n \"$SECRET_PROBE\" ] && echo yes || echo no)"
+        env:
+          SECRET_PROBE: ${{ secrets.SECRET_PROBE }}
+      - name: Hold briefly so concurrency is observable
+        run: sleep 20
