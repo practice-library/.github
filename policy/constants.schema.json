@@ -16,7 +16,8 @@
     "render",
     "gate",
     "automerge",
-    "ruleset"
+    "ruleset",
+    "dependabot"
   ],
   "$defs": {
     "sha1": {
@@ -441,6 +442,28 @@
         },
         "requireLastPushApproval": {
           "type": "boolean"
+        }
+      }
+    },
+    "dependabot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interval",
+        "openPullRequestsLimit"
+      ],
+      "properties": {
+        "interval": {
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly"
+          ]
+        },
+        "openPullRequestsLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
         }
       }
     }

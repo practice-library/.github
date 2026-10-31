@@ -119,5 +119,9 @@
     "strictStatusChecks": true,
     "dismissStaleReviews": true,
     "requireLastPushApproval": true
+  },
+  "dependabot": {
+    "interval": "weekly",
+    "openPullRequestsLimit": 5
   }
 }
