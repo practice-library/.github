@@ -24,7 +24,7 @@ jobs:
           echo "shard=${{ matrix.shard }} started=$(date -u +%FT%TZ)"
           echo "cpus=$(nproc) mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
           echo "token_permissions_contents_only=true"
-          echo "secrets_present=$([ -n \"$SECRET_PROBE\" ] && echo yes || echo no)"
+          if [ -n "$SECRET_PROBE" ]; then echo "secrets_present=yes"; else echo "secrets_present=no"; fi
         env:
           SECRET_PROBE: ${{ secrets.SECRET_PROBE }}
       - name: Hold briefly so concurrency is observable
