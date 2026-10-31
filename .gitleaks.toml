@@ -1,6 +1,4 @@
-# Secret scan for every practice-library repo: gitleaks' built-in rules, nothing added.
-# Names that must never be published are checked by a private list kept off GitHub,
-# which extends this file; see leak-scan/README.md.
+# Secret scan used by the leak-scan workflow: gitleaks' built-in rules, nothing added.
 title = "practice-library"
 
 [extend]
