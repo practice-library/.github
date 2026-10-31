@@ -6,6 +6,12 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Additive.
 
+- gate.yml: the pin check reads each workflow as YAML, with yq 4.44.3 fetched and pinned by sha256, instead of line by line. A `uses:` written as a quoted key, a flow mapping, a block scalar, an anchor or alias, or through a merge key is judged like any other. A workflow that does not parse fails the gate. Only `jobs.<id>.uses` and `jobs.<id>.steps[].uses` are judged; a `uses` key anywhere else is not.
+
+## v2.2.0
+
+Additive.
+
 - guard.yml: `schema-loosening` no longer flags a `pattern` change whose exact old and new pair is on the reviewed list `guards.tighteningPairs` (SHA-256 of the pair). The list starts with the three v2.1.0 date and time tightenings (node `measuredAt` and `attrs.fetched_at`, and `$defs.time` moved from practice-library/graphs). Any other pattern change is still flagged, and so is a listed one under `not`, `if`, `oneOf` or `contains`.
 
 ## v2.1.0
