@@ -1,7 +1,7 @@
 {
   "expect": "owned",
   "env": {
-    "CODEOWNERS": "* @org/maintainers\n/ghgraph/graph/nodes/\n/ghgraph/INDEX.md\n/ghgraph/graph/nodes/x.json @org/maintainers\n",
-    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]"
+    "CODEOWNERS": "* @org/maintainers\n/facts/graph/nodes/\n/facts/INDEX.md\n/facts/graph/nodes/x.json @org/maintainers\n",
+    "ALLOW": "[\"facts/graph/nodes/\",\"facts/INDEX.md\"]"
   }
 }

@@ -16,3 +16,7 @@ Two pull requests from the automation account (`practice-library[bot]`) against 
 - Change: one line in `README.md` (and its template `templates/README.md`), which CODEOWNERS gives to `@practice-library/maintainers`.
 - Every check passed, `gate / gate` included; `automerge / automerge` decided `off`, so auto-merge was never enabled.
 - State after the checks: open, merge state `BLOCKED`, review requested from `practice-library/maintainers` (the ruleset on `main` requires a code owner review). It merges only when a maintainer approves.
+
+## After the move to the graphs repository
+
+The facts moved to [practice-library/graphs](https://github.com/practice-library/graphs) (`vendors/github/`), and `ghgraph/` was removed from this repository. The auto-merge allowlist here (`.github/automerge-paths.json`) is now empty, so every pull request to this repository needs a maintainer. Auto-merge is exercised in the graphs repository, whose allowlist is `vendors/github/graph/nodes/`. #7 above stays the record that the mechanism works.
