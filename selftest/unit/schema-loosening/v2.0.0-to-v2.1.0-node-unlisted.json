@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/node-v2.0.0.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/node-v2.1.0.json"
+  },
+  "output": "loose [\"properties/measuredAt/pattern\",\"properties/attrs/properties/verdict/enum\",\"properties/attrs/properties/fetched_at/pattern\",\"properties/edges/items/properties/rel/enum\"]"
+}

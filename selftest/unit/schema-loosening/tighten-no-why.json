@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/date-v2.0.0.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/date-v2.1.0.json",
+    "TIGHTEN": "[{\"sha256\": \"7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e\"}]"
+  }
+}

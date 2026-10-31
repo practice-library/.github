@@ -175,6 +175,8 @@ jobs:
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
+          # Reviewed pattern changes that only tighten, shipped with this workflow at its pin.
+          TIGHTEN: '@@json:guards.tighteningPairs@@'
           LABEL: ${{ inputs.label }}
           LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           AUTHOR: ${{ github.event.pull_request.user.login }}

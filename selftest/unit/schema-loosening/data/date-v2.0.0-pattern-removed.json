@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "measuredAt": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "allowed",
+        "denied"
+      ]
+    },
+    "fetched_at": {
+      "type": "string",
+      "pattern": "Z$"
+    }
+  }
+}

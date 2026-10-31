@@ -667,7 +667,8 @@
         "optional",
         "sizeLimit",
         "sizeFixtures",
-        "sizeLabel"
+        "sizeLabel",
+        "tighteningPairs"
       ],
       "properties": {
         "workflow": {
@@ -738,6 +739,29 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 50
+        },
+        "tighteningPairs": {
+          "description": "Reviewed pattern changes that only tighten: each the SHA-256 of [old, new] as compact JSON, with why it accepts nothing new. schema-loosening does not flag a listed pair.",
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sha256",
+              "why"
+            ],
+            "properties": {
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "why": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         }
       }
     }
