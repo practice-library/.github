@@ -1,0 +1,7 @@
+{
+  "expect": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\",\"maximum\":6},\"b/c\":{\"enum\":[\"x\",\"y\"]},\"t~\":{\"type\":\"string\"}},\"required\":[\"a\"],\"allOf\":[{\"minProperties\":1}]}",
+  "env": {
+    "SCHEMA": "selftest/unit/schema-mutate/data/s.json",
+    "MUTANT": "{\"pointer\":\"/properties/a/maximum\",\"set\":6}"
+  }
+}

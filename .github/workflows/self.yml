@@ -136,8 +136,12 @@ jobs:
     with:
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
+      resolve: ${{ matrix.resolve }}
+      guards: ${{ matrix.guards }}
       expect: ${{ matrix.expect }}
       each: ${{ matrix.each }}
+      mode: ${{ matrix.mode }}
+      resolve-ids: ${{ matrix.resolve-ids }}
 
   selftest-schema-check:
     needs: [discover]
@@ -151,7 +155,11 @@ jobs:
       expect: ${{ matrix.expect }}
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
+      resolve: ${{ matrix.resolve }}
+      guards: ${{ matrix.guards }}
       each: ${{ matrix.each }}
+      mode: ${{ matrix.mode }}
+      resolve-ids: ${{ matrix.resolve-ids }}
 
   gate:
     if: always()

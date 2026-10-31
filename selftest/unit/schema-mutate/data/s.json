@@ -1,0 +1,1 @@
+{"type":"object","properties":{"a":{"type":"integer","maximum":5},"b/c":{"enum":["x","y"]},"t~":{"type":"string"}},"required":["a"],"allOf":[{"minProperties":1}]}

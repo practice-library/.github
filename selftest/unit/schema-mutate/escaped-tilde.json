@@ -1,0 +1,7 @@
+{
+  "expect": "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\",\"maximum\":5},\"b/c\":{\"enum\":[\"x\",\"y\"]}},\"required\":[\"a\"],\"allOf\":[{\"minProperties\":1}]}",
+  "env": {
+    "SCHEMA": "selftest/unit/schema-mutate/data/s.json",
+    "MUTANT": "{\"pointer\":\"/properties/t~0\",\"mutation\":\"delete\"}"
+  }
+}

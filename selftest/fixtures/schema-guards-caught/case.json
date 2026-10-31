@@ -1,0 +1,8 @@
+{
+  "check": "schema-check",
+  "expect": "pass",
+  "mode": "guards",
+  "schema": "schema.json",
+  "instances": "examples",
+  "guards": "guards.json"
+}

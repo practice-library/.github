@@ -1,0 +1,7 @@
+{
+  "check": "schema-check",
+  "expect": "fail",
+  "mode": "metaschema",
+  "schema": "schemas",
+  "instances": "schemas"
+}

@@ -45,7 +45,7 @@ def withlines($inputs):
   $inputs | map("      " + . + ": ${{ matrix." + . + " }}");
 
 def checkjob($k; $id; $output; $extra):
-  ( $extra + withlines($k.inputs + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
+  ( $extra + withlines($k.inputs + ($k.optionalPathInputs // []) + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
   | [ "  " + $id + ":",
       "    needs: [" + lookup("self.discoverJob") + "]",
       "    strategy:",

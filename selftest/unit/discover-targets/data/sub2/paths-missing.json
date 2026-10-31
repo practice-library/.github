@@ -1,0 +1,5 @@
+{
+  "schema": "s.json",
+  "instances": "s.json",
+  "resolve": "missing.json"
+}

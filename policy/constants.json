@@ -67,7 +67,13 @@
       "tool": "jsonschema",
       "optionalInputs": [
         "expect",
-        "each"
+        "each",
+        "mode",
+        "resolve-ids"
+      ],
+      "optionalPathInputs": [
+        "resolve",
+        "guards"
       ]
     }
   ],
