@@ -1,0 +1,72 @@
+name: automerge
+# Turns GitHub auto-merge on or off for a pull request. It is on only for a trusted author whose
+# pull request touches nothing but allowlisted paths (old and new names of renamed files
+# included), and only when the full file list could be read. Everything else needs a maintainer.
+# GitHub then merges only when every check the ruleset requires has passed. It never checks out
+# pull request code.
+on:
+  workflow_call:
+    inputs:
+      allow-paths:
+        description: JSON array of paths auto-merge may cover; an entry ending in / covers everything under it.
+        type: string
+        required: true
+      trusted-authors:
+        description: JSON array of logins whose pull requests may auto-merge.
+        type: string
+        required: true
+      merge-method:
+        description: merge, squash or rebase.
+        type: string
+        default: @@automerge.mergeMethod@@
+permissions: {}
+jobs:
+  decide:
+    name: automerge
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    concurrency:
+      group: automerge-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Decide
+        id: decide
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+          ALLOW: ${{ inputs.allow-paths }}
+          TRUSTED: ${{ inputs.trusted-authors }}
+          MAX: @@automerge.maxListedFiles@@
+        run: |
+          set -euo pipefail
+          #@include automerge-decide.sh
+          [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
+          FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | {filename, previous_filename}' | jq -sc '.')"
+          export FILES
+          decision="$(main)"
+          echo "$decision"
+          echo "decision=${decision%% *}" >> "$GITHUB_OUTPUT"
+      - name: Apply (off unless the decision was on, also when deciding failed)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          METHOD: ${{ inputs.merge-method }}
+          DECISION: ${{ steps.decide.outputs.decision }}
+        run: |
+          set -euo pipefail
+          if [ "$DECISION" = on ]; then
+            gh pr merge "$PR" --repo "$REPO" --auto "--$METHOD"
+          elif [ "$(gh pr view "$PR" --repo "$REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+            gh pr merge "$PR" --repo "$REPO" --disable-auto
+          fi

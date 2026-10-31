@@ -1,0 +1,34 @@
+name: canary
+# Proves the public-CI assumptions: jobs start, how many run at once, runner size, and that no
+# secrets are readable. It reads nothing private, writes nothing, and holds no secrets.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '@@canary.cron@@'
+permissions:
+  contents: read
+concurrency:
+  group: canary
+  cancel-in-progress: true
+jobs:
+  probe:
+    runs-on: @@runner.image@@
+    timeout-minutes: @@canary.timeoutMinutes@@
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: @@json:canary.shards@@
+    steps:
+      - name: Facts (no secrets are available to read)
+        env:
+          SECRET_PROBE: ${{ secrets.SECRET_PROBE }}
+          SHARD: ${{ matrix.shard }}
+        run: |
+          echo "shard=$SHARD started=$(date -u +%FT%TZ)"
+          echo "cpus=$(nproc) mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
+          echo "token_permissions_contents_only=true"
+          if [ -n "$SECRET_PROBE" ]; then echo "secrets_present=yes"; else echo "secrets_present=no"; fi
+      - name: Hold briefly so concurrency is observable
+        env:
+          HOLD_SECONDS: @@canary.holdSeconds@@
+        run: sleep "$HOLD_SECONDS"

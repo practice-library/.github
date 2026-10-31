@@ -1,10 +1,11 @@
-# Canary: proves the public-CI assumptions before any real code is published.
-# It reads nothing private, writes nothing, and holds no secrets.
+# Generated from templates/.github/workflows/canary.yml and policy/constants.json by scripts/render.sh. Do not edit.
 name: canary
+# Proves the public-CI assumptions: jobs start, how many run at once, runner size, and that no
+# secrets are readable. It reads nothing private, writes nothing, and holds no secrets.
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 5 * * 1'   # weekly, also keeps the repo active
+    - cron: '17 5 * * 1'
 permissions:
   contents: read
 concurrency:
@@ -12,20 +13,23 @@ concurrency:
   cancel-in-progress: true
 jobs:
   probe:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+        shard: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
     steps:
       - name: Facts (no secrets are available to read)
+        env:
+          SECRET_PROBE: ${{ secrets.SECRET_PROBE }}
+          SHARD: ${{ matrix.shard }}
         run: |
-          echo "shard=${{ matrix.shard }} started=$(date -u +%FT%TZ)"
+          echo "shard=$SHARD started=$(date -u +%FT%TZ)"
           echo "cpus=$(nproc) mem_kb=$(awk '/MemTotal/ {print $2}' /proc/meminfo)"
           echo "token_permissions_contents_only=true"
           if [ -n "$SECRET_PROBE" ]; then echo "secrets_present=yes"; else echo "secrets_present=no"; fi
-        env:
-          SECRET_PROBE: ${{ secrets.SECRET_PROBE }}
       - name: Hold briefly so concurrency is observable
-        run: sleep 20
+        env:
+          HOLD_SECONDS: 20
+        run: sleep "$HOLD_SECONDS"

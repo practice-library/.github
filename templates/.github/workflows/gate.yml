@@ -1,0 +1,33 @@
+name: gate
+on:
+  workflow_call:
+    inputs:
+      needs:
+        description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded.
+        type: string
+        required: true
+      required:
+        description: JSON array of job ids that must be among the needs, so a check cannot be dropped from the gate unnoticed.
+        type: string
+        required: true
+permissions: {}
+jobs:
+  @@gate.innerJob@@:
+    name: @@gate.innerJob@@
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - name: Every required job is among the needs
+        shell: bash
+        env:
+          NEEDS: ${{ inputs.needs }}
+          REQUIRED: ${{ inputs.required }}
+        run: |
+          set -euo pipefail
+          #@include gate-required.sh
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+      - uses: @@actions.allsGreen.repo@@@@@actions.allsGreen.sha@@ # @@actions.allsGreen.version@@
+        with:
+          jobs: ${{ inputs.needs }}

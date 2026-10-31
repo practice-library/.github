@@ -1,0 +1,3 @@
+# Gitleaks' own default rules; a repository adds its own rules below the extend block.
+[extend]
+useDefault = true

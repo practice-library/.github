@@ -1,0 +1,35 @@
+{
+  "name": "@@ruleset.name@@",
+  "target": "branch",
+  "enforcement": "@@ruleset.enforcement@@",
+  "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+  "bypass_actors": [],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "non_fast_forward" },
+    {
+      "type": "pull_request",
+      "parameters": {
+        "required_approving_review_count": @@ruleset.requiredApprovals@@,
+        "dismiss_stale_reviews_on_push": @@ruleset.dismissStaleReviews@@,
+        "require_code_owner_review": @@ruleset.requireCodeOwnerReview@@,
+        "require_last_push_approval": @@ruleset.requireLastPushApproval@@,
+        "required_review_thread_resolution": false,
+        "required_reviewers": [],
+        "dismissal_restriction": { "enabled": false, "allowed_actors": [] },
+        "require_extra_approval_for_unattributed_changes": @@ruleset.extraApprovalForUnattributedChanges@@,
+        "allowed_merge_methods": @@json:ruleset.allowedMergeMethods@@
+      }
+    },
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "strict_required_status_checks_policy": @@ruleset.strictStatusChecks@@,
+        "do_not_enforce_on_create": false,
+        "required_status_checks": [
+          { "context": "@@gen:context@@", "integration_id": @@gate.actionsIntegrationId@@ }
+        ]
+      }
+    }
+  ]
+}

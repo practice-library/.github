@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "NEEDS": "{\"leak-scan\":{\"result\":\"success\"},\"render\":{\"result\":\"success\"}}",
+    "REQUIRED": "[\"leak-scan\"]"
+  }
+}

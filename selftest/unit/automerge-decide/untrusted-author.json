@@ -1,0 +1,12 @@
+{
+  "expect": "off",
+  "env": {
+    "AUTHOR": "someone",
+    "TRUSTED": "[\"practice-library[bot]\"]",
+    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]",
+    "FILES": "[{\"filename\": \"ghgraph/graph/nodes/limit.x.json\", \"previous_filename\": null}]",
+    "CHANGED": "1",
+    "MAX": "3000",
+    "DRAFT": "false"
+  }
+}
