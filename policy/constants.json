@@ -70,7 +70,8 @@
   "gate": {
     "callerJob": "gate",
     "innerJob": "gate",
-    "context": "gate / gate",
+    "workflow": ".github/workflows/gate.yml",
+    "callerWorkflow": ".github/workflows/self.yml",
     "actionsIntegrationId": 15368
   },
   "automerge": {
@@ -93,6 +94,13 @@
     "allowedMergeMethods": [
       "merge",
       "squash"
+    ]
+  },
+  "self": {
+    "discoverJob": "discover",
+    "staticJobs": [
+      "render",
+      "discover"
     ]
   }
 }

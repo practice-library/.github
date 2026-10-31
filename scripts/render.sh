@@ -18,12 +18,13 @@ case "$mode" in
   *) echo "usage: render.sh [--check]" >&2; exit 2 ;;
 esac
 
-frags="$(cd "$fragments" && for f in *.yml; do jq -Rs --arg n "$f" '{($n): .}' "$f"; done | jq -s 'add // {}')"
+frags="$(cd "$fragments" && for f in *; do jq -Rs --arg n "$f" '{($n): .}' "$f"; done | jq -s 'add // {}')"
+all="$(cd "$templates" && find . -type f ! -path "./${fragments#"$templates"/}/*" | sort | while IFS= read -r f; do jq -Rs --arg n "${f#./}" '{($n): .}' "$f"; done | jq -s 'add // {}')"
 
 header() {
   local src="$1"
   case "$src" in
-    *.yml|*.yaml|*.toml) printf '# Generated from %s and policy/constants.json by %s. Do not edit.\n' "$src" "$(read_const render.script)" ;;
+    *.yml|*.yaml|*.toml|*.sh|*/CODEOWNERS) printf '# Generated from %s and policy/constants.json by %s. Do not edit.\n' "$src" "$(read_const render.script)" ;;
     *.md) printf '<!-- Generated from %s and policy/constants.json by %s. Do not edit. -->\n' "$src" "$(read_const render.script)" ;;
     *) ;;
   esac
@@ -35,7 +36,7 @@ while IFS= read -r -d '' tpl; do
   src="${tpl#"$root"/}"
   dest="$out/$rel"
   mkdir -p "$(dirname "$dest")"
-  body="$(jq -nr --slurpfile c "$constants" --argjson frags "$frags" --rawfile t "$tpl" -f "$(dirname "${BASH_SOURCE[0]}")/render.jq")"
+  body="$(jq -nr --slurpfile c "$constants" --argjson frags "$frags" --argjson all "$all" --rawfile t "$tpl" -f "$(dirname "${BASH_SOURCE[0]}")/render.jq")"
   case "$rel" in
     *.json) printf '%s\n' "$body" | jq . > "$dest" ;;
     *) { header "$src"; printf '%s\n' "$body"; } > "$dest" ;;

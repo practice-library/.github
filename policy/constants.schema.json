@@ -15,7 +15,8 @@
     "render",
     "gate",
     "automerge",
-    "ruleset"
+    "ruleset",
+    "self"
   ],
   "$defs": {
     "sha1": {
@@ -267,7 +268,8 @@
       "required": [
         "callerJob",
         "innerJob",
-        "context",
+        "workflow",
+        "callerWorkflow",
         "actionsIntegrationId"
       ],
       "properties": {
@@ -279,13 +281,15 @@
           "type": "string",
           "pattern": "^[a-z][a-z0-9-]*$"
         },
-        "context": {
-          "type": "string",
-          "minLength": 1
-        },
         "actionsIntegrationId": {
           "type": "integer",
           "minimum": 1
+        },
+        "workflow": {
+          "$ref": "#/$defs/path"
+        },
+        "callerWorkflow": {
+          "$ref": "#/$defs/path"
         }
       }
     },
@@ -351,6 +355,29 @@
             ]
           },
           "uniqueItems": true
+        }
+      }
+    },
+    "self": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discoverJob",
+        "staticJobs"
+      ],
+      "properties": {
+        "discoverJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "staticJobs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
         }
       }
     }
