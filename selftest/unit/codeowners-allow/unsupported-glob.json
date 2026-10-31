@@ -1,0 +1,7 @@
+{
+  "expect": "unsupported",
+  "env": {
+    "CODEOWNERS": "* @org/maintainers\n*.md\n",
+    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]"
+  }
+}

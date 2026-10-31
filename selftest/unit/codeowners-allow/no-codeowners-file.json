@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "CODEOWNERS": "",
+    "ALLOW": "[\"a/\"]"
+  }
+}

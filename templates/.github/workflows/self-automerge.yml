@@ -11,5 +11,4 @@ jobs:
   automerge:
     uses: ./.github/workflows/automerge.yml
     with:
-      allow-paths: '@@json:automerge.allowPaths@@'
       trusted-authors: '@@json:org.trustedAuthors@@'

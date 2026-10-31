@@ -117,7 +117,8 @@
       "ghgraph/graph/nodes/",
       "ghgraph/INDEX.md"
     ],
-    "maxListedFiles": 3000
+    "maxListedFiles": 3000,
+    "pathsFile": ".github/automerge-paths.json"
   },
   "ruleset": {
     "name": "default-branch",

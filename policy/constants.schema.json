@@ -397,7 +397,8 @@
       "required": [
         "mergeMethod",
         "allowPaths",
-        "maxListedFiles"
+        "maxListedFiles",
+        "pathsFile"
       ],
       "properties": {
         "mergeMethod": {
@@ -418,6 +419,9 @@
         "maxListedFiles": {
           "type": "integer",
           "minimum": 1
+        },
+        "pathsFile": {
+          "$ref": "#/$defs/path"
         }
       }
     },

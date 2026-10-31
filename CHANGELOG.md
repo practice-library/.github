@@ -11,4 +11,6 @@ One line per change to the surface other repositories depend on. A rename or rem
 - check.json: may hold a list of targets; optional keys `expect` and `each`.
 - spec/node/schema.json: new shared fact-node schema, `$id` https://github.com/practice-library/.github/spec/node/schema.json; schema-check always resolves it.
 - leak-scan.yml and schema-check.yml: the self-test inputs are `_selftest-fixture` and `_selftest-expect` (leak-scan only); they are not part of the API.
-- automerge.yml: inputs `allow-paths` and `trusted-authors` are required (no default).
+- automerge.yml: removed the input `allow-paths`; the allowlist is read from `.github/automerge-paths.json` (`{"paths": [...]}`) on the base commit, none when absent. Breaking.
+- automerge.yml: the input `trusted-authors` is required (no default).
+- gate.yml: fails when CODEOWNERS owns a path in `.github/automerge-paths.json`.

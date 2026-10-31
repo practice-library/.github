@@ -21,13 +21,13 @@ jobs:
       needs: ${{ toJSON(needs) }}
 ```
 
-Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required inputs `allow-paths` and `trusted-authors`. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge. Branches need not be up to date with `@@org.defaultBranch@@` before merging (strict status checks off): a workflow can only update a branch with its own token, and pushes made with that token start no checks, so strict checks would leave automation pull requests waiting forever. The run on `@@org.defaultBranch@@` after every merge shows any combination that breaks.
+Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required input `trusted-authors`; its allowlist is `@@automerge.pathsFile@@` (`{"paths": [...]}`) on the base commit, and the gate fails if CODEOWNERS owns any of those paths. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge. Branches need not be up to date with `@@org.defaultBranch@@` before merging (strict status checks off): a workflow can only update a branch with its own token, and pushes made with that token start no checks, so strict checks would leave automation pull requests waiting forever. The run on `@@org.defaultBranch@@` after every merge shows any combination that breaks.
 
 ## Contract
 
 Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Until release tags exist, pin a full commit SHA.
 
-The breaking surface is: input and output names of the reusable workflows, their file names, the required check name `@@gen:context@@`, the keys of `check.json`, and the formats of `@@gate.requiredChecksFile@@`. Any change to it is a line in `CHANGELOG.md`. A Dependabot config for repositories that call these workflows is in `consumer/.github/dependabot.yml`.
+The breaking surface is: input and output names of the reusable workflows, their file names, the required check name `@@gen:context@@`, the keys of `check.json`, and the formats of `@@gate.requiredChecksFile@@` and `@@automerge.pathsFile@@`. Any change to it is a line in `CHANGELOG.md`. A Dependabot config for repositories that call these workflows is in `consumer/.github/dependabot.yml`.
 
 ## Change something
 

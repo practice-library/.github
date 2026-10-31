@@ -17,7 +17,9 @@ jobs:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
           persist-credentials: false
-          sparse-checkout: .github
+          sparse-checkout: |
+            .github
+            docs
       - name: The needs are exactly the jobs in @@gate.requiredChecksFile@@
         shell: bash
         env:
@@ -30,6 +32,23 @@ jobs:
           [ -f "$FILE" ] || { echo "::error::$FILE is missing"; exit 1; }
           REQUIRED="$(jq -c '.jobs' "$FILE")"
           export REQUIRED
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+      - name: CODEOWNERS owns no path in @@automerge.pathsFile@@
+        shell: bash
+        env:
+          PATHS_FILE: @@automerge.pathsFile@@
+        run: |
+          set -euo pipefail
+          #@include codeowners-allow.sh
+          ALLOW='[]'
+          if [ -f "$PATHS_FILE" ]; then ALLOW="$(jq -c '.paths' "$PATHS_FILE")"; fi
+          CODEOWNERS=""
+          for f in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+            if [ -f "$f" ]; then CODEOWNERS="$(cat "$f")"; break; fi
+          done
+          export ALLOW CODEOWNERS
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
