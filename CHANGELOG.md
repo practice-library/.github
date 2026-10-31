@@ -6,7 +6,7 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Additive.
 
-- guard.yml: `schema-loosening` no longer flags a `pattern` change whose exact old and new pair is on the reviewed list `guards.tighteningPairs` (SHA-256 of the pair). The list starts with the three v2.1.0 date and time tightenings (node `measuredAt` and `attrs.fetched_at`, and `$defs.time` moved from practice-library/graphs). Any other pattern change is still flagged.
+- guard.yml: `schema-loosening` no longer flags a `pattern` change whose exact old and new pair is on the reviewed list `guards.tighteningPairs` (SHA-256 of the pair). The list starts with the three v2.1.0 date and time tightenings (node `measuredAt` and `attrs.fetched_at`, and `$defs.time` moved from practice-library/graphs). Any other pattern change is still flagged, and so is a listed one under `not`, `if`, `oneOf` or `contains`.
 
 ## v2.1.0
 

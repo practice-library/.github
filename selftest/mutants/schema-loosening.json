@@ -53,5 +53,20 @@
     "name": "several-values-accepted",
     "find": "jq -se 'length == 1 and (.[0] | ",
     "replace": "jq -se 'true and (.[-1] | "
+  },
+  {
+    "name": "position-ignored",
+    "find": "and ($refrev | not) and (any($p[]; . as $e | $rev | index([$e])) | not)",
+    "replace": "and ($refrev | not)"
+  },
+  {
+    "name": "ref-position-ignored",
+    "find": "and ($refrev | not) and ",
+    "replace": "and "
+  },
+  {
+    "name": "any-keyword-pair",
+    "find": "pair: (if $k == \"pattern\" and ",
+    "replace": "pair: (if "
   }
 ]
