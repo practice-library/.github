@@ -87,7 +87,10 @@
   "render": {
     "script": "scripts/render.sh",
     "templatesDir": "templates",
-    "fragmentsDir": "templates/fragments"
+    "fragmentsDir": "templates/fragments",
+    "renderedOnly": [
+      ".github/workflows"
+    ]
   },
   "gate": {
     "callerJob": "gate",
@@ -123,5 +126,32 @@
   "dependabot": {
     "interval": "weekly",
     "openPullRequestsLimit": 5
+  },
+  "canary": {
+    "cron": "17 5 * * 1",
+    "timeoutMinutes": 5,
+    "shards": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20
+    ],
+    "holdSeconds": 20
   }
 }

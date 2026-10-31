@@ -50,4 +50,12 @@ while IFS= read -r -d '' tpl; do
   fi
 done < <(find "$templates" -type f ! -path "$fragments/*" -print0 | sort -z)
 
+# A directory listed in render.renderedOnly may hold only rendered files.
+while IFS= read -r dir; do
+  while IFS= read -r -d '' f; do
+    rel="${f#"$root"/}"
+    [ -f "$templates/$rel" ] || { echo "::error file=$rel::$rel has no template under $(read_const render.templatesDir); $dir holds only rendered files"; status=1; }
+  done < <(find "$root/$dir" -type f -print0 2>/dev/null)
+done < <(jq -r '.render.renderedOnly[]' "$constants")
+
 exit "$status"
