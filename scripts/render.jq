@@ -5,6 +5,7 @@
 #   <indent>#@expect <tool>   fragments/expect.yml for tools.<tool>, indented
 #   <indent>#@include <file>  fragments/<file> as it is, indented
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
+#   #@gen with.<check id>     the with: lines for that checks row, every input and optional input from matrix (consumer kit)
 #   @@gen:needs@@             the gate's needs: static self jobs, then each check and its self-test
 #   @@gen:context@@           the required check name, callerJob / innerJob, after proving both are rendered job ids
 #   @@render:<template>@@     that template rendered, as compact JSON for a single-quoted YAML scalar
@@ -66,7 +67,14 @@ def checkjobs:
               "      " + lookup("tools." + $k.tool + ".expectInput") + ": ${{ matrix.expect }}" ]))
   | join("\n\n");
 
-def genjobs: gsub("(?m)^  #@gen jobs$"; checkjobs);
+def genwith:
+  gsub("(?m)^      #@gen with\\.(?<id>[a-z-]+)$";
+    .id as $id
+    | ([lookup("checks")[] | select(.id == $id)] | first // error("no checks row: " + $id))
+    | withlines(.inputs + (.optionalPathInputs // []) + (.optionalInputs // []))
+    | join("\n"));
+
+def genjobs: gsub("(?m)^  #@gen jobs$"; checkjobs) | genwith;
 
 def selfneeds: lookup("self.staticJobs") + (lookup("checks") | map(.id, "selftest-" + .id));
 

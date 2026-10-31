@@ -121,14 +121,14 @@
       "tests/fixtures/",
       "/README.md",
       "docs/new-repo-checklist.md",
-      ".github/workflows/",
+      "/.github/workflows/",
       ".github/automerge-paths.json",
       ".github/CODEOWNERS",
       ".github/dependabot.yml",
       ".github/required-checks.json",
       ".gitleaks.toml",
-      "consumer/",
-      "rulesets/",
+      "/consumer/",
+      "/rulesets/",
       "spec/node/schema.json"
     ],
     "mutantsScript": "scripts/mutants.sh"

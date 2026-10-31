@@ -1,0 +1,15 @@
+{
+  "expect": "ok",
+  "env": {
+    "FIXTURES": "[]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "blob.bin": "\u0000\u0001\u0002"
+    }
+  }
+}

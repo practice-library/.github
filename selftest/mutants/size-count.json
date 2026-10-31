@@ -53,5 +53,15 @@
     "name": "leading-slash-kept",
     "find": "$p == ($e | ltrimstr(\"/\"))",
     "replace": "$p == $e"
+  },
+  {
+    "name": "attributes-honoured",
+    "find": "git --attr-source=\"$(git hash-object -t tree /dev/null)\" diff",
+    "replace": "git diff"
+  },
+  {
+    "name": "root-dir-anywhere",
+    "find": "($p | startswith($e | ltrimstr(\"/\")))",
+    "replace": "((\"/\" + $p) | contains($e))"
   }
 ]

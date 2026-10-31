@@ -44,7 +44,7 @@ jobs:
           [ -z "$bad" ] || { echo "::error::not executable (chmod +x, then git add): $bad"; exit 1; }
       - name: Unit cases for the logic the workflows embed
         run: bash scripts/unit.sh
-      - name: Every guard in those libraries has a mutant that turns a case red
+      - name: Every library has mutants, and each mutant turns a case red
         run: bash scripts/mutants.sh
       - name: The denylist step on a simulated maintainer merge
         run: bash scripts/denylist-canary.sh
@@ -90,7 +90,7 @@ jobs:
     uses: ./.github/workflows/guard.yml
     with:
       guard: size
-      size-fixtures: '["selftest/","examples/","counter-examples/","tests/fixtures/","/README.md","docs/new-repo-checklist.md",".github/workflows/",".github/automerge-paths.json",".github/CODEOWNERS",".github/dependabot.yml",".github/required-checks.json",".gitleaks.toml","consumer/","rulesets/","spec/node/schema.json"]'
+      size-fixtures: '["selftest/","examples/","counter-examples/","tests/fixtures/","/README.md","docs/new-repo-checklist.md","/.github/workflows/",".github/automerge-paths.json",".github/CODEOWNERS",".github/dependabot.yml",".github/required-checks.json",".gitleaks.toml","/consumer/","/rulesets/","spec/node/schema.json"]'
 
   discover:
     name: discover

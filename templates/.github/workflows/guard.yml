@@ -42,7 +42,7 @@ on:
         type: number
         default: @@guards.sizeLimit@@
       size-fixtures:
-        description: size only. JSON array of fixture entries not counted; an entry ending in / is a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
+        description: size only. JSON array of fixture entries not counted; an entry starting and ending in / is a directory from the root, any other entry ending in / a directory anywhere in the path, an entry with no / a file name anywhere, any other entry one exact path from the root (a leading / is allowed, so /README.md names only the root file).
         type: string
         default: '@@json:guards.sizeFixtures@@'
       size-label:
@@ -233,8 +233,7 @@ jobs:
         run: |
           set -euo pipefail
           #@include size-count.sh
-          NUMSTAT="$(git diff --numstat -M --no-ext-diff "$MB" "$HEAD")"
-          export NUMSTAT LIMIT FIXTURES
+          export LIMIT FIXTURES MB HEAD
           result="$(main)"
           echo "$result"
           case "$result" in
