@@ -23,6 +23,10 @@ jobs:
 
 Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write` and `pull-requests: write`. The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge.
 
+## Contract
+
+Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Until release tags exist, pin a full commit SHA.
+
 ## Change something
 
 - A pin, limit or path: edit `policy/constants.json`, then run `@@render.script@@`.

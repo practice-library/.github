@@ -61,8 +61,8 @@ jobs:
         include: ${{ fromJSON(needs.fixtures.outputs.leak-scan) }}
     uses: ./.github/workflows/leak-scan.yml
     with:
-      fixture: ${{ matrix.fixture }}
-      expect: ${{ matrix.expect }}
+      _selftest-fixture: ${{ matrix.fixture }}
+      _selftest-expect: ${{ matrix.expect }}
 
   selftest-schema-check:
     needs: fixtures
@@ -72,8 +72,8 @@ jobs:
         include: ${{ fromJSON(needs.fixtures.outputs.schema-check) }}
     uses: ./.github/workflows/schema-check.yml
     with:
-      fixture: ${{ matrix.fixture }}
-      expect: ${{ matrix.expect }}
+      _selftest-fixture: ${{ matrix.fixture }}
+      _selftest-expect: ${{ matrix.expect }}
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
 

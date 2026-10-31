@@ -10,11 +10,11 @@ on:
         description: A JSON file or a directory of JSON files to validate against the schema.
         type: string
         required: true
-      fixture:
+      _selftest-fixture:
         description: Self-test only. A fixture directory under @@selftest.fixturesDir@@ that schema and instances are relative to.
         type: string
         default: ''
-      expect:
+      _selftest-expect:
         description: pass or fail. Callers outside the self-test leave it at pass.
         type: string
         default: pass
@@ -37,7 +37,7 @@ jobs:
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/@@tools.jsonschema.bin@@
           SCHEMA: ${{ inputs.schema }}
           INSTANCES: ${{ inputs.instances }}
-          FIXTURE: ${{ inputs.fixture }}
+          FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: @@selftest.fixturesDir@@
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
         run: |

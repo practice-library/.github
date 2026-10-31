@@ -11,11 +11,11 @@ on:
         description: A JSON file or a directory of JSON files to validate against the schema.
         type: string
         required: true
-      fixture:
+      _selftest-fixture:
         description: Self-test only. A fixture directory under selftest/fixtures that schema and instances are relative to.
         type: string
         default: ''
-      expect:
+      _selftest-expect:
         description: pass or fail. Callers outside the self-test leave it at pass.
         type: string
         default: pass
@@ -54,7 +54,7 @@ jobs:
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/jsonschema-17.2.1-linux-x86_64/bin/jsonschema
           SCHEMA: ${{ inputs.schema }}
           INSTANCES: ${{ inputs.instances }}
-          FIXTURE: ${{ inputs.fixture }}
+          FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: selftest/fixtures
           FINDING_RC: 2
         run: |
@@ -69,7 +69,7 @@ jobs:
       - name: Compare the result with the expectation
         shell: bash
         env:
-          EXPECT: ${{ inputs.expect }}
+          EXPECT: ${{ inputs._selftest-expect }}
           RC: ${{ steps.run.outputs.rc }}
           FINDING_RC: 2
         run: |

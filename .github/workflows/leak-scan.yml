@@ -7,11 +7,11 @@ on:
         description: Gitleaks config path in the calling repository; the default rules apply when the file is absent.
         type: string
         default: .gitleaks.toml
-      fixture:
+      _selftest-fixture:
         description: Self-test only. A fixture directory under selftest/fixtures to scan instead of the checkout.
         type: string
         default: ''
-      expect:
+      _selftest-expect:
         description: pass or fail. Callers outside the self-test leave it at pass.
         type: string
         default: pass
@@ -48,7 +48,7 @@ jobs:
         id: target
         shell: bash
         env:
-          FIXTURE: ${{ inputs.fixture }}
+          FIXTURE: ${{ inputs._selftest-fixture }}
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
@@ -91,7 +91,7 @@ jobs:
       - name: Compare the result with the expectation
         shell: bash
         env:
-          EXPECT: ${{ inputs.expect }}
+          EXPECT: ${{ inputs._selftest-expect }}
           RC: ${{ steps.run.outputs.rc }}
           FINDING_RC: 42
         run: |
