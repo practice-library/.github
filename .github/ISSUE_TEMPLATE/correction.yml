@@ -19,8 +19,7 @@ body:
     id: source
     attributes:
       label: Source
-      description: An https link to the page that shows the correct fact.
-      placeholder: https://
+      description: A link to the page that shows the correct fact.
     validations:
       required: true
   - type: textarea

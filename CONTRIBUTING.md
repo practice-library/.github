@@ -5,9 +5,9 @@ Thank you for helping. Corrections matter most: if a fact is wrong, open a **Cor
 ## Pull requests
 
 - One change per pull request, kept small.
-- Every fact carries its source: an https URL, the time it was fetched, and a short quote copied exactly from the page. A fact that cannot be confirmed is marked `unknown`, never guessed.
+- Every fact carries its source: a link to the page, the time it was fetched, and a short quote copied exactly from the page. A fact that cannot be confirmed is marked `unknown`, never guessed.
 - Never commit secrets, tokens, personal data or the names of private projects. Every pull request is scanned and fails on a finding.
-- The only required check is `gate`. It passes when every other job has passed, and the pull request then merges on its own.
+- A pull request merges only when every required check has passed.
 
 ## Security
 
