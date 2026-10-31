@@ -1,0 +1,520 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "constants.schema.json",
+  "title": "Every limit, name, pin and URL the .github repository uses",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "org",
+    "runner",
+    "actions",
+    "tools",
+    "leakScan",
+    "checks",
+    "selftest",
+    "self",
+    "render",
+    "gate",
+    "automerge",
+    "ruleset",
+    "dependabot",
+    "canary"
+  ],
+  "$defs": {
+    "sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/][^\\s]*$"
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repo",
+        "version",
+        "sha"
+      ],
+      "properties": {
+        "repo": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha": {
+          "$ref": "#/$defs/sha1"
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "required": [
+        "version",
+        "url",
+        "sha256",
+        "archive",
+        "bin",
+        "findingExitCode"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://github\\.com/"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "archive": {
+          "enum": [
+            "tar.gz",
+            "zip"
+          ]
+        },
+        "bin": {
+          "$ref": "#/$defs/path"
+        },
+        "findingExitCode": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 125
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "org": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "repo",
+        "defaultBranch",
+        "trustedAuthors",
+        "maintainer"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "defaultBranch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trustedAuthors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "maintainer": {
+          "type": "string",
+          "pattern": "^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$"
+        }
+      }
+    },
+    "runner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "image",
+        "timeoutMinutes"
+      ],
+      "properties": {
+        "image": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/action"
+      }
+    },
+    "tools": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/tool"
+      }
+    },
+    "leakScan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "config",
+        "defaultConfig"
+      ],
+      "properties": {
+        "config": {
+          "$ref": "#/$defs/path"
+        },
+        "defaultConfig": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "workflow",
+          "inputs"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "workflow": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+\\.yml$"
+          },
+          "inputs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          },
+          "targetFile": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]+$"
+          }
+        }
+      }
+    },
+    "selftest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fixturesDir",
+        "caseFile",
+        "builder",
+        "author",
+        "unitDir",
+        "libDir"
+      ],
+      "properties": {
+        "fixturesDir": {
+          "$ref": "#/$defs/path"
+        },
+        "caseFile": {
+          "type": "string",
+          "minLength": 1
+        },
+        "builder": {
+          "$ref": "#/$defs/path"
+        },
+        "author": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name",
+            "email"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "email": {
+              "type": "string",
+              "pattern": "@example\\.invalid$"
+            }
+          }
+        },
+        "unitDir": {
+          "$ref": "#/$defs/path"
+        },
+        "libDir": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "self": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discoverJob",
+        "staticJobs",
+        "discoverScript",
+        "unitScript"
+      ],
+      "properties": {
+        "discoverJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "staticJobs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "discoverScript": {
+          "$ref": "#/$defs/path"
+        },
+        "unitScript": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "render": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "script",
+        "templatesDir",
+        "fragmentsDir",
+        "renderedOnly"
+      ],
+      "properties": {
+        "script": {
+          "$ref": "#/$defs/path"
+        },
+        "templatesDir": {
+          "$ref": "#/$defs/path"
+        },
+        "fragmentsDir": {
+          "$ref": "#/$defs/path"
+        },
+        "renderedOnly": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/path"
+          }
+        }
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "callerJob",
+        "innerJob",
+        "workflow",
+        "callerWorkflow",
+        "actionsIntegrationId",
+        "requiredJobs"
+      ],
+      "properties": {
+        "callerJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "innerJob": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "actionsIntegrationId": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "workflow": {
+          "$ref": "#/$defs/path"
+        },
+        "callerWorkflow": {
+          "$ref": "#/$defs/path"
+        },
+        "requiredJobs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        }
+      }
+    },
+    "automerge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mergeMethod",
+        "allowPaths",
+        "maxListedFiles"
+      ],
+      "properties": {
+        "mergeMethod": {
+          "enum": [
+            "merge",
+            "squash",
+            "rebase"
+          ]
+        },
+        "allowPaths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/path"
+          }
+        },
+        "maxListedFiles": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "ruleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "enforcement",
+        "requiredApprovals",
+        "allowedMergeMethods",
+        "requireCodeOwnerReview",
+        "strictStatusChecks",
+        "dismissStaleReviews",
+        "requireLastPushApproval",
+        "extraApprovalForUnattributedChanges"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "enum": [
+            "active",
+            "evaluate",
+            "disabled"
+          ]
+        },
+        "requiredApprovals": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "allowedMergeMethods": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "merge",
+              "squash",
+              "rebase"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "requireCodeOwnerReview": {
+          "type": "boolean"
+        },
+        "strictStatusChecks": {
+          "type": "boolean"
+        },
+        "dismissStaleReviews": {
+          "type": "boolean"
+        },
+        "requireLastPushApproval": {
+          "type": "boolean"
+        },
+        "extraApprovalForUnattributedChanges": {
+          "type": "boolean"
+        }
+      }
+    },
+    "dependabot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interval",
+        "openPullRequestsLimit"
+      ],
+      "properties": {
+        "interval": {
+          "enum": [
+            "daily",
+            "weekly",
+            "monthly"
+          ]
+        },
+        "openPullRequestsLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      }
+    },
+    "canary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cron",
+        "timeoutMinutes",
+        "shards",
+        "holdSeconds"
+      ],
+      "properties": {
+        "cron": {
+          "type": "string",
+          "minLength": 9
+        },
+        "timeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        },
+        "shards": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "holdSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 300
+        }
+      }
+    }
+  }
+}

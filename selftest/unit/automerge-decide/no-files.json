@@ -1,0 +1,12 @@
+{
+  "expect": "off",
+  "env": {
+    "AUTHOR": "practice-library[bot]",
+    "TRUSTED": "[\"practice-library[bot]\"]",
+    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]",
+    "FILES": "[]",
+    "CHANGED": "0",
+    "MAX": "3000",
+    "DRAFT": "false"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "check": "leak-scan",
+  "expect": "fail",
+  "plant": {
+    "path": "config.env",
+    "prefix": "ghp_",
+    "length": 36,
+    "format": "TOKEN=%s # gitleaks:allow"
+  }
+}

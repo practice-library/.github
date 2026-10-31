@@ -1,0 +1,5 @@
+# Generated from templates/.github/CODEOWNERS and policy/constants.json by scripts/render.sh. Do not edit.
+# Every path needs a maintainer review; the auto-merge allowlist below has no owner, so it needs none.
+* @practice-library/maintainers
+/ghgraph/graph/nodes/
+/ghgraph/INDEX.md

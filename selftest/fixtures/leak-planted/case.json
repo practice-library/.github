@@ -1,0 +1,13 @@
+{
+  "check": "leak-scan",
+  "expect": "fail",
+  "files": {
+    "notes.md": "Plain notes with no credentials in them."
+  },
+  "plant": {
+    "path": "config.env",
+    "prefix": "ghp_",
+    "length": 36,
+    "format": "TOKEN=%s"
+  }
+}

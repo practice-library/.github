@@ -1,0 +1,93 @@
+name: leak-scan
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Gitleaks config path in the calling repository; the default rules apply when the file is absent.
+        type: string
+        default: @@leakScan.config@@
+      _selftest-fixture:
+        description: Self-test only. A fixture directory under @@selftest.fixturesDir@@ to scan instead of the checkout.
+        type: string
+        default: ''
+      _selftest-expect:
+        description: pass or fail. Callers outside the self-test leave it at pass.
+        type: string
+        default: pass
+permissions:
+  contents: read
+jobs:
+  scan:
+    name: leak-scan
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      #@fetch gitleaks
+      - name: Choose what to scan, and the commit the config is read from
+        id: target
+        shell: bash
+        env:
+          FIXTURE: ${{ inputs._selftest-fixture }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          FIXTURES_DIR: @@selftest.fixturesDir@@
+          BUILDER: @@selftest.builder@@
+        run: |
+          set -euo pipefail
+          if [ -n "$FIXTURE" ]; then
+            bash "$BUILDER" "$FIXTURES_DIR/$FIXTURE" "$RUNNER_TEMP/fixture" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "dir=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
+          range=""
+          base=HEAD
+          case "$EVENT" in
+            pull_request|pull_request_target) range="$PR_BASE..$PR_HEAD"; base="$PR_BASE" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then range="$PUSH_BEFORE..$PUSH_AFTER"; base="$PUSH_BEFORE"; fi ;;
+          esac
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+      - name: Scan
+        id: run
+        shell: bash
+        env:
+          GITLEAKS: ${{ runner.temp }}/tools/gitleaks/@@tools.gitleaks.bin@@
+          DIR: ${{ steps.target.outputs.dir }}
+          RANGE: ${{ steps.target.outputs.range }}
+          BASE: ${{ steps.target.outputs.base }}
+          CONFIG: ${{ inputs.config }}
+          DEFAULT_CONFIG: '@@json:leakScan.defaultConfig@@'
+          FINDING_RC: @@tools.gitleaks.findingExitCode@@
+        run: |
+          set -uo pipefail
+          # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
+          cd "$DIR" || exit 1
+          # The config always comes from the base commit, never from the change being scanned, and it is
+          # always passed, so gitleaks never falls back to a .gitleaks.toml in the scanned tree.
+          config="$RUNNER_TEMP/gitleaks-base.toml"
+          if git cat-file -e "$BASE:$CONFIG" 2>/dev/null; then
+            git show "$BASE:$CONFIG" > "$config" || exit 1
+          else
+            jq -nr --argjson d "$DEFAULT_CONFIG" '$d' > "$config" || exit 1
+          fi
+          # No .gitleaksignore and no gitleaks:allow comment can silence a finding. gitleaks also loads a
+          # .gitleaksignore from the scanned root whatever --gitleaks-ignore-path says, so it is removed from
+          # this job's own checkout; the scan reads git history, not the working tree.
+          rm -rf -- .gitleaksignore
+          no_ignore="$RUNNER_TEMP/no-gitleaksignore"
+          mkdir -p "$no_ignore"
+          args=(git --redact --no-banner --exit-code "$FINDING_RC" --config "$config"
+                --ignore-gitleaks-allow --gitleaks-ignore-path "$no_ignore")
+          if [ -n "$RANGE" ]; then args+=("--log-opts=$RANGE"); fi
+          rc=0
+          "$GITLEAKS" "${args[@]}" . || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
+      #@expect gitleaks

@@ -1,0 +1,10 @@
+# Dependabot proposes action pin updates in the rendered workflows. Its pull requests fail the render
+# check by design: a maintainer moves the new pin into policy/constants.json and re-renders. The
+# pinned tool binaries (gitleaks, jsonschema) are not covered and are bumped in constants by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: @@dependabot.interval@@
+    open-pull-requests-limit: @@dependabot.openPullRequestsLimit@@

@@ -1,0 +1,3 @@
+# Every path needs a maintainer review; the auto-merge allowlist below has no owner, so it needs none.
+* @@org.maintainer@@
+@@gen:unowned@@

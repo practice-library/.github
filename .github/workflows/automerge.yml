@@ -1,0 +1,100 @@
+# Generated from templates/.github/workflows/automerge.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: automerge
+# Turns GitHub auto-merge on or off for a pull request. It is on only for a trusted author whose
+# pull request touches nothing but allowlisted paths (old and new names of renamed files
+# included), and only when the full file list could be read. Everything else needs a maintainer.
+# GitHub then merges only when every check the ruleset requires has passed. It never checks out
+# pull request code.
+on:
+  workflow_call:
+    inputs:
+      allow-paths:
+        description: JSON array of paths auto-merge may cover; an entry ending in / covers everything under it.
+        type: string
+        required: true
+      trusted-authors:
+        description: JSON array of logins whose pull requests may auto-merge.
+        type: string
+        required: true
+      merge-method:
+        description: merge, squash or rebase.
+        type: string
+        default: merge
+permissions: {}
+jobs:
+  decide:
+    name: automerge
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: automerge-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Decide
+        id: decide
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+          ALLOW: ${{ inputs.allow-paths }}
+          TRUSTED: ${{ inputs.trusted-authors }}
+          MAX: 3000
+        run: |
+          set -euo pipefail
+          # main: decides whether auto-merge may be on for a pull request. Prints "on ..." or "off <reason>".
+          # It is on only when every condition holds; anything unknown or unexpected keeps it off.
+          #   AUTHOR   the pull request author's login        TRUSTED  JSON array of trusted logins
+          #   ALLOW    JSON array of allowlisted paths; an entry ending in / covers everything under it
+          #   FILES    JSON array of {filename, previous_filename} from the pull request files API
+          #   CHANGED  the pull request's changed_files count  MAX      the most files that API lists
+          #   DRAFT    true when the pull request is a draft
+          main() {
+            local trusted listed outside
+            if [ "${DRAFT:-}" != false ]; then echo "off the pull request is a draft, or its draft state is unknown"; return 0; fi
+            if ! trusted="$(jq -n --arg a "$AUTHOR" --argjson t "$TRUSTED" 'any($t[]; . == $a)' 2>/dev/null)"; then
+              echo "off the trusted list is not a JSON array"; return 0
+            fi
+            if [ "$trusted" != true ]; then echo "off the author is not on the trusted list"; return 0; fi
+            if ! listed="$(jq 'length' <<<"$FILES" 2>/dev/null)"; then echo "off the file list is not readable"; return 0; fi
+            if ! [[ "$CHANGED" =~ ^[0-9]+$ ]] || ! [[ "$MAX" =~ ^[0-9]+$ ]]; then echo "off the changed or maximum file count is not a number"; return 0; fi
+            if [ "$listed" -ge "$MAX" ]; then echo "off the file list may be cut off: $listed listed, the API lists at most $MAX"; return 0; fi
+            if [ "$listed" -lt "$CHANGED" ]; then echo "off only $listed of $CHANGED changed files were listed"; return 0; fi
+            if [ "$listed" -eq 0 ]; then echo "off no changed file was listed"; return 0; fi
+            if ! outside="$(jq -c --argjson allow "$ALLOW" '
+                [.[] | .filename, (.previous_filename // empty)] | unique
+                | map(select(. as $f | any($allow[]; . as $p
+                    | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end) | not))' <<<"$FILES" 2>/dev/null)"; then
+              echo "off the allowlist or file list is not valid JSON"; return 0
+            fi
+            if [ "$outside" != "[]" ]; then echo "off paths outside the allowlist: $outside"; return 0; fi
+            echo "on every changed path, old and new, is on the allowlist"
+          }
+          [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
+          FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | {filename, previous_filename}' | jq -sc '.')"
+          export FILES
+          decision="$(main)"
+          echo "$decision"
+          echo "decision=${decision%% *}" >> "$GITHUB_OUTPUT"
+      - name: Apply (off unless the decision was on, also when deciding failed)
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          METHOD: ${{ inputs.merge-method }}
+          DECISION: ${{ steps.decide.outputs.decision }}
+        run: |
+          set -euo pipefail
+          if [ "$DECISION" = on ]; then
+            gh pr merge "$PR" --repo "$REPO" --auto "--$METHOD"
+          elif [ "$(gh pr view "$PR" --repo "$REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+            gh pr merge "$PR" --repo "$REPO" --disable-auto
+          fi

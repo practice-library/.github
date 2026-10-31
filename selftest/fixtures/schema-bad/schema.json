@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "verdict"
+  ],
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "allowed",
+        "denied",
+        "limited",
+        "unknown"
+      ]
+    }
+  }
+}

@@ -1,0 +1,52 @@
+name: schema-check
+on:
+  workflow_call:
+    inputs:
+      schema:
+        description: JSON Schema (2020-12) path in the calling repository, or in the fixture when fixture is set.
+        type: string
+        required: true
+      instances:
+        description: A JSON file or a directory of JSON files to validate against the schema.
+        type: string
+        required: true
+      _selftest-fixture:
+        description: Self-test only. A fixture directory under @@selftest.fixturesDir@@ that schema and instances are relative to.
+        type: string
+        default: ''
+      _selftest-expect:
+        description: pass or fail. Callers outside the self-test leave it at pass.
+        type: string
+        default: pass
+permissions:
+  contents: read
+jobs:
+  validate:
+    name: schema-check
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          persist-credentials: false
+      #@fetch jsonschema
+      - name: Validate
+        id: run
+        shell: bash
+        env:
+          JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/@@tools.jsonschema.bin@@
+          SCHEMA: ${{ inputs.schema }}
+          INSTANCES: ${{ inputs.instances }}
+          FIXTURE: ${{ inputs._selftest-fixture }}
+          FIXTURES_DIR: @@selftest.fixturesDir@@
+          FINDING_RC: @@tools.jsonschema.findingExitCode@@
+        run: |
+          set -uo pipefail
+          # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
+          base="$GITHUB_WORKSPACE"
+          if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
+          rc=0
+          "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
+      #@expect jsonschema
