@@ -3,8 +3,8 @@
   "env": {
     "AUTHOR": "practice-library[bot]",
     "TRUSTED": "[\"practice-library[bot]\"]",
-    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]",
-    "FILES": "[{\"filename\": \"ghgraph/graph/nodes/limit.x.json\", \"previous_filename\": null}, {\"filename\": \"README.md\", \"previous_filename\": null}]",
+    "ALLOW": "[\"facts/graph/nodes/\",\"facts/INDEX.md\"]",
+    "FILES": "[{\"filename\": \"facts/graph/nodes/limit.x.json\", \"previous_filename\": null}, {\"filename\": \"README.md\", \"previous_filename\": null}]",
     "CHANGED": "2",
     "MAX": "3000",
     "DRAFT": "false"

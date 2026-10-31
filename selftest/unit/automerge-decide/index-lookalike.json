@@ -3,8 +3,8 @@
   "env": {
     "AUTHOR": "practice-library[bot]",
     "TRUSTED": "[\"practice-library[bot]\"]",
-    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]",
-    "FILES": "[{\"filename\": \"ghgraph/INDEX.md.sh\", \"previous_filename\": null}]",
+    "ALLOW": "[\"facts/graph/nodes/\",\"facts/INDEX.md\"]",
+    "FILES": "[{\"filename\": \"facts/INDEX.md.sh\", \"previous_filename\": null}]",
     "CHANGED": "1",
     "MAX": "3000",
     "DRAFT": "false"

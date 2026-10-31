@@ -1,0 +1,12 @@
+{
+  "expect": "off",
+  "env": {
+    "AUTHOR": "practice-library[bot]",
+    "TRUSTED": "[\"practice-library[bot]\"]",
+    "ALLOW": "[]",
+    "FILES": "[{\"filename\": \"facts/graph/nodes/limit.x.json\", \"previous_filename\": null}, {\"filename\": \"facts/INDEX.md\", \"previous_filename\": null}]",
+    "CHANGED": "2",
+    "MAX": "3000",
+    "DRAFT": "false"
+  }
+}

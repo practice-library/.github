@@ -113,10 +113,7 @@
   },
   "automerge": {
     "mergeMethod": "merge",
-    "allowPaths": [
-      "ghgraph/graph/nodes/",
-      "ghgraph/INDEX.md"
-    ],
+    "allowPaths": [],
     "maxListedFiles": 3000,
     "pathsFile": ".github/automerge-paths.json"
   },

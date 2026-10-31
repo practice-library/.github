@@ -16,14 +16,9 @@ Thank you for helping. Corrections matter most: if a fact is wrong, open a **Cor
 - The maintainers team has one member, and nobody can approve their own pull request. So changes are authored by the automation account and approved by the maintainer; the maintainer does not author pull requests.
 - Pull requests from outside contributors are welcome. A maintainer reviews and merges them.
 
-## The facts graph
+## Facts
 
-Each fact is one file in `ghgraph/graph/nodes/`, named after its id, and must match `ghgraph/schema.json`. `ghgraph/INDEX.md` is generated, never edited by hand. After adding or changing a fact, regenerate it and check the graph:
-
-```sh
-et network index --graph ghgraph
-et network check --graph ghgraph
-```
+The fact graphs live in [practice-library/graphs](https://github.com/practice-library/graphs); the GitHub facts are under `vendors/github/`. Corrections to a fact go there. This repository holds the organisation defaults and the shared node envelope (`spec/node/schema.json`).
 
 ## Security
 
