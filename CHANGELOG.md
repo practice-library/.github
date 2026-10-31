@@ -2,6 +2,16 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
+## v2.0.0
+
+Breaking: the gate requires four more jobs. A repository pinned to v1.x is unaffected until it moves its pin; to move, add the four guard jobs to its caller workflow and to `.github/required-checks.json`, and add `labeled` and `unlabeled` to its `pull_request` types (`consumer/` has both files).
+
+- guard.yml: new reusable workflow with the required input `guard` (`denylist`, `removed-paths`, `release-note` or `schema-loosening`) and the optional inputs `denylist`, `history`, `watch`, `changelog` and `label`. A caller job needs `contents: read` and `pull-requests: read`.
+- gate.yml: the mandatory jobs are `leak-scan`, `denylist`, `removed-paths`, `release-note` and `schema-loosening`. Breaking.
+- `.github/denylist.json`: a new file format, `{"salt": ..., "sha256": [...]}`, read from the base commit; `scripts/denylist-hash.sh` writes the entries.
+- The label `schema-loosening-approved` lets a loosened schema through when someone other than the author, and not a bot, adds it.
+- consumer/: the caller workflow and `required-checks.json` carry the four guard jobs.
+
 ## v1.1.0
 
 Additive; the breaking surface is unchanged (workflow file names, input and output names, the `gate / gate` context, the keys of `check.json` and the formats of the `.github` files stay as in v1.0.0). A repository pinned to v1.0.0 is unaffected.

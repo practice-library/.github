@@ -1,1 +1,1 @@
-{ "jobs": ["discover", "schema-check", "leak-scan"] }
+{ "jobs": ["discover", "schema-check", "leak-scan", "denylist", "removed-paths", "release-note", "schema-loosening"] }

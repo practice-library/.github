@@ -87,10 +87,24 @@
     "staticJobs": [
       "render",
       "discover",
-      "unit"
+      "unit",
+      "denylist",
+      "removed-paths",
+      "release-note",
+      "schema-loosening"
     ],
     "discoverScript": "scripts/discover.sh",
-    "unitScript": "scripts/unit.sh"
+    "unitScript": "scripts/unit.sh",
+    "historyFiles": [
+      "CHANGELOG.md",
+      "docs/live-proof.md"
+    ],
+    "releaseWatch": [
+      "consumer/",
+      "spec/",
+      ".github/workflows/",
+      "rulesets/"
+    ]
   },
   "render": {
     "script": "scripts/render.sh",
@@ -107,7 +121,11 @@
     "callerWorkflow": ".github/workflows/self.yml",
     "actionsIntegrationId": 15368,
     "mandatoryJobs": [
-      "leak-scan"
+      "leak-scan",
+      "denylist",
+      "removed-paths",
+      "release-note",
+      "schema-loosening"
     ],
     "requiredChecksFile": ".github/required-checks.json"
   },
@@ -174,6 +192,23 @@
     ]
   },
   "release": {
-    "tag": "v1.1.0"
+    "tag": "v2.0.0"
+  },
+  "guards": {
+    "workflow": "guard.yml",
+    "ids": [
+      "denylist",
+      "removed-paths",
+      "release-note",
+      "schema-loosening"
+    ],
+    "denylistFile": ".github/denylist.json",
+    "historyFiles": [
+      "CHANGELOG.md"
+    ],
+    "releaseWatch": [],
+    "changelog": "CHANGELOG.md",
+    "noReleaseMarker": "Release: none",
+    "loosenLabel": "schema-loosening-approved"
   }
 }

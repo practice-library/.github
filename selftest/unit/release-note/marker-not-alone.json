@@ -1,0 +1,10 @@
+{
+  "expect": "missing",
+  "env": {
+    "CHANGED": "[\"rulesets/main.json\"]",
+    "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "No Release: none needed here"
+  }
+}

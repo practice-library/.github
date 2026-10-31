@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/tighter.json"
+  }
+}

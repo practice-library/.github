@@ -1,0 +1,185 @@
+name: guard
+# Mechanical review checks, one per call: guard is one of @@gen:guardids@@.
+#   denylist          no denied term in the added lines, added paths, or commit messages and names;
+#                     the list (salted sha256 entries) is read from the base commit
+#   removed-paths     nothing outside the history files mentions a path the change removed
+#   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
+#   schema-loosening  a loosened JSON schema needs the label "@@guards.loosenLabel@@" from someone other
+#                     than the author and not a bot; the caller's pull_request types include labeled
+on:
+  workflow_call:
+    inputs:
+      guard:
+        description: 'The guard to run: one of @@gen:guardids@@.'
+        type: string
+        required: true
+      denylist:
+        description: The denylist file, read from the base commit; the guard passes when it is absent there.
+        type: string
+        default: @@guards.denylistFile@@
+      history:
+        description: JSON array of files that may mention removed paths, as a record of the past.
+        type: string
+        default: '@@json:guards.historyFiles@@'
+      watch:
+        description: JSON array of paths whose change needs a changelog entry or the no-release line; an entry ending in / covers everything under it.
+        type: string
+        default: '@@json:guards.releaseWatch@@'
+      changelog:
+        description: The changelog file.
+        type: string
+        default: @@guards.changelog@@
+      label:
+        description: The label that lets a loosened schema through.
+        type: string
+        default: @@guards.loosenLabel@@
+permissions:
+  contents: read
+jobs:
+  guard:
+    name: ${{ inputs.guard }}
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The change to check
+        id: range
+        shell: bash
+        env:
+          GUARD: ${{ inputs.guard }}
+          GUARDS: '@@json:guards.ids@@'
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          jq -en --arg g "$GUARD" --argjson all "$GUARDS" 'any($all[]; . == $g)' > /dev/null \
+            || { echo "::error::unknown guard $GUARD; known: $GUARDS"; exit 1; }
+          base=""; head=""
+          case "$EVENT" in
+            pull_request|pull_request_target) base="$PR_BASE"; head="$PR_HEAD" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi ;;
+          esac
+          if [ -z "$base" ]; then echo "none=true" >> "$GITHUB_OUTPUT"; echo "No change to compare on $EVENT."; exit 0; fi
+          # The change is what head adds to the point where it left base.
+          mb="$(git merge-base "$base" "$head")"
+          { echo "none=false"; echo "base=$base"; echo "mb=$mb"; echo "head=$head"; } >> "$GITHUB_OUTPUT"
+
+      - name: denylist
+        if: inputs.guard == 'denylist' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          BASE: ${{ steps.range.outputs.base }}
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LIST: ${{ inputs.denylist }}
+        run: |
+          set -euo pipefail
+          #@include denylist-scan.sh
+          if ! git cat-file -e "$BASE:$LIST" 2>/dev/null; then echo "ok no $LIST on the base commit"; exit 0; fi
+          DENY="$(git show "$BASE:$LIST")"
+          TEXT_FILE="$RUNNER_TEMP/denylist-text"
+          {
+            git diff --unified=0 --no-color --no-ext-diff "$MB" "$HEAD" | awk '
+              /^\+\+\+ / { f = substr($0, 7); next }
+              /^@@/ { match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+              /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
+            # An added path is reported by its place in the list, since the path may hold the term.
+            git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
+            git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
+              /^::guard-commit:: / { c = substr($0, 18); next }
+              { print "commit " c "\t" $0 }'
+          } > "$TEXT_FILE"
+          export DENY TEXT_FILE
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: removed-paths
+        if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          HISTORY: ${{ inputs.history }}
+        run: |
+          set -euo pipefail
+          #@include removed-refs.sh
+          DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
+          ROOT="$GITHUB_WORKSPACE"
+          export DELETED ROOT HISTORY
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: release-note
+        if: inputs.guard == 'release-note' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          WATCH: ${{ inputs.watch }}
+          CHANGELOG: ${{ inputs.changelog }}
+          MARKER: '@@guards.noReleaseMarker@@'
+        run: |
+          set -euo pipefail
+          #@include release-note.sh
+          CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
+          MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
+          export CHANGED MESSAGES
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: schema-loosening
+        if: inputs.guard == 'schema-loosening' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LABEL: ${{ inputs.label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          #@include schema-loosening.sh
+          loose="[]"
+          while IFS=$'\t' read -r status old new; do
+            new="${new:-$old}"
+            OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
+            git show "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
+            git show "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
+            jq -e 'type == "object" and has("$schema")' "$OLD_FILE" > /dev/null 2>&1 || continue
+            export OLD_FILE NEW_FILE
+            result="$(main)"
+            echo "$new: $result"
+            case "$result" in
+              ok*) ;;
+              loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
+              *) echo "::error file=$new::$result"; exit 1 ;;
+            esac
+          done < <(git diff --name-status -M --diff-filter=MR --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
+          if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
+          echo "loosened: $loose"
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
+          if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" 'any($ls[]; . == $l)' > /dev/null; then
+            echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1
+          fi
+          by="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv" | tail -n 1)"
+          login="${by%%$'\t'*}"; type="${by#*$'\t'}"
+          if [ -z "$by" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
+            echo "::error::the label $LABEL must be added by someone other than the author and not by a bot (added by: ${login:-unknown})"; exit 1
+          fi
+          echo "ok loosening accepted: $LABEL added by $login"

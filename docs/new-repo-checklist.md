@@ -14,6 +14,7 @@ Do these once, in order, when a repository joins practice-library. The automatio
 - [ ] Private vulnerability reporting: `gh api -X PUT repos/$R/private-vulnerability-reporting`. Confirm: a `GET` of the same path returns `"enabled": true`.
 - [ ] Secret scanning and push protection: `gh api -X PATCH repos/$R -f 'security_and_analysis[secret_scanning][status]=enabled' -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'`. Confirm: both show `enabled` in `GET repos/$R`.
 - [ ] Dependabot alerts: `gh api -X PUT repos/$R/vulnerability-alerts`. Confirm: a `GET` of the same path returns 204.
+- [ ] The label `schema-loosening-approved`, which lets a loosened JSON schema through: `gh api -X POST repos/$R/labels -f name=schema-loosening-approved -f color=d93f0b`. Confirm: `GET repos/$R/labels/schema-loosening-approved` returns it.
 
 ## 2. Merge settings
 
@@ -32,7 +33,7 @@ Do these once, in order, when a repository joins practice-library. The automatio
 <one line per allowlisted path, with no owner>
 ```
 
-- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml`; list exactly the jobs the gate needs in `.github/required-checks.json` as `{"jobs": [...]}`, including ["leak-scan"] (see the README).
+- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml`; list exactly the jobs the gate needs in `.github/required-checks.json` as `{"jobs": [...]}`, including ["leak-scan","denylist","removed-paths","release-note","schema-loosening"] (see the README).
 - [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `trusted-authors: '["practice-library[bot]"]'`; list the paths that may merge without review in `.github/automerge-paths.json` as `{"paths": [...]}` (absent means none).
 - [ ] Pin every `uses:` of this repository to a full commit SHA of `.github`.
 - Confirm: `GET repos/$R/codeowners/errors` returns no errors, and the pull request's `gate / gate` check passes. Neither CODEOWNERS nor the auto-merge caller is on the default branch yet, so this first pull request needs no review and does not merge itself: a maintainer merges it.

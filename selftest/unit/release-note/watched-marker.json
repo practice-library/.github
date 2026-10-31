@@ -1,0 +1,10 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\".github/workflows/self.yml\"]",
+    "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Run unit first\n\nRelease: none"
+  }
+}
