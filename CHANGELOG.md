@@ -2,6 +2,12 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
+## v2.1.0
+
+Additive; the breaking surface is unchanged. A repository pinned to v2.0.0 is unaffected, and every existing fact node keeps its meaning with no edit.
+
+- spec/node/schema.json: `attrs.basis`, optional, `documented` or `observed`; absent means `documented`. An observed node's `source` is the https run or record that measured it, its `quote` a line copied exactly from that log or record, and its `fetched_at` when the measurement ran. Any other `basis` value, including another spelling or case, fails. A new edge kind, `observes`, links an observed node to the documented node about the same quantity, so the two are never merged. schema-check.yml carries the updated copy of the envelope; its inputs and outputs do not change.
+
 ## v2.0.0
 
 Breaking: the gate requires four more jobs. A repository pinned to v1.x is unaffected until it moves its pin; to move, add the four guard jobs to its caller workflow and to `.github/required-checks.json`, and add `labeled` and `unlabeled` to its `pull_request` types (`consumer/` has both files).

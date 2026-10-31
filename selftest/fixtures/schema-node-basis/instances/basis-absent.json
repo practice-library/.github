@@ -1,0 +1,16 @@
+{
+  "id": "example.limit.concurrent-jobs",
+  "type": "limit",
+  "name": "Concurrent jobs on the Free plan",
+  "source": "https://docs.github.com/en/actions/reference/limits",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T12:00:00Z",
+    "quote": "Free | 20 | 5",
+    "value": 20,
+    "unit": "jobs",
+    "scope": "Free plan, total concurrent jobs"
+  },
+  "edges": []
+}

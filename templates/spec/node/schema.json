@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "@@spec.nodeSchemaId@@",
   "title": "Fact node",
-  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
+  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote, and an optional basis) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
   "type": "object",
   "required": [
     "id",
@@ -31,7 +31,7 @@
     },
     "source": {
       "$ref": "#/$defs/url",
-      "description": "The official page the fact was read from; the quote is on this page."
+      "description": "Where the fact was read: the official page for a documented fact, or the run or record that measured it for an observed one. The quote is on this page or in this record."
     },
     "measuredAt": {
       "type": "string",
@@ -58,13 +58,21 @@
         "fetched_at": {
           "type": "string",
           "format": "date-time",
-          "pattern": "Z$"
+          "pattern": "Z$",
+          "description": "When the page was read, or for an observed fact when the measurement ran."
         },
         "quote": {
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
-          "description": "A short sentence copied exactly from the page."
+          "description": "A short sentence copied exactly from the page, or for an observed fact a line copied exactly from the run log or record."
+        },
+        "basis": {
+          "enum": [
+            "documented",
+            "observed"
+          ],
+          "description": "Where the number comes from: documented (the vendor states it) or observed (our own measurement). Absent means documented. A documented node and an observed node about the same quantity stay two nodes, linked by an observes edge from the observed one."
         },
         "value": {
           "type": "number",
@@ -126,7 +134,8 @@
               "supersedes",
               "hasRelease",
               "introducedIn",
-              "removedIn"
+              "removedIn",
+              "observes"
             ]
           },
           "to": {

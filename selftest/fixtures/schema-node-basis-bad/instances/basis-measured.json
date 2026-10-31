@@ -1,0 +1,22 @@
+{
+  "id": "example.limit.concurrent-jobs-observed",
+  "type": "limit",
+  "name": "Concurrent jobs observed in an example run",
+  "source": "https://github.com/example/example/actions/runs/1",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "basis": "measured",
+    "fetched_at": "2026-10-31T05:17:00Z",
+    "quote": "example: 5 jobs ran at once",
+    "value": 5,
+    "unit": "jobs",
+    "scope": "example repository"
+  },
+  "edges": [
+    {
+      "rel": "observes",
+      "to": "example.limit.concurrent-jobs"
+    }
+  ]
+}
