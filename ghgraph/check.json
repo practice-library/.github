@@ -1,0 +1,4 @@
+{
+  "schema": "ghgraph/schema.json",
+  "instances": "ghgraph/graph/nodes"
+}
