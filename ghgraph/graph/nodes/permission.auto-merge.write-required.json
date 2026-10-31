@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/automatically-merging-a-pull-request",
     "fetched_at": "2026-10-31T11:50:30Z",
     "quote": "People with write permissions to a repository can enable auto-merge for a pull request.",
     "scope": "users with write permission"

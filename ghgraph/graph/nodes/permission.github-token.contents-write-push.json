@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "unknown",
-    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
     "fetched_at": "2026-10-31T11:52:00Z",
     "quote": "For example, contents: read permits an action to list the commits, and contents: write allows the action to create a release."
   },

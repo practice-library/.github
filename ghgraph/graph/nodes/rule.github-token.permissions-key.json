@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
     "fetched_at": "2026-10-31T11:52:00Z",
     "quote": "You can use permissions either as a top-level key, to apply to all jobs in the workflow, or within specific jobs.",
     "scope": "per workflow or per job"

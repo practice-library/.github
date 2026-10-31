@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/organizations/managing-organization-settings/creating-rulesets-for-repositories-in-your-organization",
     "fetched_at": "2026-10-31T11:51:00Z",
     "quote": "For customers on GitHub Team or GitHub Enterprise plans you can create rulesets in your organization to control how users can interact with repositories in your organization.",
     "scope": "organizations on GitHub Team or GitHub Enterprise"

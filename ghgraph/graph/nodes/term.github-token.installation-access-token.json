@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/actions/concepts/security/github_token",
     "fetched_at": "2026-10-31T11:52:00Z",
     "quote": "The GITHUB_TOKEN secret is a GitHub App installation access token.",
     "scope": "the repository that contains the workflow"

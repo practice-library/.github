@@ -6,9 +6,9 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file",
     "fetched_at": "2026-10-31T11:49:57Z",
-    "quote": "You can add default community health files to a repository called .github. The .github repository must be public."
+    "quote": "You can add default community health files to a repository called .github. The .github repository must be public.",
+    "scope": "the repository holding default community health files"
   },
   "edges": [
     {

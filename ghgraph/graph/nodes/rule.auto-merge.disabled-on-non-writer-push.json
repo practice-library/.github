@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/automatically-merging-a-pull-request",
     "fetched_at": "2026-10-31T11:50:30Z",
     "quote": "Auto-merge is disabled if someone without write permissions pushes new changes to the head branch or switches the base branch."
   },

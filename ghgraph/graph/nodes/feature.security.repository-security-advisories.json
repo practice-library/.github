@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/repository-security-advisories",
     "fetched_at": "2026-10-31T11:51:30Z",
     "quote": "Repository security advisories and private vulnerability reporting are available for public repositories on GitHub.",
     "scope": "public repositories"

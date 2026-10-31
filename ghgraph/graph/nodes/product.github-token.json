@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/actions/concepts/security/github_token",
     "fetched_at": "2026-10-31T12:20:00Z",
     "quote": "At the start of each workflow job, GitHub automatically creates a unique GITHUB_TOKEN secret to use in your workflow."
   },

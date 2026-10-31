@@ -6,9 +6,9 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/code-security/concepts/secret-security/push-protection",
     "fetched_at": "2026-10-31T11:51:51Z",
-    "quote": "Requires GitHub Secret Protection to be enabled"
+    "quote": "Requires GitHub Secret Protection to be enabled",
+    "scope": "push protection enabled for a repository"
   },
   "edges": [
     {

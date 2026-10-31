@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target",
     "fetched_at": "2026-10-31T11:55:00Z",
     "quote": "Workflows triggered by this event should not check out, build, or run code from an untrusted pull request with access to repository secrets or a privileged GITHUB_TOKEN."
   },

@@ -6,11 +6,11 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-of-service",
     "fetched_at": "2026-10-31T11:49:26Z",
     "quote": "You may maintain no more than one free machine account in addition to your free Personal Account.",
     "value": 1,
-    "unit": "free machine accounts"
+    "unit": "free machine accounts",
+    "scope": "holders of a free personal account"
   },
   "edges": [
     {

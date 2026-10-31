@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
     "fetched_at": "2026-10-31T11:49:35Z",
     "quote": "If the retry-after response header is present, you should not retry your request until after that many seconds has elapsed."
   },

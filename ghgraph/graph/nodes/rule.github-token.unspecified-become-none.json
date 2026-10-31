@@ -6,10 +6,8 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
     "fetched_at": "2026-10-31T11:52:00Z",
-    "quote": "If you specify the access for any of these permissions, all of those that are not specified are set to none.",
-    "value": "none"
+    "quote": "If you specify the access for any of these permissions, all of those that are not specified are set to none."
   },
   "edges": [
     {

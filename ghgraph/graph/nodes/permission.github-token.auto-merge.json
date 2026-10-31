@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "unknown",
-    "url": "https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/incorporating-changes-from-a-pull-request/automatically-merging-a-pull-request",
     "fetched_at": "2026-10-31T11:55:00Z",
     "quote": "People with write permissions to a repository can enable auto-merge for a pull request."
   },

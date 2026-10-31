@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository",
     "fetched_at": "2026-10-31T11:49:57Z",
     "quote": "By default, all first-time contributors require approval to run workflows.",
     "scope": "pull requests to public repositories"

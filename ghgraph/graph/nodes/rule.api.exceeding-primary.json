@@ -6,10 +6,9 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
     "fetched_at": "2026-10-31T11:49:35Z",
     "quote": "If you exceed your primary rate limit, you will receive a 403 or 429 response, and the x-ratelimit-remaining header will be 0.",
-    "value": "403 or 429"
+    "note": "The response is 403 or 429 and x-ratelimit-remaining is 0."
   },
   "edges": [
     {

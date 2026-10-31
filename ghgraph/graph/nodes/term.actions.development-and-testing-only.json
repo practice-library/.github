@@ -6,9 +6,9 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
     "fetched_at": "2026-10-31T11:49:26Z",
-    "quote": "You may only access and use GitHub Actions to develop and test your application(s). Only one licensed user may access a virtual machine provided by Actions at any time."
+    "quote": "You may only access and use GitHub Actions to develop and test your application(s). Only one licensed user may access a virtual machine provided by Actions at any time.",
+    "scope": "all use of GitHub Actions"
   },
   "edges": [
     {

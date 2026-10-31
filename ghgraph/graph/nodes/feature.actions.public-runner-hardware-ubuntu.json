@@ -6,11 +6,12 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
     "fetched_at": "2026-10-31T11:49:26Z",
     "quote": "Linux 4 16 GB 14 GB x64 ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-26.04",
-    "value": "4 CPU / 16 GB RAM / 14 GB SSD",
-    "scope": "public repositories (private repositories: 2 CPU / 8 GB)"
+    "value": 4,
+    "unit": "CPU cores",
+    "scope": "ubuntu-latest in public repositories",
+    "note": "Private repositories get 2 CPU cores and 8 GB of memory."
   },
   "edges": [
     {

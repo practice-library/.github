@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
     "fetched_at": "2026-10-31T11:49:35Z",
     "quote": "No more than 100 concurrent requests are allowed. This limit is shared across the REST API and GraphQL API.",
     "value": 100,

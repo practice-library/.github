@@ -6,11 +6,10 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/actions/reference/security/securely-using-pull_request_target",
     "fetched_at": "2026-10-31T11:55:00Z",
     "quote": "Workflows triggered by pull_request_target run with elevated trust: the job receives the base repository's GITHUB_TOKEN and access to repository and organization secrets.",
-    "value": "read/write",
-    "scope": "base repository default branch context"
+    "scope": "base repository default branch context",
+    "note": "The token has the base repository's permissions, including write."
   },
   "edges": [
     {

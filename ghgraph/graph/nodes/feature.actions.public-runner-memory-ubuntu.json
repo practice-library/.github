@@ -1,0 +1,21 @@
+{
+  "id": "feature.actions.public-runner-memory-ubuntu",
+  "type": "feature",
+  "name": "ubuntu-latest memory in public repositories",
+  "source": "https://docs.github.com/en/actions/reference/runners/github-hosted-runners",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T11:49:26Z",
+    "quote": "Linux 4 16 GB 14 GB x64 ubuntu-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-26.04",
+    "value": 16,
+    "unit": "GB",
+    "scope": "ubuntu-latest in public repositories"
+  },
+  "edges": [
+    {
+      "rel": "availableOn",
+      "to": "product.actions"
+    }
+  ]
+}

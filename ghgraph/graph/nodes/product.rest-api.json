@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/rest/about-the-rest-api/about-the-rest-api",
     "fetched_at": "2026-10-31T12:20:00Z",
     "quote": "You can use GitHub's API to build scripts and applications that automate processes, integrate with GitHub, and extend GitHub."
   },

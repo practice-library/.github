@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
     "fetched_at": "2026-10-31T11:49:35Z",
     "quote": "No more than 900 points per minute are allowed for REST API endpoints, and no more than 2,000 points per minute are allowed for the GraphQL API endpoint.",
     "value": 900,

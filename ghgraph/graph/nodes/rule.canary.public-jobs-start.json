@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://github.com/practice-library/.github/actions/runs/41195771306",
     "fetched_at": "2026-10-31T12:15:00Z",
     "quote": "Matrix: probe 20 jobs completed",
     "value": 20,

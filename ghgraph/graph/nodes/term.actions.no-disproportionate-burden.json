@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "denied",
-    "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
     "fetched_at": "2026-10-31T11:49:26Z",
     "quote": "Any activity that places a burden on our servers, where that burden is disproportionate to the benefits provided to users (for example, don't use Actions as a content delivery network or as part of a serverless application"
   },

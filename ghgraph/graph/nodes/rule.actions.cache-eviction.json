@@ -6,11 +6,11 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/dependency-caching",
     "fetched_at": "2026-10-31T11:49:26Z",
     "quote": "GitHub will remove any cache entries that have not been accessed in over 7 days.",
     "value": 7,
-    "unit": "days"
+    "unit": "days",
+    "scope": "cache entries not accessed"
   },
   "edges": [
     {

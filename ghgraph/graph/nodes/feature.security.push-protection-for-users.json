@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "allowed",
-    "url": "https://docs.github.com/en/code-security/concepts/secret-security/push-protection",
     "fetched_at": "2026-10-31T11:51:51Z",
     "quote": "Stops you from pushing secrets to public repositories on GitHub",
     "scope": "public repositories"

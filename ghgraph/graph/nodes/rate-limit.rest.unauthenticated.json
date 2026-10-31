@@ -6,7 +6,6 @@
   "measuredAt": "2026-10-31",
   "attrs": {
     "verdict": "limited",
-    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
     "fetched_at": "2026-10-31T11:49:35Z",
     "quote": "The primary rate limit for unauthenticated requests is 60 requests per hour.",
     "value": 60,
