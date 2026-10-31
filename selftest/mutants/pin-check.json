@@ -68,5 +68,10 @@
     "name": "other-owner-judged",
     "find": "select($owner == $org and",
     "replace": "select(("
+  },
+  {
+    "name": "aliases-unexpanded",
+    "find": "explode(.) | ",
+    "replace": ""
   }
 ]

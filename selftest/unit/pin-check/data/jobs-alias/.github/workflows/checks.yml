@@ -1,0 +1,4 @@
+j: &j
+  a:
+    uses: practice-library/.github/.github/workflows/gate.yml@main
+jobs: *j

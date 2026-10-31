@@ -6,7 +6,7 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Additive.
 
-- gate.yml: the pin check reads each workflow as YAML, with yq 4.44.3 fetched and pinned by sha256, instead of line by line. A `uses:` written as a quoted key, a flow mapping, a block scalar, an anchor or alias, or through a merge key is judged like any other. A workflow that does not parse fails the gate. Only `jobs.<id>.uses` and `jobs.<id>.steps[].uses` are judged; a `uses` key anywhere else is not.
+- gate.yml: the pin check reads each workflow as YAML, with yq 4.44.3 fetched and pinned by sha256, instead of line by line. A `uses:` written as a quoted key, a flow mapping, a block scalar, an anchor or alias (including `jobs:` itself as an alias), or through a merge key that names an alias, is judged like any other. A workflow that does not parse fails the gate. Only `jobs.<id>.uses` and `jobs.<id>.steps[].uses` are judged; a `uses` key anywhere else is not.
 
 ## v2.2.0
 

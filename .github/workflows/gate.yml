@@ -122,7 +122,7 @@ jobs:
           # or action of ORG is pinned to a full commit (40 lower-case hex characters), otherwise
           # "unpinned [<file>:<line> <ref>, ...]". A branch or a tag can move, so either is refused; a uses: of
           # another owner, a local ./ path or a docker:// image is not judged. The owner is compared without case.
-          # Each file is parsed as YAML (yq, which follows anchors, aliases and merge keys), so a uses: written as
+          # Each file is parsed as YAML (yq, with every alias and merge key that names an alias expanded first), so a uses: written as
           # a quoted key, a flow mapping, a block scalar or an alias is judged like any other. The uses: GitHub reads
           # are judged: jobs.<id>.uses and jobs.<id>.steps[].uses. A file that does not parse prints "invalid".
           #   ROOT  the checked-out repository     ORG  the organisation whose references must be pinned
@@ -135,7 +135,7 @@ jobs:
             [ "${#files[@]}" -gt 0 ] || { echo "ok no workflows"; return 0; }
             command -v "$yq" > /dev/null 2>&1 || { echo "invalid no yq to read the workflows"; return 0; }
             for f in "${files[@]}"; do
-              uses="$("$yq" -o=json '[.jobs // {} | to_entries[]
+              uses="$("$yq" -o=json 'explode(.) | [.jobs // {} | to_entries[]
                   | ((.value.uses | select(. != null)), (.value.steps // [] | .[] | .uses | select(. != null)))
                   | {"line": line, "v": .}]' "$f" 2>/dev/null)" \
                 || { echo "invalid ${f#"${ROOT:-.}/"} is not YAML"; return 0; }
