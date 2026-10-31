@@ -82,6 +82,9 @@ def gen:
   gsub("@@gen:(?<k>[a-z]+)@@";
     if .k == "needs" then selfneeds | tojson
     elif .k == "context" then context
+    elif .k == "outputs" then
+      lookup("checks") | map(.id as $id | ("targets", "fixtures")
+        | . + "-" + $id + ": ${{ steps.list.outputs." + . + "-" + $id + " }}") | join("\n      ")
     elif .k == "unowned" then lookup("automerge.allowPaths") | map("/" + .) | join("\n")
     else error("unknown generator: " + .k) end);
 

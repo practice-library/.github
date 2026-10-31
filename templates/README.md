@@ -30,5 +30,6 @@ Input names are the API: adding an optional input is a minor change; renaming or
 ## Change something
 
 - A pin, limit or path: edit `policy/constants.json`, then run `@@render.script@@`.
-- A schema to check: add a row to `schemas` in `policy/constants.json`.
+- A schema to check: put a `check.json` (`{"schema": ..., "instances": ...}`, paths relative to it) next to the schema; nothing else changes.
+- A new kind of check: a reusable workflow plus one row in `checks` in `policy/constants.json`.
 - A self-test case: add a directory under `@@selftest.fixturesDir@@` with a `@@selftest.caseFile@@`.

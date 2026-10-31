@@ -1,0 +1,4 @@
+{
+  "schema": "constants.schema.json",
+  "instances": "constants.json"
+}

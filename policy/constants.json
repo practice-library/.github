@@ -46,22 +46,38 @@
     "config": ".gitleaks.toml",
     "defaultConfig": "[extend]\nuseDefault = true\n"
   },
-  "schemas": [
+  "checks": [
     {
-      "id": "constants",
-      "schema": "policy/constants.schema.json",
-      "instances": "policy/constants.json"
+      "id": "leak-scan",
+      "workflow": "leak-scan.yml",
+      "inputs": []
+    },
+    {
+      "id": "schema-check",
+      "workflow": "schema-check.yml",
+      "inputs": [
+        "schema",
+        "instances"
+      ],
+      "targetFile": "check.json"
     }
   ],
   "selftest": {
     "fixturesDir": "selftest/fixtures",
     "caseFile": "case.json",
     "builder": "selftest/build.sh",
-    "lister": "selftest/list.sh",
     "author": {
       "name": "selftest",
       "email": "selftest@example.invalid"
     }
+  },
+  "self": {
+    "discoverJob": "discover",
+    "staticJobs": [
+      "render",
+      "discover"
+    ],
+    "discoverScript": "scripts/discover.sh"
   },
   "render": {
     "script": "scripts/render.sh",
@@ -95,13 +111,6 @@
     "allowedMergeMethods": [
       "merge",
       "squash"
-    ]
-  },
-  "self": {
-    "discoverJob": "discover",
-    "staticJobs": [
-      "render",
-      "discover"
     ]
   }
 }
