@@ -32,7 +32,8 @@
       "sha256": "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb",
       "archive": "tar.gz",
       "bin": "gitleaks",
-      "findingExitCode": 42
+      "findingExitCode": 42,
+      "expectInput": "_selftest-expect"
     },
     "jsonschema": {
       "version": "17.2.1",
@@ -40,7 +41,8 @@
       "sha256": "9ffee3cfbe0fe1343d9d36bcce9e6036ec4d73e4b29f656c039fca6118da2f35",
       "archive": "zip",
       "bin": "jsonschema-17.2.1-linux-x86_64/bin/jsonschema",
-      "findingExitCode": 2
+      "findingExitCode": 2,
+      "expectInput": "expect"
     }
   },
   "leakScan": {
@@ -51,7 +53,8 @@
     {
       "id": "leak-scan",
       "workflow": "leak-scan.yml",
-      "inputs": []
+      "inputs": [],
+      "tool": "gitleaks"
     },
     {
       "id": "schema-check",
@@ -60,7 +63,8 @@
         "schema",
         "instances"
       ],
-      "targetFile": "check.json"
+      "targetFile": "check.json",
+      "tool": "jsonschema"
     }
   ],
   "selftest": {

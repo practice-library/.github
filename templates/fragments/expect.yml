@@ -1,7 +1,7 @@
 - name: Compare the result with the expectation
   shell: bash
   env:
-    EXPECT: ${{ inputs._selftest-expect }}
+    EXPECT: ${{ inputs.@@tool.expectInput@@ }}
     RC: ${{ steps.run.outputs.rc }}
     FINDING_RC: @@tool.findingExitCode@@
   run: |

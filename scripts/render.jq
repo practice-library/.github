@@ -60,7 +60,7 @@ def checkjobs:
         + "\n\n"
         + checkjob($k; "selftest-" + $k.id; "fixtures";
             [ "      _selftest-fixture: ${{ matrix.fixture }}",
-              "      _selftest-expect: ${{ matrix.expect }}" ]))
+              "      " + lookup("tools." + $k.tool + ".expectInput") + ": ${{ matrix.expect }}" ]))
   | join("\n\n");
 
 def genjobs: gsub("(?m)^  #@gen jobs$"; checkjobs);

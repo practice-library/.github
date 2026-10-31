@@ -64,7 +64,8 @@
         "sha256",
         "archive",
         "bin",
-        "findingExitCode"
+        "findingExitCode",
+        "expectInput"
       ],
       "properties": {
         "version": {
@@ -91,6 +92,10 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 125
+        },
+        "expectInput": {
+          "type": "string",
+          "pattern": "^_?[a-z][a-z0-9-]*$"
         }
       },
       "additionalProperties": false
@@ -194,7 +199,8 @@
         "required": [
           "id",
           "workflow",
-          "inputs"
+          "inputs",
+          "tool"
         ],
         "properties": {
           "id": {
@@ -216,6 +222,10 @@
           "targetFile": {
             "type": "string",
             "pattern": "^[A-Za-z0-9._-]+$"
+          },
+          "tool": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
           }
         }
       }

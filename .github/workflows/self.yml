@@ -92,7 +92,7 @@ jobs:
     uses: ./.github/workflows/schema-check.yml
     with:
       _selftest-fixture: ${{ matrix.fixture }}
-      _selftest-expect: ${{ matrix.expect }}
+      expect: ${{ matrix.expect }}
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
 

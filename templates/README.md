@@ -26,7 +26,7 @@ Auto-merge is a second workflow on `pull_request_target` that calls `automerge.y
 
 ## Contract
 
-Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Until release tags exist, pin a full commit SHA.
+Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Until release tags exist, pin a full commit SHA.
 
 ## Change something
 
