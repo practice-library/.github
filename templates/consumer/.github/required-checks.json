@@ -1,0 +1,1 @@
+{ "jobs": ["discover", "schema-check", "leak-scan"] }
