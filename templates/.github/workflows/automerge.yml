@@ -1,0 +1,60 @@
+name: automerge
+# Turns on GitHub auto-merge for a pull request. GitHub then merges it only when every check the
+# ruleset requires has passed, so a failed check always blocks the merge. It never checks out pull
+# request code. A pull request that touches a protected path merges automatically only when its
+# author is trusted; otherwise auto-merge is turned off and a maintainer merges by hand.
+on:
+  workflow_call:
+    inputs:
+      protected-paths:
+        description: JSON array of paths; an entry ending in / covers everything under it.
+        type: string
+        default: '@@json:automerge.protectedPaths@@'
+      trusted-authors:
+        description: JSON array of logins whose pull requests may touch protected paths.
+        type: string
+        default: '@@json:org.trustedAuthors@@'
+      merge-method:
+        description: merge, squash or rebase.
+        type: string
+        default: @@automerge.mergeMethod@@
+permissions: {}
+jobs:
+  enable:
+    name: automerge
+    if: github.event.pull_request.draft == false
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Turn auto-merge on or off
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          PROTECTED: ${{ inputs.protected-paths }}
+          TRUSTED: ${{ inputs.trusted-authors }}
+          METHOD: ${{ inputs.merge-method }}
+        run: |
+          set -euo pipefail
+          [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
+          trusted="$(jq -n --arg a "$AUTHOR" --argjson t "$TRUSTED" '$t | index($a) != null')"
+          touched="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename' \
+            | jq -R -s --argjson p "$PROTECTED" '
+                split("\n") | map(select(length > 0))
+                | map(. as $f | select(any($p[]; . as $q
+                    | if ($q | endswith("/")) then ($f | startswith($q)) else $f == $q end)))')"
+          count="$(jq 'length' <<<"$touched")"
+          if [ "$count" -gt 0 ] && [ "$trusted" != true ]; then
+            echo "Protected paths touched by an untrusted author: $(jq -c . <<<"$touched")"
+            echo "Auto-merge stays off; a maintainer reviews and merges."
+            if [ "$(gh pr view "$PR" --repo "$REPO" --json autoMergeRequest --jq '.autoMergeRequest != null')" = true ]; then
+              gh pr merge "$PR" --repo "$REPO" --disable-auto
+            fi
+            exit 0
+          fi
+          gh pr merge "$PR" --repo "$REPO" --auto "--$METHOD"

@@ -1,0 +1,18 @@
+name: gate
+on:
+  workflow_call:
+    inputs:
+      needs:
+        description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded.
+        type: string
+        required: true
+permissions: {}
+jobs:
+  @@gate.innerJob@@:
+    name: @@gate.innerJob@@
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - uses: @@actions.allsGreen.repo@@@@@actions.allsGreen.sha@@ # @@actions.allsGreen.version@@
+        with:
+          jobs: ${{ inputs.needs }}

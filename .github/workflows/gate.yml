@@ -1,0 +1,19 @@
+# Generated from templates/.github/workflows/gate.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: gate
+on:
+  workflow_call:
+    inputs:
+      needs:
+        description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded.
+        type: string
+        required: true
+permissions: {}
+jobs:
+  gate:
+    name: gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          jobs: ${{ inputs.needs }}

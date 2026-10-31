@@ -1,0 +1,12 @@
+name: self-automerge
+# pull_request_target runs this file as it is on @@org.defaultBranch@@, never the pull request's copy.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [@@org.defaultBranch@@]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  automerge:
+    uses: ./.github/workflows/automerge.yml
