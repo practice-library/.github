@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "NEEDS": "[]",
+    "REQUIRED": "[\"leak-scan\"]",
+    "MANDATORY": "[\"leak-scan\"]"
+  }
+}

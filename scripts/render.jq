@@ -7,6 +7,7 @@
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
 #   @@gen:needs@@             the gate's needs: static self jobs, then each check and its self-test
 #   @@gen:context@@           the required check name, callerJob / innerJob, after proving both are rendered job ids
+#   @@render:<template>@@     that template rendered, as compact JSON for a single-quoted YAML scalar
 #   @@gen:unowned@@           one CODEOWNERS line per auto-merge allowlist path, with no owner
 # Inputs: $c (constants, --slurpfile), $frags (fragment name -> text), $all (template path -> text), $t (this template).
 
@@ -42,7 +43,7 @@ def withlines($inputs):
   $inputs | map("      " + . + ": ${{ matrix." + . + " }}");
 
 def checkjob($k; $id; $output; $extra):
-  ( $extra + withlines($k.inputs) ) as $with
+  ( $extra + withlines($k.inputs + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
   | [ "  " + $id + ":",
       "    needs: [" + lookup("self.discoverJob") + "]",
       "    strategy:",
@@ -78,10 +79,14 @@ def context:
       then error("gate.innerJob " + $inner + " is not a job in " + lookup("gate.workflow"))
     else $caller + " / " + $inner end;
 
+def embed:
+  gsub("@@render:(?<p>[A-Za-z0-9_./-]+)@@"; rendered(.p) | fromjson | tojson | gsub("'"; "''"));
+
 def gen:
   gsub("@@gen:(?<k>[a-z]+)@@";
     if .k == "needs" then selfneeds | tojson
     elif .k == "context" then context
+    elif .k == "checkids" then lookup("checks") | map(.id) | join(", ")
     elif .k == "outputs" then
       lookup("checks") | map(.id as $id | ("targets", "fixtures")
         | . + "-" + $id + ": ${{ steps.list.outputs." + . + "-" + $id + " }}") | join("\n      ")
@@ -91,12 +96,12 @@ def gen:
 def verifyneeds:
   . as $text
   | if ($text | test("@@gen:needs@@")) then
-      ($text | expand | genjobs | fill | jobkeys) as $keys
+      (rendered(lookup("gate.callerWorkflow")) | jobkeys) as $keys
       | (selfneeds - $keys) as $missing
-      | (lookup("gate.requiredJobs") - selfneeds) as $unneeded
+      | (lookup("gate.mandatoryJobs") - selfneeds) as $unneeded
       | if ($missing | length) > 0 then error("gate needs jobs that are not rendered: " + ($missing | tojson))
-        elif ($unneeded | length) > 0 then error("gate.requiredJobs are not among the gate's needs: " + ($unneeded | tojson))
+        elif ($unneeded | length) > 0 then error("gate.mandatoryJobs are not among the gate's needs: " + ($unneeded | tojson))
         else $text end
     else $text end;
 
-$t | verifyneeds | expand | genjobs | gen | fill
+$t | verifyneeds | expand | genjobs | embed | gen | fill

@@ -18,7 +18,10 @@
     "automerge",
     "ruleset",
     "dependabot",
-    "canary"
+    "canary",
+    "spec",
+    "tagRuleset",
+    "release"
   ],
   "$defs": {
     "sha1": {
@@ -226,6 +229,14 @@
           "tool": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "optionalInputs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
           }
         }
       }
@@ -346,7 +357,8 @@
         "workflow",
         "callerWorkflow",
         "actionsIntegrationId",
-        "requiredJobs"
+        "mandatoryJobs",
+        "requiredChecksFile"
       ],
       "properties": {
         "callerJob": {
@@ -367,7 +379,7 @@
         "callerWorkflow": {
           "$ref": "#/$defs/path"
         },
-        "requiredJobs": {
+        "mandatoryJobs": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
@@ -375,6 +387,9 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$"
           }
+        },
+        "requiredChecksFile": {
+          "$ref": "#/$defs/path"
         }
       }
     },
@@ -384,7 +399,8 @@
       "required": [
         "mergeMethod",
         "allowPaths",
-        "maxListedFiles"
+        "maxListedFiles",
+        "pathsFile"
       ],
       "properties": {
         "mergeMethod": {
@@ -405,6 +421,9 @@
         "maxListedFiles": {
           "type": "integer",
           "minimum": 1
+        },
+        "pathsFile": {
+          "$ref": "#/$defs/path"
         }
       }
     },
@@ -523,6 +542,66 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 300
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeSchemaId",
+        "nodeSchemaPath"
+      ],
+      "properties": {
+        "nodeSchemaId": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "nodeSchemaPath": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "tagRuleset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "enforcement",
+        "include"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "enforcement": {
+          "enum": [
+            "active",
+            "evaluate",
+            "disabled"
+          ]
+        },
+        "include": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^refs/tags/"
+          }
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tag"
+      ],
+      "properties": {
+        "tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
         }
       }
     }

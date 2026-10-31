@@ -18,6 +18,10 @@ on:
         description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code.
         type: string
         default: pass
+      each:
+        description: true to validate every JSON file under instances on its own; expect then has to hold for each file, so a folder of counter-examples passes only when every one of them is rejected.
+        type: string
+        default: 'false'
 permissions:
   contents: read
 jobs:
@@ -40,13 +44,34 @@ jobs:
           FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: @@selftest.fixturesDir@@
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
+          EACH: ${{ inputs.each }}
+          NODE_SPEC: '@@render:spec/node/schema.json@@'
         run: |
           set -uo pipefail
           # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
+          #@include each-result.sh
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
-          rc=0
-          "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          # The shared fact-node envelope (@@spec.nodeSchemaId@@) is always resolvable, so a domain
+          # schema can reference it without keeping a copy.
+          printf '%s' "$NODE_SPEC" > "$RUNNER_TEMP/node-spec.json"
+          resolve=(--resolve "$RUNNER_TEMP/node-spec.json")
+          if [ "$EACH" = true ]; then
+            RCS=""
+            while IFS= read -r -d '' file; do
+              one=0
+              "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
+              echo "exit $one: ${file#"$base"/}"
+              RCS="$RCS $one"
+            done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
+            FINDING="$FINDING_RC"
+            result="$(main)"
+            echo "$result"
+            rc="${result##* }"
+          else
+            rc=0
+            "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          fi
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
       #@expect jsonschema

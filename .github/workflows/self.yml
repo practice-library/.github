@@ -82,6 +82,8 @@ jobs:
     with:
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
+      expect: ${{ matrix.expect }}
+      each: ${{ matrix.each }}
 
   selftest-schema-check:
     needs: [discover]
@@ -95,6 +97,7 @@ jobs:
       expect: ${{ matrix.expect }}
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
+      each: ${{ matrix.each }}
 
   gate:
     if: always()
@@ -102,4 +105,3 @@ jobs:
     uses: ./.github/workflows/gate.yml
     with:
       needs: ${{ toJSON(needs) }}
-      required: '["leak-scan"]'

@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "CODEOWNERS": "# owners\n\n* @org/maintainers # everyone\n/ghgraph/graph/nodes/\n/ghgraph/INDEX.md\n",
+    "ALLOW": "[\"ghgraph/graph/nodes/\",\"ghgraph/INDEX.md\"]"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "expect": "ok",
+  "env": {
+    "ROW": "{\"id\": \"leak-scan\", \"workflow\": \"leak-scan.yml\", \"tool\": \"gitleaks\", \"inputs\": []}"
+  }
+}

@@ -1,16 +1,13 @@
 name: automerge
 # Turns GitHub auto-merge on or off for a pull request. It is on only for a trusted author whose
-# pull request touches nothing but allowlisted paths (old and new names of renamed files
+# pull request touches nothing but the paths in @@automerge.pathsFile@@ on the base commit (none when
+# the file is absent) (old and new names of renamed files
 # included), and only when the full file list could be read. Everything else needs a maintainer.
 # GitHub then merges only when every check the ruleset requires has passed. It never checks out
 # pull request code.
 on:
   workflow_call:
     inputs:
-      allow-paths:
-        description: JSON array of paths auto-merge may cover; an entry ending in / covers everything under it.
-        type: string
-        required: true
       trusted-authors:
         description: JSON array of logins whose pull requests may auto-merge.
         type: string
@@ -42,13 +39,23 @@ jobs:
           AUTHOR: ${{ github.event.pull_request.user.login }}
           DRAFT: ${{ github.event.pull_request.draft }}
           CHANGED: ${{ github.event.pull_request.changed_files }}
-          ALLOW: ${{ inputs.allow-paths }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          PATHS_FILE: @@automerge.pathsFile@@
           TRUSTED: ${{ inputs.trusted-authors }}
           MAX: @@automerge.maxListedFiles@@
         run: |
           set -euo pipefail
           #@include automerge-decide.sh
           [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
+          # The allowlist is read from the base commit, never from the pull request.
+          if body="$(gh api "repos/$REPO/contents/$PATHS_FILE?ref=$BASE" --jq '.content' 2> "$RUNNER_TEMP/paths.err")"; then
+            ALLOW="$(base64 -d <<<"$body" | jq -c '.paths')"
+          elif grep -q 'HTTP 404' "$RUNNER_TEMP/paths.err"; then
+            ALLOW='[]'
+          else
+            cat "$RUNNER_TEMP/paths.err"; exit 1
+          fi
+          export ALLOW
           FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | {filename, previous_filename}' | jq -sc '.')"
           export FILES
           decision="$(main)"

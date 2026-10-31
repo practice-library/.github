@@ -12,5 +12,4 @@ jobs:
   automerge:
     uses: ./.github/workflows/automerge.yml
     with:
-      allow-paths: '["ghgraph/graph/nodes/","ghgraph/INDEX.md"]'
       trusted-authors: '["practice-library[bot]"]'

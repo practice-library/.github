@@ -1,0 +1,44 @@
+name: discover
+# What a check runs on in the calling repository, as a matrix: every <dir>/<targetFile> for a check
+# with a targetFile, else one repository-wide entry. The checks and their files come from the
+# checks registry of @@org.name@@/@@org.repo@@, so a repository keeps no list of its own.
+on:
+  workflow_call:
+    inputs:
+      check:
+        description: 'The check to discover targets for: one of @@gen:checkids@@.'
+        type: string
+        required: true
+    outputs:
+      targets:
+        description: JSON array for strategy.matrix.include.
+        value: ${{ jobs.list.outputs.targets }}
+permissions:
+  contents: read
+jobs:
+  list:
+    name: discover
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          persist-credentials: false
+      - name: Targets
+        id: list
+        shell: bash
+        env:
+          CHECK: ${{ inputs.check }}
+          CHECKS: '@@json:checks@@'
+        run: |
+          set -euo pipefail
+          #@include discover-targets.sh
+          ROW="$(jq -c --arg id "$CHECK" '.[] | select(.id == $id)' <<<"$CHECKS")"
+          [ -n "$ROW" ] || { echo "::error::unknown check $CHECK; known: $(jq -c '[.[].id]' <<<"$CHECKS")"; exit 1; }
+          export ROW
+          result="$(main)"
+          [ "${result%% *}" = ok ] || { echo "::error::${result#* }"; exit 1; }
+          echo "${result#ok }"
+          echo "targets=${result#ok }" >> "$GITHUB_OUTPUT"

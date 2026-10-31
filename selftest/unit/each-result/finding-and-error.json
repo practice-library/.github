@@ -1,0 +1,7 @@
+{
+  "expect": "mixed",
+  "env": {
+    "RCS": "2 6",
+    "FINDING": "2"
+  }
+}

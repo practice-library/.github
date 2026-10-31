@@ -2,6 +2,7 @@
   "expect": "missing",
   "env": {
     "NEEDS": "{\"render\":{\"result\":\"success\"}}",
-    "REQUIRED": "[\"leak-scan\"]"
+    "REQUIRED": "[\"render\"]",
+    "MANDATORY": "[\"leak-scan\"]"
   }
 }

@@ -3,28 +3,52 @@ on:
   workflow_call:
     inputs:
       needs:
-        description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded.
+        description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded and they are exactly the jobs listed in @@gate.requiredChecksFile@@.
         type: string
         required: true
-      required:
-        description: JSON array of job ids that must be among the needs, so a check cannot be dropped from the gate unnoticed.
-        type: string
-        required: true
-permissions: {}
+permissions:
+  contents: read
 jobs:
   @@gate.innerJob@@:
     name: @@gate.innerJob@@
     runs-on: @@runner.image@@
     timeout-minutes: @@runner.timeoutMinutes@@
     steps:
-      - name: Every required job is among the needs
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github
+            docs
+      - name: The needs are exactly the jobs in @@gate.requiredChecksFile@@
         shell: bash
         env:
           NEEDS: ${{ inputs.needs }}
-          REQUIRED: ${{ inputs.required }}
+          FILE: @@gate.requiredChecksFile@@
+          MANDATORY: '@@json:gate.mandatoryJobs@@'
         run: |
           set -euo pipefail
           #@include gate-required.sh
+          [ -f "$FILE" ] || { echo "::error::$FILE is missing"; exit 1; }
+          REQUIRED="$(jq -c '.jobs' "$FILE")"
+          export REQUIRED
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+      - name: CODEOWNERS owns no path in @@automerge.pathsFile@@
+        shell: bash
+        env:
+          PATHS_FILE: @@automerge.pathsFile@@
+        run: |
+          set -euo pipefail
+          #@include codeowners-allow.sh
+          ALLOW='[]'
+          if [ -f "$PATHS_FILE" ]; then ALLOW="$(jq -c '.paths' "$PATHS_FILE")"; fi
+          CODEOWNERS=""
+          for f in .github/CODEOWNERS CODEOWNERS docs/CODEOWNERS; do
+            if [ -f "$f" ]; then CODEOWNERS="$(cat "$f")"; break; fi
+          done
+          export ALLOW CODEOWNERS
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]

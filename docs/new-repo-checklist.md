@@ -32,8 +32,8 @@ Do these once, in order, when a repository joins practice-library. The automatio
 <one line per allowlisted path, with no owner>
 ```
 
-- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml` with `required: '["leak-scan"]'` (see the README).
-- [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `allow-paths: '<the repository's own allowlist, [] for none>'` and `trusted-authors: '["practice-library[bot]"]'`.
+- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml`; list exactly the jobs the gate needs in `.github/required-checks.json` as `{"jobs": [...]}`, including ["leak-scan"] (see the README).
+- [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `trusted-authors: '["practice-library[bot]"]'`; list the paths that may merge without review in `.github/automerge-paths.json` as `{"paths": [...]}` (absent means none).
 - [ ] Pin every `uses:` of this repository to a full commit SHA of `.github`.
 - Confirm: `GET repos/$R/codeowners/errors` returns no errors, and the pull request's `gate / gate` check passes. Neither CODEOWNERS nor the auto-merge caller is on the default branch yet, so this first pull request needs no review and does not merge itself: a maintainer merges it.
 

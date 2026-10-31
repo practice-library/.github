@@ -1,0 +1,1 @@
+#@include codeowners-allow.sh

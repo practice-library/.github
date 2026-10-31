@@ -1,0 +1,11 @@
+{
+  "name": "@@tagRuleset.name@@",
+  "target": "tag",
+  "enforcement": "@@tagRuleset.enforcement@@",
+  "conditions": { "ref_name": { "include": @@json:tagRuleset.include@@, "exclude": [] } },
+  "bypass_actors": [],
+  "rules": [
+    { "type": "deletion" },
+    { "type": "update" }
+  ]
+}

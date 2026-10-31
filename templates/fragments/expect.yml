@@ -6,7 +6,7 @@
     FINDING_RC: @@tool.findingExitCode@@
   run: |
     set -euo pipefail
-    case "$EXPECT" in
+    case "${EXPECT:-pass}" in
       pass) [ "$RC" = 0 ] || { echo "::error::@@toolname@@ reported findings (exit $RC)"; exit 1; } ;;
       fail) [ "$RC" = "$FINDING_RC" ] || { echo "::error::expected @@toolname@@ to report a finding (exit $FINDING_RC), got exit $RC"; exit 1; } ;;
       *) echo "::error::expect must be pass or fail, got $EXPECT"; exit 1 ;;

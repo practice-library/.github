@@ -1,0 +1,39 @@
+# Generated from templates/consumer/.github/workflows/checks.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: checks
+# Calls practice-library/.github's reusable workflows at one pinned commit. The gate's needs must
+# equal the jobs in .github/required-checks.json.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  discover:
+    uses: practice-library/.github/.github/workflows/discover.yml@__PIN__ # __REF__
+    with:
+      check: schema-check
+  schema-check:
+    needs: [discover]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.targets) }}
+    uses: practice-library/.github/.github/workflows/schema-check.yml@__PIN__ # __REF__
+    with:
+      schema: ${{ matrix.schema }}
+      instances: ${{ matrix.instances }}
+      expect: ${{ matrix.expect }}
+      each: ${{ matrix.each }}
+  leak-scan:
+    uses: practice-library/.github/.github/workflows/leak-scan.yml@__PIN__ # __REF__
+  gate:
+    if: always()
+    needs: [discover, schema-check, leak-scan]
+    uses: practice-library/.github/.github/workflows/gate.yml@__PIN__ # __REF__
+    with:
+      needs: ${{ toJSON(needs) }}

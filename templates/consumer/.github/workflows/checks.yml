@@ -1,0 +1,38 @@
+name: checks
+# Calls @@org.name@@/@@org.repo@@'s reusable workflows at one pinned commit. The gate's needs must
+# equal the jobs in @@gate.requiredChecksFile@@.
+on:
+  pull_request:
+    branches: [@@org.defaultBranch@@]
+  push:
+    branches: [@@org.defaultBranch@@]
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  discover:
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/discover.yml@__PIN__ # __REF__
+    with:
+      check: schema-check
+  schema-check:
+    needs: [discover]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.targets) }}
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/schema-check.yml@__PIN__ # __REF__
+    with:
+      schema: ${{ matrix.schema }}
+      instances: ${{ matrix.instances }}
+      expect: ${{ matrix.expect }}
+      each: ${{ matrix.each }}
+  leak-scan:
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/leak-scan.yml@__PIN__ # __REF__
+  @@gate.callerJob@@:
+    if: always()
+    needs: [discover, schema-check, leak-scan]
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/gate.yml@__PIN__ # __REF__
+    with:
+      needs: ${{ toJSON(needs) }}
