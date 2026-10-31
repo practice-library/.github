@@ -5,7 +5,12 @@
 # line. Words inside compressed binary files (images, archives) are not visible as text.
 # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
 # added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config.
+# EVENT is the GitHub event. On push, merge commits are not judged: the change was judged as a pull
+# request already, and a merge made in the browser is authored by whoever pressed merge. On any other
+# event, or when EVENT is unset, every commit is judged.
 collect() {
+  local skip=()
+  if [ "${EVENT:-}" = push ]; then skip=(--no-merges); fi
   git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --unified=0 "$MB" "$HEAD" | awk '
     /^diff --git / { hdr = 1; next }
     hdr && /^\+\+\+ / { f = substr($0, 5); next }
@@ -13,7 +18,7 @@ collect() {
     !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
   # An added path is reported by its place in the list, since the path may hold the term.
   git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
-  git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
+  git log ${skip[@]+"${skip[@]}"} --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
     /^::guard-commit:: / { c = substr($0, 18); next }
     { print "commit " c "\t" $0 }'
 }
@@ -24,6 +29,7 @@ collect() {
 #   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...]}: each entry is sha256(salt + ":" + term),
 #              where a term is one word or two adjacent words, lower case, words joined by one space;
 #              empty when the repository has no list
+#   EVENT      the GitHub event; push leaves merge commits out (see collect)
 #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
 # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
 # together are checked. scripts/denylist-hash.sh lists a two-word term both ways ("ab cd" and "abcd"),

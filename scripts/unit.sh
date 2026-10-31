@@ -5,7 +5,9 @@
 # A case may add "repo": {"base": {path: text}, "head": {path: text or null}, "message": text}: main then
 # runs inside a throwaway git repository whose first commit holds base and whose second applies head
 # (null deletes) with that message, and MB and HEAD are set to the two commits. "repo": {"config":
-# {key: value}} sets git config in that repository first (a textconv driver, for instance).
+# {key: value}} sets git config in that repository first (a textconv driver, for instance). "author"
+# names the author of the head commit (default unit). "merge": {"author": name, "message": text} makes the
+# head commit on a side line and merges it into base with a merge commit by that author, which is HEAD.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
@@ -45,10 +47,17 @@ for case_path in "$unit_dir"/*/*.json; do
         done < <(jq -j --arg s "$side" '.repo[$s] // {} | keys[] | . + "\u0000"' "$case_path")
         git -C "$repo" add -A
         message="$side"; [ "$side" = head ] && message="$(jq -r '.repo.message // "head"' "$case_path")"
-        git -C "$repo" -c user.name=unit -c user.email=unit@example.invalid -c commit.gpgsign=false \
+        author=unit; [ "$side" = head ] && author="$(jq -r '.repo.author // "unit"' "$case_path")"
+        git -C "$repo" -c user.name="$author" -c user.email=unit@example.invalid -c commit.gpgsign=false \
           commit -q --allow-empty -m "$message"
         if [ "$side" = base ]; then MB="$(git -C "$repo" rev-parse HEAD)"; else HEAD="$(git -C "$repo" rev-parse HEAD)"; fi
       done
+      if jq -e '.repo | has("merge")' "$case_path" > /dev/null; then
+        git -C "$repo" checkout -q --detach "$MB"
+        git -C "$repo" -c user.name="$(jq -r '.repo.merge.author // "unit"' "$case_path")" -c user.email=unit@example.invalid \
+          -c commit.gpgsign=false merge -q --no-ff -m "$(jq -r '.repo.merge.message // "Merge"' "$case_path")" "$HEAD"
+        HEAD="$(git -C "$repo" rev-parse HEAD)"
+      fi
       export MB HEAD
       cd "$repo"
     fi
