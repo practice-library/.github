@@ -20,7 +20,7 @@
         "url": { "$ref": "#/$defs/url", "description": "The same page as source." },
         "fetched_at": { "type": "string", "format": "date-time", "pattern": "Z$" },
         "quote": { "type": "string", "minLength": 1, "maxLength": 500, "description": "A short sentence copied exactly from the page." },
-        "value": { "type": ["number", "string"] },
+        "value": { "anyOf": [{ "type": "number" }, { "type": "string", "minLength": 1 }] },
         "unit": { "type": "string", "minLength": 1 },
         "scope": { "type": "string", "minLength": 1 },
         "window": { "type": "string", "minLength": 1 }
