@@ -18,5 +18,80 @@
     "name": "unreadable-base-accepted",
     "find": "[ -r \"${OLD_FILE:-}\" ] ||",
     "replace": "true ||"
+  },
+  {
+    "name": "list-ignored",
+    "find": "if jq -e --arg h \"$hash\" 'any(.[]; .sha256 == $h)' <<<\"$list\" > /dev/null; then",
+    "replace": "if true; then"
+  },
+  {
+    "name": "pair-reversed",
+    "find": "then [$ov, $nv] else null end",
+    "replace": "then [$nv, $ov] else null end"
+  },
+  {
+    "name": "list-unchecked",
+    "find": "if ! jq -se 'length == 1 and (.[0] | type == \"array\" and all(.[]; type == \"object\" and (.sha256 | type == \"string\" and test(\"^[0-9a-f]{64}$\")) and (.why | type == \"string\" and length > 0)))' <<<\"$list\" > /dev/null 2>&1; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "hash-case-loose",
+    "find": "test(\"^[0-9a-f]{64}$\")",
+    "replace": "test(\"^[0-9a-fA-F]{64}$\")"
+  },
+  {
+    "name": "why-optional",
+    "find": " and (.why | type == \"string\" and length > 0)",
+    "replace": ""
+  },
+  {
+    "name": "empty-list-default-missing",
+    "find": "list=\"${TIGHTEN-[]}\"",
+    "replace": "list=\"${TIGHTEN:-[]}\""
+  },
+  {
+    "name": "several-values-accepted",
+    "find": "jq -se 'length == 1 and (.[0] | ",
+    "replace": "jq -se 'true and (.[-1] | "
+  },
+  {
+    "name": "position-ignored",
+    "find": "and ($refrev | not) and (any($p[]; . as $e | $rev | index([$e])) | not)",
+    "replace": "and ($refrev | not)"
+  },
+  {
+    "name": "ref-position-ignored",
+    "find": "and ($refrev | not) and ",
+    "replace": "and "
+  },
+  {
+    "name": "any-keyword-pair",
+    "find": "pair: (if $k == \"pattern\" and ",
+    "replace": "pair: (if "
+  },
+  {
+    "name": "if-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"oneOf\",\"contains\"] as $rev"
+  },
+  {
+    "name": "contains-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"if\",\"oneOf\"] as $rev"
+  },
+  {
+    "name": "oneof-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"if\",\"contains\"] as $rev"
+  },
+  {
+    "name": "dynamic-refs-unseen",
+    "find": "IN(\"$ref\", \"$dynamicRef\", \"$recursiveRef\")",
+    "replace": "IN(\"$ref\")"
+  },
+  {
+    "name": "recursive-ref-unseen",
+    "find": "IN(\"$ref\", \"$dynamicRef\", \"$recursiveRef\")",
+    "replace": "IN(\"$ref\", \"$dynamicRef\")"
   }
 ]

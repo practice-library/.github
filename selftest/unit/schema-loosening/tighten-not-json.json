@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/date-v2.0.0.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/date-v2.1.0.json",
+    "TIGHTEN": "not json"
+  }
+}

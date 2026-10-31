@@ -43,6 +43,26 @@ jobs:
           [ -z "$bad" ] || { echo "::error::not executable (chmod +x, then git add): $bad"; exit 1; }
       - name: Unit cases for the logic the workflows embed
         run: bash @@self.unitScript@@
+      - name: The shipped tightening list is exactly the reviewed fixture pairs and clears nothing else
+        env:
+          TIGHTEN: '@@json:guards.tighteningPairs@@'
+        run: |
+          set -euo pipefail
+          source @@selftest.libDir@@/schema-loosening.sh
+          data=selftest/unit/schema-loosening/data
+          got="$(OLD_FILE="$data/node-v2.0.0.json" NEW_FILE="$data/node-v2.1.0.json" main)"
+          want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum"]'
+          [ "$got" = "$want" ] || { echo "::error::v2.0.0 to v2.1.0 node schema: got $got"; exit 1; }
+          echo "$got"
+          # Every shipped entry is one of these reviewed fixture pairs, and every pair is shipped.
+          pair() { jq -cnj --slurpfile o "$data/$1" --slurpfile n "$data/$2" --arg p "$3" \
+            '($p | split("/")) as $k | [($o[0] | getpath($k)), ($n[0] | getpath($k))]' | sha256sum | cut -d' ' -f1; }
+          fixtures="$( { pair node-v2.0.0.json node-v2.1.0.json properties/measuredAt/pattern
+            pair node-v2.0.0.json node-v2.1.0.json properties/attrs/properties/fetched_at/pattern
+            pair time-graphs-75e4e77.json time-v2.1.0.json '$defs/time/pattern'; } | sort)"
+          shipped="$(jq -r '.[].sha256' <<<"$TIGHTEN" | sort)"
+          [ "$fixtures" = "$shipped" ] || { echo "::error::the shipped tightening list and the reviewed fixture pairs differ"; exit 1; }
+          echo "shipped tightenings: $(wc -l <<<"$shipped" | tr -d ' '), each a fixture pair"
       - name: Every library has mutants, and each mutant turns a case red
         run: bash @@self.mutantsScript@@
       - name: The denylist step on a simulated maintainer merge

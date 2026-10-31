@@ -2,6 +2,12 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
+## Unreleased
+
+Additive.
+
+- guard.yml: `schema-loosening` no longer flags a `pattern` change whose exact old and new pair is on the reviewed list `guards.tighteningPairs` (SHA-256 of the pair). The list starts with the three v2.1.0 date and time tightenings (node `measuredAt` and `attrs.fetched_at`, and `$defs.time` moved from practice-library/graphs). Any other pattern change is still flagged, and so is a listed one under `not`, `if`, `oneOf` or `contains`.
+
 ## v2.1.0
 
 Additive; the breaking surface is unchanged (workflow file names, every existing input and output, the `gate / gate` context, the keys of `check.json` and the formats of the `.github` files stay as in v2.0.0). A repository pinned to v2.0.0 by commit is unaffected; ADOPTING.md says how to move.
