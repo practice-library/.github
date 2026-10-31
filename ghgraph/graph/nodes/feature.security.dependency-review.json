@@ -1,0 +1,24 @@
+{
+  "id": "feature.security.dependency-review",
+  "type": "feature",
+  "name": "Dependency review action for public repositories",
+  "source": "https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/code-security/concepts/supply-chain-security/dependency-review",
+    "fetched_at": "2026-10-31T11:51:30Z",
+    "quote": "The action is available for all public repositories, as well as private repositories that have GitHub Code Security or GitHub Advanced Security enabled.",
+    "scope": "public repositories"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.dependabot"
+    },
+    {
+      "rel": "requires",
+      "to": "product.actions"
+    }
+  ]
+}

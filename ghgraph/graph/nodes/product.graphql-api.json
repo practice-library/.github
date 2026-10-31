@@ -1,0 +1,14 @@
+{
+  "id": "product.graphql-api",
+  "type": "product",
+  "name": "GitHub GraphQL API",
+  "source": "https://docs.github.com/en/graphql/overview/about-the-graphql-api",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/graphql/overview/about-the-graphql-api",
+    "fetched_at": "2026-10-31T12:20:00Z",
+    "quote": "The GitHub GraphQL API offers flexibility and the ability to define precisely the data you want to fetch."
+  },
+  "edges": []
+}

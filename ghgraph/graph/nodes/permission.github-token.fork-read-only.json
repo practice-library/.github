@@ -1,0 +1,21 @@
+{
+  "id": "permission.github-token.fork-read-only",
+  "type": "permission",
+  "name": "Fork pull requests: read-only token and no secrets",
+  "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "denied",
+    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows",
+    "fetched_at": "2026-10-31T11:49:35Z",
+    "quote": "With the exception of GITHUB_TOKEN, secrets are not passed to the runner when a workflow is triggered from a forked repository. The GITHUB_TOKEN has read-only permissions in pull requests from forked repositories.",
+    "value": "read-only",
+    "scope": "pull requests from forked repositories"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    }
+  ]
+}

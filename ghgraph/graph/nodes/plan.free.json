@@ -1,0 +1,14 @@
+{
+  "id": "plan.free",
+  "type": "plan",
+  "name": "GitHub Free for organizations",
+  "source": "https://docs.github.com/en/get-started/learning-about-github/githubs-plans",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/get-started/learning-about-github/githubs-plans",
+    "fetched_at": "2026-10-31T12:20:00Z",
+    "quote": "With GitHub Free for organizations, you can work with unlimited collaborators on unlimited public repositories with a full feature set, or unlimited private repositories with a limited feature set."
+  },
+  "edges": []
+}

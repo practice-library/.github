@@ -1,0 +1,19 @@
+{
+  "id": "rule.rulesets.status-check-source-app",
+  "type": "rule",
+  "name": "Pin a required status check to a source GitHub App",
+  "source": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+    "fetched_at": "2026-10-31T11:49:57Z",
+    "quote": "When you add a required status check rule, you can select an app as the expected source of status updates."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "rule.rulesets.require-status-checks"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "id": "rule.github-token.default-permissions-options",
+  "type": "rule",
+  "name": "Default workflow permissions: permissive vs restricted",
+  "source": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository",
+    "fetched_at": "2026-10-31T11:49:35Z",
+    "quote": "Under \"Workflow permissions\", choose whether you want the GITHUB_TOKEN to have read and write access for all permissions (the permissive setting), or just read access for the contents and packages permissions (the restricted setting)."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    }
+  ]
+}

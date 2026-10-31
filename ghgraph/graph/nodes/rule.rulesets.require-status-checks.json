@@ -1,0 +1,19 @@
+{
+  "id": "rule.rulesets.require-status-checks",
+  "type": "rule",
+  "name": "Require status checks to pass before merging",
+  "source": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+    "fetched_at": "2026-10-31T11:49:57Z",
+    "quote": "After enabling required status checks, all required status checks must pass before collaborators can merge changes into the branch or tag."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.rulesets"
+    }
+  ]
+}

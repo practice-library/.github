@@ -1,0 +1,23 @@
+{
+  "id": "rule.github-token.no-recursive-runs",
+  "type": "rule",
+  "name": "GITHUB_TOKEN events do not create new workflow runs",
+  "source": "https://docs.github.com/en/actions/concepts/security/github_token",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "denied",
+    "url": "https://docs.github.com/en/actions/concepts/security/github_token",
+    "fetched_at": "2026-10-31T11:52:00Z",
+    "quote": "When you use the repository's GITHUB_TOKEN to perform tasks, events triggered by the GITHUB_TOKEN will not create a new workflow run, with the following exceptions:"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    },
+    {
+      "rel": "appliesTo",
+      "to": "product.actions"
+    }
+  ]
+}

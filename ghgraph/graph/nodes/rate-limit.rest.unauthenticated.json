@@ -1,0 +1,23 @@
+{
+  "id": "rate-limit.rest.unauthenticated",
+  "type": "rate-limit",
+  "name": "REST API unauthenticated primary rate limit",
+  "source": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "url": "https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api",
+    "fetched_at": "2026-10-31T11:49:35Z",
+    "quote": "The primary rate limit for unauthenticated requests is 60 requests per hour.",
+    "value": 60,
+    "unit": "requests",
+    "scope": "per originating IP address",
+    "window": "per hour"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.rest-api"
+    }
+  ]
+}

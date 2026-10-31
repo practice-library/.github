@@ -1,0 +1,21 @@
+{
+  "id": "limit.actions.reusable-workflow-nesting",
+  "type": "limit",
+  "name": "Reusable workflow nesting depth",
+  "source": "https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "url": "https://docs.github.com/en/actions/how-tos/reuse-automations/reuse-workflows",
+    "fetched_at": "2026-10-31T11:49:26Z",
+    "quote": "You can connect a maximum of ten levels of workflows - that is, the top-level caller workflow and up to nine levels of reusable workflows.",
+    "value": 10,
+    "unit": "levels"
+  },
+  "edges": [
+    {
+      "rel": "limits",
+      "to": "product.actions"
+    }
+  ]
+}

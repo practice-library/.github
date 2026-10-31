@@ -1,0 +1,20 @@
+{
+  "id": "rule.github-token.unspecified-become-none",
+  "type": "rule",
+  "name": "Unspecified permissions become none",
+  "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "denied",
+    "url": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+    "fetched_at": "2026-10-31T11:52:00Z",
+    "quote": "If you specify the access for any of these permissions, all of those that are not specified are set to none.",
+    "value": "none"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "rule.github-token.permissions-key"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "id": "rule.actions.scheduled-workflows-disabled-inactivity",
+  "type": "rule",
+  "name": "Scheduled workflows disabled after 60 days of inactivity",
+  "source": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "url": "https://docs.github.com/en/actions/reference/events-that-trigger-workflows",
+    "fetched_at": "2026-10-31T11:49:26Z",
+    "quote": "In a public repository, scheduled workflows are automatically disabled when no repository activity has occurred in 60 days.",
+    "value": 60,
+    "unit": "days",
+    "scope": "public repositories"
+  },
+  "edges": [
+    {
+      "rel": "limits",
+      "to": "product.actions"
+    }
+  ]
+}

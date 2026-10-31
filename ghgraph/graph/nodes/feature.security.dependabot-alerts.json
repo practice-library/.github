@@ -1,0 +1,19 @@
+{
+  "id": "feature.security.dependabot-alerts",
+  "type": "feature",
+  "name": "Dependabot alerts availability",
+  "source": "https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/code-security/concepts/supply-chain-security/dependabot-alerts",
+    "fetched_at": "2026-10-31T11:51:30Z",
+    "quote": "Dependabot alerts are available for organization-owned and user-owned repositories."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.dependabot"
+    }
+  ]
+}

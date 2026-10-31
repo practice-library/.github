@@ -1,0 +1,21 @@
+{
+  "id": "rule.github-token.default-new-org",
+  "type": "rule",
+  "name": "New organizations default to restricted",
+  "source": "https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "url": "https://docs.github.com/en/organizations/managing-organization-settings/disabling-or-limiting-github-actions-for-your-organization",
+    "fetched_at": "2026-10-31T11:55:00Z",
+    "quote": "By default, when you create a new organization, GITHUB_TOKEN only has read access for the contents and packages scopes.",
+    "value": "read: contents, packages",
+    "scope": "new organization"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    }
+  ]
+}

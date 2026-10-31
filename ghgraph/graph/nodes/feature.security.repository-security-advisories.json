@@ -1,0 +1,20 @@
+{
+  "id": "feature.security.repository-security-advisories",
+  "type": "feature",
+  "name": "Repository security advisories for public repositories",
+  "source": "https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/repository-security-advisories",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "url": "https://docs.github.com/en/code-security/concepts/vulnerability-reporting-and-management/repository-security-advisories",
+    "fetched_at": "2026-10-31T11:51:30Z",
+    "quote": "Repository security advisories and private vulnerability reporting are available for public repositories on GitHub.",
+    "scope": "public repositories"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.private-vulnerability-reporting"
+    }
+  ]
+}

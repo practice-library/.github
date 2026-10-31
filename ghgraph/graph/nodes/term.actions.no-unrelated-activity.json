@@ -1,0 +1,20 @@
+{
+  "id": "term.actions.no-unrelated-activity",
+  "type": "term",
+  "name": "No unrelated activity on GitHub-hosted runners",
+  "source": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "denied",
+    "url": "https://docs.github.com/en/site-policy/github-terms/github-terms-for-additional-products-and-features",
+    "fetched_at": "2026-10-31T11:49:26Z",
+    "quote": "If using GitHub-hosted runners, any other activity unrelated to the production, testing, deployment, or publication of the software project associated with the repository where GitHub Actions are used.",
+    "scope": "GitHub-hosted runners"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.actions"
+    }
+  ]
+}
