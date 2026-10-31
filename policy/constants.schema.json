@@ -226,6 +226,14 @@
           "tool": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "optionalInputs": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
           }
         }
       }

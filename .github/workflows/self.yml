@@ -82,6 +82,7 @@ jobs:
     with:
       schema: ${{ matrix.schema }}
       instances: ${{ matrix.instances }}
+      expect: ${{ matrix.expect }}
 
   selftest-schema-check:
     needs: [discover]

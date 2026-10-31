@@ -7,6 +7,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
 unit_dir="$root/$(jq -er '.selftest.unitDir' "$constants")"
 lib_dir="$root/$(jq -er '.selftest.libDir' "$constants")"
+cd "$root"
 
 failed=0
 total=0

@@ -64,7 +64,10 @@
         "instances"
       ],
       "targetFile": "check.json",
-      "tool": "jsonschema"
+      "tool": "jsonschema",
+      "optionalInputs": [
+        "expect"
+      ]
     }
   ],
   "selftest": {

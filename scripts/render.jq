@@ -42,7 +42,7 @@ def withlines($inputs):
   $inputs | map("      " + . + ": ${{ matrix." + . + " }}");
 
 def checkjob($k; $id; $output; $extra):
-  ( $extra + withlines($k.inputs) ) as $with
+  ( $extra + withlines($k.inputs + (($k.optionalInputs // []) - [$extra[] | ltrimstr("      ") | split(":")[0]])) ) as $with
   | [ "  " + $id + ":",
       "    needs: [" + lookup("self.discoverJob") + "]",
       "    strategy:",
@@ -82,6 +82,7 @@ def gen:
   gsub("@@gen:(?<k>[a-z]+)@@";
     if .k == "needs" then selfneeds | tojson
     elif .k == "context" then context
+    elif .k == "checkids" then lookup("checks") | map(.id) | join(", ")
     elif .k == "outputs" then
       lookup("checks") | map(.id as $id | ("targets", "fixtures")
         | . + "-" + $id + ": ${{ steps.list.outputs." + . + "-" + $id + " }}") | join("\n      ")

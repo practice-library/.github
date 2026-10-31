@@ -1,0 +1,6 @@
+{
+  "expect": "error",
+  "env": {
+    "ROW": "{\"id\": \"schema-check\", \"workflow\": \"schema-check.yml\", \"tool\": \"jsonschema\", \"inputs\": [\"schema\", \"instances\"], \"optionalInputs\": [\"expect\", \"each\"], \"targetFile\": \"no-such-file.json\"}"
+  }
+}

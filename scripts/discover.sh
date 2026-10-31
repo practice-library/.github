@@ -11,6 +11,7 @@ constants="$root/policy/constants.json"
 fixtures_dir="$(jq -er '.selftest.fixturesDir' "$constants")"
 case_file="$(jq -er '.selftest.caseFile' "$constants")"
 cd "$root"
+lib="$root/$(jq -er '.selftest.libDir' "$constants")/discover-targets.sh"
 
 cases="$(
   for d in "$fixtures_dir"/*/; do
@@ -27,23 +28,10 @@ unknown="$(jq -c --slurpfile c "$constants" '[.[].check] - [$c[0].checks[].id] |
 
 while IFS= read -r row; do
   id="$(jq -r '.id' <<<"$row")"
-  target_file="$(jq -r '.targetFile // empty' <<<"$row")"
-  if [ -n "$target_file" ]; then
-    targets="$(
-      git ls-files -- "$target_file" "*/$target_file" | { grep -v "^$fixtures_dir/" || true; } | while IFS= read -r f; do
-        dir="$(dirname "$f")"
-        jq -c --arg dir "$dir" --arg f "$f" --argjson inputs "$(jq -c '.inputs' <<<"$row")" '
-          if (keys | sort) != ($inputs | sort) then error($f + ": keys must be exactly " + ($inputs | tojson))
-          else {target: $dir} + (with_entries(.value = (if $dir == "." then .value else $dir + "/" + .value end))) end' "$f"
-      done | jq -sc '.'
-    )"
-    while IFS= read -r p; do
-      [ -e "$p" ] || { echo "$id: $p does not exist" >&2; exit 1; }
-    done < <(jq -r --argjson inputs "$(jq -c '.inputs' <<<"$row")" '.[] | .[$inputs[]]' <<<"$targets")
-  else
-    targets='[{"target":"repository"}]'
-  fi
-  [ "$(jq 'length' <<<"$targets")" -gt 0 ] || { echo "$id: no $target_file found" >&2; exit 1; }
+  result="$(ROW="$row" EXCLUDE="^$fixtures_dir/" bash -c 'source "$1"; main' _ "$lib")"
+  [ "${result%% *}" = ok ] || { echo "$id: ${result#* }" >&2; exit 1; }
+  targets="${result#ok }"
+  [ "$(jq 'length' <<<"$targets")" -gt 0 ] || { echo "$id: no targets" >&2; exit 1; }
   fixtures="$(jq -c --arg id "$id" 'map(select(.check == $id) | del(.check))' <<<"$cases")"
   [ "$(jq 'length' <<<"$fixtures")" -gt 0 ] || { echo "$id: no self-test fixture" >&2; exit 1; }
   echo "targets-$id=$targets"
