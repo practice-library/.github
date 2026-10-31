@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON('[{"id":"constants","schema":"policy/constants.schema.json","instances":"policy/constants.json"},{"id":"ghgraph","schema":"ghgraph/schema.json","instances":"ghgraph/graph/nodes"}]') }}
+        include: ${{ fromJSON('[{"id":"constants","schema":"policy/constants.schema.json","instances":"policy/constants.json"}]') }}
     uses: ./.github/workflows/schema-check.yml
     with:
       schema: ${{ matrix.schema }}

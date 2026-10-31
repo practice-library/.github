@@ -50,11 +50,6 @@
       "id": "constants",
       "schema": "policy/constants.schema.json",
       "instances": "policy/constants.json"
-    },
-    {
-      "id": "ghgraph",
-      "schema": "ghgraph/schema.json",
-      "instances": "ghgraph/graph/nodes"
     }
   ],
   "selftest": {

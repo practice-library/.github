@@ -63,11 +63,12 @@ jobs:
           FINDING_RC: @@tools.gitleaks.findingExitCode@@
         run: |
           set -uo pipefail
+          # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
           args=(git --redact --no-banner --exit-code "$FINDING_RC")
           if [ -f "$GITHUB_WORKSPACE/$CONFIG" ]; then args+=(--config "$GITHUB_WORKSPACE/$CONFIG"); fi
           if [ -n "$RANGE" ]; then args+=("--log-opts=$RANGE"); fi
-          "$GITLEAKS" "${args[@]}" "$DIR"
-          rc=$?
+          rc=0
+          "$GITLEAKS" "${args[@]}" "$DIR" || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
       #@expect gitleaks

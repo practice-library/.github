@@ -42,10 +42,11 @@ jobs:
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
         run: |
           set -uo pipefail
+          # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
-          "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES"
-          rc=$?
+          rc=0
+          "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
       #@expect jsonschema
