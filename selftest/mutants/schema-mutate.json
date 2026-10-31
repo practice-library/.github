@@ -23,5 +23,15 @@
     "name": "true-becomes-delete",
     "find": "elif $m.mutation == \"true\" then $doc | setpath($r.path; true)",
     "replace": "elif $m.mutation == \"true\" then $doc | delpaths([$r.path])"
+  },
+  {
+    "name": "delete-does-nothing",
+    "find": "elif $m.mutation == \"delete\" then $doc | delpaths([$r.path])",
+    "replace": "elif $m.mutation == \"delete\" then $doc"
+  },
+  {
+    "name": "set-does-nothing",
+    "find": "elif ($m | has(\"set\")) then $doc | setpath($r.path; $m.set)",
+    "replace": "elif ($m | has(\"set\")) then $doc"
   }
 ]

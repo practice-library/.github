@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/same-key-siblings.md"
+  },
+  "output": "ok {\"a\":{\"x\":1},\"b\":{\"x\":2},\"c\":[{\"x\":1},{\"x\":2}]}"
+}

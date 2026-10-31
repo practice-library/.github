@@ -1,0 +1,19 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\"spec/node/schema.json\",\"CHANGELOG.md\"]",
+    "WATCH": "[\"spec/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Change"
+  },
+  "repo": {
+    "base": {
+      "CHANGELOG.md": "# Changelog\n\n## v1\n\n- one\n- two\n"
+    },
+    "head": {
+      "CHANGELOG.md": "# Changelog\n\n## v1\n\n- one\n- two\n+++ b/x\n"
+    }
+  },
+  "output": "ok CHANGELOG.md has 1 added lines"
+}

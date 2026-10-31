@@ -6,8 +6,8 @@
   },
   {
     "name": "unclosed-accepted",
-    "find": "if .cur != null then \"invalid a ```json block is not closed\"",
-    "replace": "if false then \"\""
+    "find": "elif .cur != null then \"invalid a ```json block is not closed\"",
+    "replace": "elif false then \"invalid\""
   },
   {
     "name": "control-allowed",
@@ -31,12 +31,57 @@
   },
   {
     "name": "array-accepted",
-    "find": "if ($j | type) == \"object\"",
-    "replace": "if ($j | type) == \"object\" or ($j | type) == \"array\""
+    "find": "jq -se 'length == 1 and (.[0] | type) == \"object\"'",
+    "replace": "jq -se 'length == 1'"
   },
   {
     "name": "fence-suffix-accepted",
     "find": "test(\"^```json[ \\t]*$\")",
     "replace": "test(\"^```json\")"
+  },
+  {
+    "name": "dup-keys-allowed",
+    "find": "|| { echo \"invalid a key is given twice in the block\"; return 0; }",
+    "replace": "|| true"
+  },
+  {
+    "name": "closed-objects-ignored",
+    "find": " or any(range(0; $p | length); $s.closed[$p[:.] | tojson] // false)",
+    "replace": ""
+  },
+  {
+    "name": "repeated-leaf-ignored",
+    "find": "if $s.leaves[$p | tojson] or any(",
+    "replace": "if false or any("
+  },
+  {
+    "name": "several-values-accepted",
+    "find": "jq -se 'length == 1 and (.[0] | type) == \"object\"'",
+    "replace": "jq -se '(.[0] | type) == \"object\"'"
+  },
+  {
+    "name": "other-fences-ignored",
+    "find": "elif ($l | test(\"^(`{3,}|~{3,})\")) then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "short-close-accepted",
+    "find": "\"\\($c){\\($m.f | length),}\"",
+    "replace": "\"\\($c){3,}\""
+  },
+  {
+    "name": "json-fence-any-length",
+    "find": "| (if ($m.info | test(\"^[ \\t]*json[ \\t]*$\")) then .bad = true else . end)",
+    "replace": ""
+  },
+  {
+    "name": "crlf-kept",
+    "find": "gsub(\"\\r\\n\"; \"\\n\") | split",
+    "replace": "split"
+  },
+  {
+    "name": "exact-close-only",
+    "find": "(if ($l | test(\"^```+[ \\t]*$\"))",
+    "replace": "(if ($l | test(\"^```[ \\t]*$\"))"
   }
 ]

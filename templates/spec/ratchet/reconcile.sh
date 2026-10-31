@@ -2,13 +2,20 @@
 # be held against the same fixtures. Usage:
 #   bash spec/ratchet/reconcile.sh <baseline.json> < found-keys            prints the verdict; exit 0 on ok
 #   bash spec/ratchet/reconcile.sh --write <baseline.json> < found-keys    prints a re-recorded baseline
+#   --check <name> before the baseline refuses a baseline recorded for another check.
 set -euo pipefail
 #@include ratchet.sh
-WRITE=""
-if [ "${1:-}" = --write ]; then WRITE=true; shift; fi
-[ $# -eq 1 ] || { echo "usage: reconcile.sh [--write] <baseline.json> < found-keys" >&2; exit 2; }
+WRITE=""; CHECK=""
+while [ $# -gt 1 ]; do
+  case "$1" in
+    --write) WRITE=true; shift ;;
+    --check) CHECK="${2:-}"; shift 2 ;;
+    *) break ;;
+  esac
+done
+[ $# -eq 1 ] || { echo "usage: reconcile.sh [--write] [--check <name>] <baseline.json> < found-keys" >&2; exit 2; }
 BASELINE="$1"; FOUND="$(cat)"
-out="$(BASELINE="$BASELINE" FOUND="$FOUND" WRITE="$WRITE" main)"
+out="$(BASELINE="$BASELINE" FOUND="$FOUND" WRITE="$WRITE" CHECK="$CHECK" main)"
 case "$out" in
   ok*) echo "$out" ;;
   write*) printf '%s\n' "${out#write }" | jq . ;;

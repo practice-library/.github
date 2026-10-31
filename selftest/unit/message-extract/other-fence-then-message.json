@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/other-fence-then-message.md"
+  },
+  "output": "ok {\"z\":1}"
+}

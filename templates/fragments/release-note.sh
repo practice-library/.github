@@ -5,9 +5,25 @@
 #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
 #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
 #   MESSAGES   the change's commit messages
-#   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character
+#   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character.
+#             When unset, main counts them from git for MB..HEAD: added lines (git drops blank ones), after the hunk
+#             header (so a line that starts with ++ counts), minus lines the same change removes (so a
+#             line moved within the changelog counts nothing), with whitespace changes ignored.
 main() {
   local touched
+  if [ -z "${CHANGELOG_ADDED+x}" ]; then
+    [ -n "${MB:-}" ] && [ -n "${HEAD:-}" ] || { echo "invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from"; return 0; }
+    CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-textconv --text --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
+      | jq -Rsr '
+          split("\n") as $l
+          | ([range(0; $l | length) | select($l[.] | startswith("@@"))] | first) as $i
+          | if $i == null then 0
+            else [$l[$i:][] | select(startswith("+")) | .[1:]] as $added
+              | [$l[$i:][] | select(startswith("-")) | .[1:]] as $removed
+              | reduce $removed[] as $r ($added; (index([$r]) // null) as $k | if $k == null then . else del(.[$k]) end)
+              | length
+            end')" || { echo "invalid the changelog diff could not be read"; return 0; }
+  fi
   [[ "${CHANGELOG_ADDED:-}" =~ ^[0-9]+$ ]] || { echo "invalid CHANGELOG_ADDED must be a count"; return 0; }
   if ! touched="$(jq -c --argjson w "$WATCH" '
       [.[] | select(. as $f | any($w[]; . as $p

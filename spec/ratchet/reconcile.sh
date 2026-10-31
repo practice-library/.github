@@ -3,11 +3,13 @@
 # be held against the same fixtures. Usage:
 #   bash spec/ratchet/reconcile.sh <baseline.json> < found-keys            prints the verdict; exit 0 on ok
 #   bash spec/ratchet/reconcile.sh --write <baseline.json> < found-keys    prints a re-recorded baseline
+#   --check <name> before the baseline refuses a baseline recorded for another check.
 set -euo pipefail
 # main: reconciles the findings of one run against a shrink-only baseline (spec/ratchet/schema.json).
 #   BASELINE  the baseline file
 #   FOUND     the keys the run found, one per line (blank lines and surrounding spaces ignored)
 #   WRITE     "true" to print a re-recorded baseline instead of a verdict
+#   CHECK     optional: the check this run belongs to; a baseline whose check differs is invalid
 # Each key is one of: fresh (found, not listed), explained (found and listed with a reason and an owner),
 # unexplained (listed, found or not, with an empty or missing reason or owner), paidOff (listed with a
 # reason, no longer found). Prints one line:
@@ -31,6 +33,9 @@ main() {
                or ((keys - ["key", "reason", "owner"]) != [])) then error("each entry is {key, reason, owner}, key without outer spaces")
       elif (.entries | map(.key) | length) != (.entries | map(.key) | unique | length) then error("a key is listed twice")
       else . end' "$BASELINE" 2>&1)" || { echo "invalid ${base#jq: error (at *): }"; return 0; }
+  if [ -n "${CHECK:-}" ] && [ "$(jq -r '.check' <<<"$base")" != "$CHECK" ]; then
+    echo "invalid the baseline is for check $(jq -c '.check' <<<"$base"), not \"$CHECK\""; return 0
+  fi
   printf '%s\n' "${FOUND:-}" | jq -Rr --argjson b "$base" --arg w "${WRITE:-}" -n '
     [inputs | gsub("^\\s+|\\s+$"; "") | select(length > 0)] | unique as $found
     | ($b.entries | map({(.key): .}) | add // {}) as $listed
@@ -47,11 +52,17 @@ main() {
         else "fail " + ($r | tojson) end
     end'
 }
-WRITE=""
-if [ "${1:-}" = --write ]; then WRITE=true; shift; fi
-[ $# -eq 1 ] || { echo "usage: reconcile.sh [--write] <baseline.json> < found-keys" >&2; exit 2; }
+WRITE=""; CHECK=""
+while [ $# -gt 1 ]; do
+  case "$1" in
+    --write) WRITE=true; shift ;;
+    --check) CHECK="${2:-}"; shift 2 ;;
+    *) break ;;
+  esac
+done
+[ $# -eq 1 ] || { echo "usage: reconcile.sh [--write] [--check <name>] <baseline.json> < found-keys" >&2; exit 2; }
 BASELINE="$1"; FOUND="$(cat)"
-out="$(BASELINE="$BASELINE" FOUND="$FOUND" WRITE="$WRITE" main)"
+out="$(BASELINE="$BASELINE" FOUND="$FOUND" WRITE="$WRITE" CHECK="$CHECK" main)"
 case "$out" in
   ok*) echo "$out" ;;
   write*) printf '%s\n' "${out#write }" | jq . ;;

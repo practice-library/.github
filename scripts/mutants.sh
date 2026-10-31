@@ -26,6 +26,10 @@ if f not in s: sys.exit(1)
 open(p, "w").write(s.replace(f, os.environ["REPLACE"], 1))' "$lib"; then
       echo "FAIL $name/$m: the find text is not in $lib (a stale mutant)"; bad=$((bad + 1)); cp "$lib.orig" "$lib"; continue
     fi
+    # A mutant that breaks the syntax would turn every case red without testing anything.
+    if ! bash -n "$lib" 2>/dev/null; then
+      echo "FAIL $name/$m: the mutated library does not parse, so it proves nothing"; bad=$((bad + 1)); cp "$lib.orig" "$lib"; continue
+    fi
     red="$(bash scripts/unit.sh "$name" 2>&1 | sed -n 's/^FAIL \([^:]*\):.*/\1/p' | tr '\n' ' ')" || true
     cp "$lib.orig" "$lib"
     if [ -n "$red" ]; then echo "caught $name/$m by $red"

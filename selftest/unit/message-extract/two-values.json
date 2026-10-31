@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/two-values.md"
+  },
+  "output": "invalid the block is not one JSON object"
+}

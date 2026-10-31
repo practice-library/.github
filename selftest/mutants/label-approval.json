@@ -28,5 +28,10 @@
     "name": "label-presence-ignored",
     "find": "and any($ls[]; . == $l)'",
     "replace": "'"
+  },
+  {
+    "name": "empty-login-accepted",
+    "find": "if [ -z \"$login\" ] || [ \"$login\" = \"$AUTHOR\" ]",
+    "replace": "if [ \"$login\" = \"$AUTHOR\" ]"
   }
 ]

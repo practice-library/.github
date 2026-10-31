@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "NUMSTAT": "700\t0\ta.txt",
+    "FIXTURES": "[\"/\"]",
+    "LIMIT": "600"
+  }
+}

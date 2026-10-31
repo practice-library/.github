@@ -6,5 +6,6 @@
     "CHANGELOG": "CHANGELOG.md",
     "MARKER": "Release: none",
     "MESSAGES": "Widen the envelope"
-  }
+  },
+  "output": "invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from"
 }

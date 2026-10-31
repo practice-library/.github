@@ -55,13 +55,28 @@
     "replace": "$p == $e"
   },
   {
-    "name": "attributes-honoured",
-    "find": "git --attr-source=\"$(git hash-object -t tree /dev/null)\" diff",
-    "replace": "git diff"
-  },
-  {
     "name": "root-dir-anywhere",
     "find": "($p | startswith($e | ltrimstr(\"/\")))",
     "replace": "((\"/\" + $p) | contains($e))"
+  },
+  {
+    "name": "binary-not-recounted",
+    "find": "    NUMSTAT=\"$recount\"\n",
+    "replace": "\n"
+  },
+  {
+    "name": "slash-entry-allowed",
+    "find": " and . != \"/\")",
+    "replace": ")"
+  },
+  {
+    "name": "header-plus-counted",
+    "find": "f && /^\\+/ { n++ }",
+    "replace": "/^\\+/ { n++ }"
+  },
+  {
+    "name": "text-flag-dropped",
+    "find": "added=\"$(git diff --text --no-textconv",
+    "replace": "added=\"$(git diff --no-textconv"
   }
 ]
