@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security problem
+    url: https://github.com/practice-library/.github/blob/main/SECURITY.md
+    about: Report privately through the affected repository's Security tab, never in an issue.
