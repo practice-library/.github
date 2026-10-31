@@ -280,22 +280,25 @@ jobs:
           MARKER: 'Release: none'
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the change touches no watched path, or changes the changelog, or a commit
-          # message holds the marker line; otherwise "missing ...".
+          # main: prints "ok ..." when the change touches no watched path, or adds a line with text to the
+          # changelog (a whitespace-only edit does not count), or a commit message holds the marker line;
+          # otherwise "missing ...".
           #   CHANGED    JSON array of changed paths, old and new
           #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
           #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
           #   MESSAGES   the change's commit messages
+          #   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character
           main() {
             local touched
+            [[ "${CHANGELOG_ADDED:-}" =~ ^[0-9]+$ ]] || { echo "invalid CHANGELOG_ADDED must be a count"; return 0; }
             if ! touched="$(jq -c --argjson w "$WATCH" '
                 [.[] | select(. as $f | any($w[]; . as $p
                   | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end))] | unique' <<<"$CHANGED" 2>/dev/null)"; then
               echo "invalid CHANGED and WATCH must be JSON arrays"; return 0
             fi
             if [ "$touched" = "[]" ]; then echo "ok no watched path changed"; return 0; fi
-            if jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
-              echo "ok $CHANGELOG changed"; return 0
+            if [ "$CHANGELOG_ADDED" -gt 0 ] && jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
+              echo "ok $CHANGELOG has $CHANGELOG_ADDED added lines"; return 0
             fi
             if printf '%s\n' "$MESSAGES" | sed 's/[[:space:]]*$//' | grep -qxF -- "$MARKER"; then
               echo "ok a commit message says: $MARKER"; return 0
@@ -304,7 +307,10 @@ jobs:
           }
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES
+          # Added lines of the changelog that hold text; a whitespace-only edit adds none.
+          CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
+            | { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -cE '^\+.*[^[:space:]]' || true; })"
+          export CHANGED MESSAGES CHANGELOG_ADDED
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -323,13 +329,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
+          # main: judges one changed JSON file. OLD_FILE is the file on the base commit; NEW_FILE the file on the
+          # head, or empty when the change deleted it. Prints "invalid ..." when OLD_FILE cannot be read, "skip ..."
+          # when it is not a JSON schema (its top-level $schema does not name a json-schema.org meta-schema, as an
+          # instance pointing at its own schema does not), loose ["(deleted)"] when a schema was deleted, and
+          # otherwise what compare prints.
+          main() {
+            [ -r "${OLD_FILE:-}" ] || { echo "invalid cannot read the base file"; return 0; }
+            if ! jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1; then
+              echo "skip not a JSON schema"; return 0
+            fi
+            if [ -z "${NEW_FILE:-}" ]; then echo 'loose ["(deleted)"]'; return 0; fi
+            compare
+          }
+
+          # compare: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
           # the rules below, otherwise "loose [<path>, ...]". Rules, at every place in the schema:
           #   a minimum (minItems, minLength, minProperties, minimum, exclusiveMinimum, minContains) lowered or removed;
           #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
           #   a required entry removed; an enum value added; additionalProperties false made anything else;
           #   const, pattern or format changed or removed.
-          main() {
+          compare() {
             local out
             if ! out="$(jq -cn --slurpfile o "$OLD_FILE" --slurpfile n "$NEW_FILE" '
                 $o[0] as $old | $n[0] as $new
@@ -359,19 +379,19 @@ jobs:
           while IFS=$'\t' read -r status old new; do
             new="${new:-$old}"
             OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
-            git cat-file blob "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
-            git cat-file blob "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
-            # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
-            jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
+            git cat-file blob "$MB:$old" > "$OLD_FILE" || { echo "::error file=$old::cannot read $old on the base"; exit 1; }
+            # A deleted schema accepts everything it used to refuse, so it counts as loosened.
+            if [ "$status" = D ]; then NEW_FILE=""
+            else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
             export OLD_FILE NEW_FILE
             result="$(main)"
             echo "$new: $result"
             case "$result" in
-              ok*) ;;
+              ok*|skip*) ;;
               loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
               *) echo "::error file=$new::$result"; exit 1 ;;
             esac
-          done < <(git diff --name-status -M --diff-filter=MR --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
+          done < <(git diff --name-status -M --diff-filter=MRD --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi

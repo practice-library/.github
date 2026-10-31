@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/does-not-exist.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/base.json"
+  }
+}

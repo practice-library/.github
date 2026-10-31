@@ -5,6 +5,7 @@
     "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
     "CHANGELOG": "CHANGELOG.md",
     "MARKER": "Release: none",
-    "MESSAGES": "Run unit first\n\nRelease: none"
+    "MESSAGES": "Run unit first\n\nRelease: none",
+    "CHANGELOG_ADDED": "0"
   }
 }

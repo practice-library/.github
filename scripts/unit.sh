@@ -21,11 +21,21 @@ cd "$root"
 
 failed=0
 total=0
-for lib in "$lib_dir"/*.sh; do
+# Usage: scripts/unit.sh [<library> ...]   (no argument: every library under the unit directory)
+libs=()
+if [ $# -gt 0 ]; then for n in "$@"; do libs+=("$lib_dir/$n.sh"); done; else libs=("$lib_dir"/*.sh); fi
+for lib in "${libs[@]}"; do
   name="$(basename "$lib" .sh)"
   ls "$unit_dir/$name"/*.json > /dev/null 2>&1 || { echo "FAIL $name: no unit cases under $unit_dir/$name"; failed=$((failed + 1)); continue; }
 done
-for case_path in "$unit_dir"/*/*.json; do
+cases=()
+if [ $# -gt 0 ]; then
+  for lib in "${libs[@]}"; do cases+=("$unit_dir/$(basename "$lib" .sh)"/*.json); done
+else
+  cases=("$unit_dir"/*/*.json)
+fi
+for case_path in "${cases[@]}"; do
+  [ -f "$case_path" ] || continue
   name="$(basename "$(dirname "$case_path")")"
   lib="$lib_dir/$name.sh"
   total=$((total + 1))

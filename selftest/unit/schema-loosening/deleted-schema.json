@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/base.json",
+    "NEW_FILE": ""
+  },
+  "output": "loose [\"(deleted)\"]"
+}

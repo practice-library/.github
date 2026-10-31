@@ -1,10 +1,24 @@
-# main: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
+# main: judges one changed JSON file. OLD_FILE is the file on the base commit; NEW_FILE the file on the
+# head, or empty when the change deleted it. Prints "invalid ..." when OLD_FILE cannot be read, "skip ..."
+# when it is not a JSON schema (its top-level $schema does not name a json-schema.org meta-schema, as an
+# instance pointing at its own schema does not), loose ["(deleted)"] when a schema was deleted, and
+# otherwise what compare prints.
+main() {
+  [ -r "${OLD_FILE:-}" ] || { echo "invalid cannot read the base file"; return 0; }
+  if ! jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1; then
+    echo "skip not a JSON schema"; return 0
+  fi
+  if [ -z "${NEW_FILE:-}" ]; then echo 'loose ["(deleted)"]'; return 0; fi
+  compare
+}
+
+# compare: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
 # the rules below, otherwise "loose [<path>, ...]". Rules, at every place in the schema:
 #   a minimum (minItems, minLength, minProperties, minimum, exclusiveMinimum, minContains) lowered or removed;
 #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
 #   a required entry removed; an enum value added; additionalProperties false made anything else;
 #   const, pattern or format changed or removed.
-main() {
+compare() {
   local out
   if ! out="$(jq -cn --slurpfile o "$OLD_FILE" --slurpfile n "$NEW_FILE" '
       $o[0] as $old | $n[0] as $new

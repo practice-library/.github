@@ -1,0 +1,7 @@
+{
+  "check": "schema-check",
+  "expect": "fail",
+  "each": "true",
+  "schema": "schema.json",
+  "instances": "instances"
+}

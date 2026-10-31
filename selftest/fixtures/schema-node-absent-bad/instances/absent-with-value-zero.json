@@ -1,0 +1,15 @@
+{
+  "id": "example.limit.concurrent-jobs",
+  "type": "limit",
+  "name": "Concurrent jobs on an example plan",
+  "source": "https://example.com/docs/limits",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "absent",
+    "fetched_at": "2026-10-31T12:00:00Z",
+    "quote": "Example plan | 20 | 5",
+    "value": 0,
+    "note": "The limits page lists no such figure."
+  },
+  "edges": []
+}

@@ -6,8 +6,8 @@
 #   step 3 (team access) needs an organisation owner and is only checked.
 # Usage: PIN=<sha> scripts/onboard.sh [--dry-run] <repo>
 #   <repo> a repository of the organisation, as <name> or <owner>/<name>; no other path segments
-#   GH   the command used for API calls, default "gh"; set it to run as the automation account,
-#        for example GH="et app exec --item <key item> --account <account> --app-id <id> --installation <id> -- gh"
+#   GH   the command used for API calls, default "gh"; set it to a wrapper that runs gh as the
+#        organisation's automation account
 #   PIN  required: the full 40-hex commit of this repository the callers pin
 #   REF  the label written after the pin; default the release tag (release.tag), and only when
 #        that tag exists and points at PIN; otherwise no label is written

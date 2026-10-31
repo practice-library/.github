@@ -43,7 +43,7 @@ Changes in this release:
 - schema-check.yml: new optional input `each` (`true` validates every file on its own).
 - check.json: may hold a list of targets; optional keys `expect` and `each`.
 - spec/node/schema.json: new shared fact-node schema, `$id` https://github.com/practice-library/.github/spec/node/schema.json; schema-check always resolves it.
-- spec/node/schema.json: the node envelope is checked in CI by JSON Schema only; conformance with `et network check` is verified privately, and no workflow fetches or pins `et`.
+- spec/node/schema.json: the node envelope is checked in CI by JSON Schema only.
 - leak-scan.yml and schema-check.yml: the self-test inputs are `_selftest-fixture` and `_selftest-expect` (leak-scan only); they are not part of the API.
 - automerge.yml: removed the input `allow-paths`; the allowlist is read from `.github/automerge-paths.json` (`{"paths": [...]}`) on the base commit, none when absent. Breaking.
 - automerge.yml: the input `trusted-authors` is required (no default).

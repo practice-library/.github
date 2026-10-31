@@ -2,6 +2,6 @@
   "expect": "found",
   "env": {
     "DENY": "{\"salt\":\"unit\",\"sha256\":[\"d728da035591f33dea210032999f3c466a8eeef3ef946d2451f33f7770529fd8\"]}",
-    "TEXT_FILE": "selftest/unit/denylist-scan/data/two-words-apart.txt"
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/two-words-separate.txt"
   }
 }
