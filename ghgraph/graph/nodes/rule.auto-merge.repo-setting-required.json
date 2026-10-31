@@ -1,0 +1,19 @@
+{
+  "id": "rule.auto-merge.repo-setting-required",
+  "type": "rule",
+  "name": "Auto-merge must first be allowed in repository settings",
+  "source": "https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/automatically-merging-a-pull-request",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T11:50:30Z",
+    "quote": "Before you use auto-merge, it must be enabled for the repository.",
+    "scope": "not required on branches that use a merge queue"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.auto-merge"
+    }
+  ]
+}

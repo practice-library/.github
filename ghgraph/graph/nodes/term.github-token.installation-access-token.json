@@ -1,0 +1,23 @@
+{
+  "id": "term.github-token.installation-access-token",
+  "type": "term",
+  "name": "GITHUB_TOKEN is a GitHub App installation access token",
+  "source": "https://docs.github.com/en/actions/concepts/security/github_token",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T11:52:00Z",
+    "quote": "The GITHUB_TOKEN secret is a GitHub App installation access token.",
+    "scope": "the repository that contains the workflow"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    },
+    {
+      "rel": "availableOn",
+      "to": "product.actions"
+    }
+  ]
+}

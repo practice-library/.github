@@ -1,0 +1,18 @@
+{
+  "id": "permission.github-token.contents-write-push",
+  "type": "permission",
+  "name": "contents: write needed to push",
+  "source": "https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "unknown",
+    "fetched_at": "2026-10-31T11:52:00Z",
+    "quote": "For example, contents: read permits an action to list the commits, and contents: write allows the action to create a release."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    }
+  ]
+}

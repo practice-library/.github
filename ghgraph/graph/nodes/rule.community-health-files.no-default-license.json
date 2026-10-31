@@ -1,0 +1,18 @@
+{
+  "id": "rule.community-health-files.no-default-license",
+  "type": "rule",
+  "name": "No default LICENSE file",
+  "source": "https://docs.github.com/en/communities/setting-up-your-project-for-healthy-contributions/creating-a-default-community-health-file",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "denied",
+    "fetched_at": "2026-10-31T11:49:57Z",
+    "quote": "You cannot create a default license file. License files must be added to individual repositories so the file will be included when a project is cloned, packaged, or downloaded."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.community-health-files"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+name: Correction
+description: A fact is wrong, outdated or badly sourced.
+labels: [correction]
+body:
+  - type: input
+    id: fact
+    attributes:
+      label: Fact
+      description: The fact's id, or the file and line.
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What is wrong
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: A link to the page that shows the correct fact.
+    validations:
+      required: true
+  - type: textarea
+    id: quote
+    attributes:
+      label: Quote
+      description: The sentence on that page that supports the correction, copied exactly.
+    validations:
+      required: true

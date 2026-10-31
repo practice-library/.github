@@ -1,0 +1,13 @@
+{
+  "id": "product.dependabot",
+  "type": "product",
+  "name": "Dependabot alerts",
+  "source": "https://docs.github.com/en/code-security/dependabot/dependabot-alerts/about-dependabot-alerts",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T12:20:00Z",
+    "quote": "Dependabot alerts help you find and fix vulnerable dependencies before they become security risks."
+  },
+  "edges": []
+}

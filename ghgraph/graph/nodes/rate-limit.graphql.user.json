@@ -1,0 +1,22 @@
+{
+  "id": "rate-limit.graphql.user",
+  "type": "rate-limit",
+  "name": "GraphQL API primary rate limit for users",
+  "source": "https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T11:49:35Z",
+    "quote": "For users: 5,000 points per hour per user.",
+    "value": 5000,
+    "unit": "points",
+    "scope": "per user",
+    "window": "per hour"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.graphql-api"
+    }
+  ]
+}

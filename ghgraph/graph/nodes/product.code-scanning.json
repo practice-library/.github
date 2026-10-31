@@ -1,0 +1,13 @@
+{
+  "id": "product.code-scanning",
+  "type": "product",
+  "name": "Code scanning",
+  "source": "https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T12:20:00Z",
+    "quote": "Code scanning is a feature that you use to analyze the code in a GitHub repository to find security vulnerabilities and coding errors."
+  },
+  "edges": []
+}

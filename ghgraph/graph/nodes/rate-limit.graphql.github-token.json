@@ -1,0 +1,30 @@
+{
+  "id": "rate-limit.graphql.github-token",
+  "type": "rate-limit",
+  "name": "GraphQL API rate limit for GITHUB_TOKEN",
+  "source": "https://docs.github.com/en/graphql/overview/rate-limits-and-query-limits-for-the-graphql-api",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T11:49:35Z",
+    "quote": "For GITHUB_TOKEN in GitHub Actions workflows: 1,000 points per hour per repository.",
+    "value": 1000,
+    "unit": "points",
+    "scope": "per repository",
+    "window": "per hour"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    },
+    {
+      "rel": "appliesTo",
+      "to": "product.graphql-api"
+    },
+    {
+      "rel": "appliesTo",
+      "to": "product.actions"
+    }
+  ]
+}

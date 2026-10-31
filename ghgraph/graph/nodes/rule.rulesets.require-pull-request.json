@@ -1,0 +1,18 @@
+{
+  "id": "rule.rulesets.require-pull-request",
+  "type": "rule",
+  "name": "Require a pull request before merging (with required approvals)",
+  "source": "https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T11:49:57Z",
+    "quote": "Repository administrators or custom roles with the \"edit repository rules\" permission can require that all pull requests receive a specific number of approving reviews before someone merges the pull request into a protected branch."
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.rulesets"
+    }
+  ]
+}

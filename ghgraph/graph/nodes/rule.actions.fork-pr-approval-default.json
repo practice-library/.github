@@ -1,0 +1,19 @@
+{
+  "id": "rule.actions.fork-pr-approval-default",
+  "type": "rule",
+  "name": "First-time contributors need approval to run fork PR workflows by default",
+  "source": "https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T11:49:57Z",
+    "quote": "By default, all first-time contributors require approval to run workflows.",
+    "scope": "pull requests to public repositories"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.actions"
+    }
+  ]
+}

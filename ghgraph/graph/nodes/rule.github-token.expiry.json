@@ -1,0 +1,19 @@
+{
+  "id": "rule.github-token.expiry",
+  "type": "rule",
+  "name": "GITHUB_TOKEN expiry",
+  "source": "https://docs.github.com/en/actions/concepts/security/github_token",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "limited",
+    "fetched_at": "2026-10-31T11:52:00Z",
+    "quote": "The GITHUB_TOKEN expires when the job finishes or after its effective maximum lifetime.",
+    "scope": "per job"
+  },
+  "edges": [
+    {
+      "rel": "appliesTo",
+      "to": "product.github-token"
+    }
+  ]
+}
