@@ -27,6 +27,8 @@ Auto-merge is a second workflow on `pull_request_target` that calls `automerge.y
 
 Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Pin the full commit SHA of a release with the tag as a comment, for example `@<sha> # @@release.tag@@`; Dependabot proposes the bumps (`consumer/.github/dependabot.yml`). Release tags matching @@json:tagRuleset.include@@ can be neither deleted nor moved (`rulesets/tags.json`).
 
+The fact-node envelope (`spec/node/schema.json`) is checked in CI by JSON Schema only, through `schema-check`. Conformance with `et network check` is verified privately by the maintainers' tooling; `et` is not public, so no workflow here fetches or pins it.
+
 The breaking surface is: input and output names of the reusable workflows, their file names, the required check name `@@gen:context@@`, the keys of `check.json`, and the formats of `@@gate.requiredChecksFile@@` and `@@automerge.pathsFile@@`. Any change to it is a line in `CHANGELOG.md`. A Dependabot config for repositories that call these workflows is in `consumer/.github/dependabot.yml`.
 
 ## Change something
