@@ -1,0 +1,7 @@
+{
+  "expect": "pass",
+  "env": {
+    "RCS": "0 0",
+    "FINDING": "2"
+  }
+}

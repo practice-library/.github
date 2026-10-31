@@ -19,6 +19,10 @@ on:
         description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code.
         type: string
         default: pass
+      each:
+        description: true to validate every JSON file under instances on its own; expect then has to hold for each file, so a folder of counter-examples passes only when every one of them is rejected.
+        type: string
+        default: 'false'
 permissions:
   contents: read
 jobs:
@@ -57,13 +61,42 @@ jobs:
           FIXTURE: ${{ inputs._selftest-fixture }}
           FIXTURES_DIR: selftest/fixtures
           FINDING_RC: 2
+          EACH: ${{ inputs.each }}
         run: |
           set -uo pipefail
           # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
+          # main: combines per-file exit codes into one. RCS is a space-separated list, FINDING the validator's
+          # finding exit code. Prints "pass 0" when every file passed, "finding <FINDING>" when every file was
+          # rejected with a finding, and "mixed 1" otherwise (mixed results, another error, or no files), so an
+          # expectation of pass or fail holds only when it holds for each file. The last word is the exit code.
+          main() {
+            local rc all_pass=true all_finding=true n=0
+            for rc in $RCS; do
+              n=$((n + 1))
+              [ "$rc" = 0 ] || all_pass=false
+              [ "$rc" = "$FINDING" ] || all_finding=false
+            done
+            if [ "$n" -eq 0 ]; then echo "mixed 1"; return 0; fi
+            if [ "$all_pass" = true ]; then echo "pass 0"; elif [ "$all_finding" = true ]; then echo "finding $FINDING"; else echo "mixed 1"; fi
+          }
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
-          rc=0
-          "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          if [ "$EACH" = true ]; then
+            RCS=""
+            while IFS= read -r -d '' file; do
+              one=0
+              "$JSONSCHEMA" validate "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
+              echo "exit $one: ${file#"$base"/}"
+              RCS="$RCS $one"
+            done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
+            FINDING="$FINDING_RC"
+            result="$(main)"
+            echo "$result"
+            rc="${result##* }"
+          else
+            rc=0
+            "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+          fi
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
       - name: Compare the result with the expectation

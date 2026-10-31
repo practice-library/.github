@@ -32,7 +32,7 @@ jobs:
         shell: bash
         env:
           CHECK: ${{ inputs.check }}
-          CHECKS: '[{"id":"leak-scan","workflow":"leak-scan.yml","inputs":[],"tool":"gitleaks"},{"id":"schema-check","workflow":"schema-check.yml","inputs":["schema","instances"],"targetFile":"check.json","tool":"jsonschema","optionalInputs":["expect"]}]'
+          CHECKS: '[{"id":"leak-scan","workflow":"leak-scan.yml","inputs":[],"tool":"gitleaks"},{"id":"schema-check","workflow":"schema-check.yml","inputs":["schema","instances"],"targetFile":"check.json","tool":"jsonschema","optionalInputs":["expect","each"]}]'
         run: |
           set -euo pipefail
           # main: prints "ok <JSON array>" with what the check in ROW (one row of checks) runs on, or "error <why>".
