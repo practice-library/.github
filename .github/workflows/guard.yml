@@ -371,7 +371,8 @@ jobs:
           # written as compact JSON, ["<old pattern>","<new pattern>"], with no newline. A list entry is a reviewed
           # claim that the new pattern accepts nothing the old one refused. That makes the schema tighter only where
           # a pattern counts the normal way, so the list is ignored for a pattern under not, if, oneOf or contains,
-          # and for the whole file when either schema has a $ref under one of those (it may point at the pattern). A malformed list prints "invalid", so
+          # and for the whole file when either schema has a $ref, $dynamicRef or $recursiveRef under one of those
+          # (it may point at the pattern). A reference from another file is not seen: the guard judges one file. A malformed list prints "invalid", so
           # nothing passes on a list that cannot be read; a removed pattern, or a pair not listed, stays loose.
           compare() {
             local out list entry path pair hash loose="[]" tightened="[]"
@@ -384,7 +385,7 @@ jobs:
                 | ["minItems","minLength","minProperties","minimum","exclusiveMinimum","minContains"] as $mins
                 | ["maxItems","maxLength","maxProperties","maximum","exclusiveMaximum","maxContains"] as $maxs
                 | ["not","if","oneOf","contains"] as $rev
-                | ([[$old, $new][] | paths | select(.[-1] == "$ref" and any(.[]; . as $e | $rev | index([$e])))] | length > 0) as $refrev
+                | ([[$old, $new][] | paths | select((.[-1] | IN("$ref", "$dynamicRef", "$recursiveRef")) and any(.[]; . as $e | $rev | index([$e])))] | length > 0) as $refrev
                 | [ $old | paths | select(length > 0 and (.[-1] | type) == "string") ] as $ps
                 | [ $ps[] as $p
                     | $p[-1] as $k

@@ -68,5 +68,30 @@
     "name": "any-keyword-pair",
     "find": "pair: (if $k == \"pattern\" and ",
     "replace": "pair: (if "
+  },
+  {
+    "name": "if-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"oneOf\",\"contains\"] as $rev"
+  },
+  {
+    "name": "contains-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"if\",\"oneOf\"] as $rev"
+  },
+  {
+    "name": "oneof-not-reversing",
+    "find": "[\"not\",\"if\",\"oneOf\",\"contains\"] as $rev",
+    "replace": "[\"not\",\"if\",\"contains\"] as $rev"
+  },
+  {
+    "name": "dynamic-refs-unseen",
+    "find": "IN(\"$ref\", \"$dynamicRef\", \"$recursiveRef\")",
+    "replace": "IN(\"$ref\")"
+  },
+  {
+    "name": "recursive-ref-unseen",
+    "find": "IN(\"$ref\", \"$dynamicRef\", \"$recursiveRef\")",
+    "replace": "IN(\"$ref\", \"$dynamicRef\")"
   }
 ]
