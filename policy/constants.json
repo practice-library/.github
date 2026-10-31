@@ -163,5 +163,9 @@
       20
     ],
     "holdSeconds": 20
+  },
+  "spec": {
+    "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
+    "nodeSchemaPath": "spec/node/schema.json"
   }
 }

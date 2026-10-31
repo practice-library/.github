@@ -1,0 +1,13 @@
+{
+  "id": "example.widget",
+  "type": "product",
+  "name": "GitHub Actions",
+  "source": "https://docs.github.com/en/actions/get-started/understand-github-actions",
+  "measuredAt": "2026-10-31",
+  "attrs": {
+    "verdict": "allowed",
+    "fetched_at": "2026-10-31T12:20:00Z",
+    "quote": "GitHub Actions is a continuous integration and continuous delivery (CI/CD) platform that allows you to automate your build, test, and deployment pipeline."
+  },
+  "edges": []
+}

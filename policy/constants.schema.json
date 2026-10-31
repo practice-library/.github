@@ -18,7 +18,8 @@
     "automerge",
     "ruleset",
     "dependabot",
-    "canary"
+    "canary",
+    "spec"
   ],
   "$defs": {
     "sha1": {
@@ -535,6 +536,23 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 300
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodeSchemaId",
+        "nodeSchemaPath"
+      ],
+      "properties": {
+        "nodeSchemaId": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "nodeSchemaPath": {
+          "$ref": "#/$defs/path"
         }
       }
     }

@@ -45,17 +45,22 @@ jobs:
           FIXTURES_DIR: @@selftest.fixturesDir@@
           FINDING_RC: @@tools.jsonschema.findingExitCode@@
           EACH: ${{ inputs.each }}
+          NODE_SPEC: '@@render:spec/node/schema.json@@'
         run: |
           set -uo pipefail
           # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
           #@include each-result.sh
           base="$GITHUB_WORKSPACE"
           if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
+          # The shared fact-node envelope (@@spec.nodeSchemaId@@) is always resolvable, so a domain
+          # schema can reference it without keeping a copy.
+          printf '%s' "$NODE_SPEC" > "$RUNNER_TEMP/node-spec.json"
+          resolve=(--resolve "$RUNNER_TEMP/node-spec.json")
           if [ "$EACH" = true ]; then
             RCS=""
             while IFS= read -r -d '' file; do
               one=0
-              "$JSONSCHEMA" validate "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
+              "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$file" > /dev/null 2>&1 || one=$?
               echo "exit $one: ${file#"$base"/}"
               RCS="$RCS $one"
             done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
@@ -65,7 +70,7 @@ jobs:
             rc="${result##* }"
           else
             rc=0
-            "$JSONSCHEMA" validate "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
+            "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
           fi
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]

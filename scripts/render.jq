@@ -7,6 +7,7 @@
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
 #   @@gen:needs@@             the gate's needs: static self jobs, then each check and its self-test
 #   @@gen:context@@           the required check name, callerJob / innerJob, after proving both are rendered job ids
+#   @@render:<template>@@     that template rendered, as compact JSON for a single-quoted YAML scalar
 #   @@gen:unowned@@           one CODEOWNERS line per auto-merge allowlist path, with no owner
 # Inputs: $c (constants, --slurpfile), $frags (fragment name -> text), $all (template path -> text), $t (this template).
 
@@ -78,6 +79,9 @@ def context:
       then error("gate.innerJob " + $inner + " is not a job in " + lookup("gate.workflow"))
     else $caller + " / " + $inner end;
 
+def embed:
+  gsub("@@render:(?<p>[A-Za-z0-9_./-]+)@@"; rendered(.p) | fromjson | tojson | gsub("'"; "''"));
+
 def gen:
   gsub("@@gen:(?<k>[a-z]+)@@";
     if .k == "needs" then selfneeds | tojson
@@ -100,4 +104,4 @@ def verifyneeds:
         else $text end
     else $text end;
 
-$t | verifyneeds | expand | genjobs | gen | fill
+$t | verifyneeds | expand | genjobs | embed | gen | fill
