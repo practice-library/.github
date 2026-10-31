@@ -1,5 +1,0 @@
-# Secret scan used by the leak-scan workflow: gitleaks' built-in rules, nothing added.
-title = "practice-library"
-
-[extend]
-useDefault = true
