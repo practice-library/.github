@@ -89,11 +89,14 @@ jobs:
           # and committer name of the change MB..HEAD in the current repository. The content diff is taken with
           # --text and --no-textconv, so no .gitattributes in the change (-diff, binary, a diff driver) can hide a
           # line. Words inside compressed binary files (images, archives) are not visible as text.
+          # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
+          # added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config.
           collect() {
-            git diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" | awk '
-              /^\+\+\+ / { f = substr($0, 7); next }
-              /^@@/ { match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-              /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
+            git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --unified=0 "$MB" "$HEAD" | awk '
+              /^diff --git / { hdr = 1; next }
+              hdr && /^\+\+\+ / { f = substr($0, 5); next }
+              /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+              !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
             # An added path is reported by its place in the list, since the path may hold the term.
             git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
             git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
