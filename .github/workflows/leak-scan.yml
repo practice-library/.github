@@ -1,0 +1,102 @@
+# Generated from templates/.github/workflows/leak-scan.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: leak-scan
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Gitleaks config path in the calling repository; the default rules apply when the file is absent.
+        type: string
+        default: .gitleaks.toml
+      fixture:
+        description: Self-test only. A fixture directory under selftest/fixtures to scan instead of the checkout.
+        type: string
+        default: ''
+      expect:
+        description: pass or fail. Callers outside the self-test leave it at pass.
+        type: string
+        default: pass
+permissions:
+  contents: read
+jobs:
+  scan:
+    name: leak-scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch gitleaks 8.30.1, pinned by sha256
+        shell: bash
+        env:
+          TOOL_URL: https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          TOOL_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          TOOL_ARCHIVE: tar.gz
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/tools/gitleaks"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 "$TOOL_URL" -o "$dir/archive"
+          echo "$TOOL_SHA256  $dir/archive" | sha256sum -c -
+          case "$TOOL_ARCHIVE" in
+            tar.gz) tar -xzf "$dir/archive" -C "$dir" ;;
+            zip) unzip -q "$dir/archive" -d "$dir" ;;
+            *) echo "::error::unknown archive type $TOOL_ARCHIVE"; exit 1 ;;
+          esac
+      - name: Choose what to scan
+        id: target
+        shell: bash
+        env:
+          FIXTURE: ${{ inputs.fixture }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          FIXTURES_DIR: selftest/fixtures
+          BUILDER: selftest/build.sh
+        run: |
+          set -euo pipefail
+          if [ -n "$FIXTURE" ]; then
+            bash "$BUILDER" "$FIXTURES_DIR/$FIXTURE" "$RUNNER_TEMP/fixture" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "dir=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
+          range=""
+          case "$EVENT" in
+            pull_request|pull_request_target) range="$PR_BASE..$PR_HEAD" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
+          esac
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+      - name: Scan
+        id: run
+        shell: bash
+        env:
+          GITLEAKS: ${{ runner.temp }}/tools/gitleaks/gitleaks
+          DIR: ${{ steps.target.outputs.dir }}
+          RANGE: ${{ steps.target.outputs.range }}
+          CONFIG: ${{ inputs.config }}
+          FINDING_RC: 42
+        run: |
+          set -uo pipefail
+          args=(git --redact --no-banner --exit-code "$FINDING_RC")
+          if [ -f "$GITHUB_WORKSPACE/$CONFIG" ]; then args+=(--config "$GITHUB_WORKSPACE/$CONFIG"); fi
+          if [ -n "$RANGE" ]; then args+=("--log-opts=$RANGE"); fi
+          "$GITLEAKS" "${args[@]}" "$DIR"
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
+      - name: Compare the result with the expectation
+        shell: bash
+        env:
+          EXPECT: ${{ inputs.expect }}
+          RC: ${{ steps.run.outputs.rc }}
+          FINDING_RC: 42
+        run: |
+          set -euo pipefail
+          case "$EXPECT" in
+            pass) [ "$RC" = 0 ] || { echo "::error::gitleaks reported findings (exit $RC)"; exit 1; } ;;
+            fail) [ "$RC" = "$FINDING_RC" ] || { echo "::error::expected gitleaks to report a finding (exit $FINDING_RC), got exit $RC"; exit 1; } ;;
+            *) echo "::error::expect must be pass or fail, got $EXPECT"; exit 1 ;;
+          esac

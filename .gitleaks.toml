@@ -1,0 +1,4 @@
+# Generated from templates/.gitleaks.toml and policy/constants.json by scripts/render.sh. Do not edit.
+# Gitleaks' own default rules; a repository adds its own rules below the extend block.
+[extend]
+useDefault = true

@@ -1,0 +1,73 @@
+name: leak-scan
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Gitleaks config path in the calling repository; the default rules apply when the file is absent.
+        type: string
+        default: @@leakScan.config@@
+      fixture:
+        description: Self-test only. A fixture directory under @@selftest.fixturesDir@@ to scan instead of the checkout.
+        type: string
+        default: ''
+      expect:
+        description: pass or fail. Callers outside the self-test leave it at pass.
+        type: string
+        default: pass
+permissions:
+  contents: read
+jobs:
+  scan:
+    name: leak-scan
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    steps:
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      #@fetch gitleaks
+      - name: Choose what to scan
+        id: target
+        shell: bash
+        env:
+          FIXTURE: ${{ inputs.fixture }}
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+          FIXTURES_DIR: @@selftest.fixturesDir@@
+          BUILDER: @@selftest.builder@@
+        run: |
+          set -euo pipefail
+          if [ -n "$FIXTURE" ]; then
+            bash "$BUILDER" "$FIXTURES_DIR/$FIXTURE" "$RUNNER_TEMP/fixture" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "dir=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
+          range=""
+          case "$EVENT" in
+            pull_request|pull_request_target) range="$PR_BASE..$PR_HEAD" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
+          esac
+          echo "range=$range" >> "$GITHUB_OUTPUT"
+      - name: Scan
+        id: run
+        shell: bash
+        env:
+          GITLEAKS: ${{ runner.temp }}/tools/gitleaks/@@tools.gitleaks.bin@@
+          DIR: ${{ steps.target.outputs.dir }}
+          RANGE: ${{ steps.target.outputs.range }}
+          CONFIG: ${{ inputs.config }}
+          FINDING_RC: @@tools.gitleaks.findingExitCode@@
+        run: |
+          set -uo pipefail
+          args=(git --redact --no-banner --exit-code "$FINDING_RC")
+          if [ -f "$GITHUB_WORKSPACE/$CONFIG" ]; then args+=(--config "$GITHUB_WORKSPACE/$CONFIG"); fi
+          if [ -n "$RANGE" ]; then args+=("--log-opts=$RANGE"); fi
+          "$GITLEAKS" "${args[@]}" "$DIR"
+          rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
+      #@expect gitleaks
