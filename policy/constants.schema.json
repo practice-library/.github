@@ -105,7 +105,8 @@
         "name",
         "repo",
         "defaultBranch",
-        "trustedAuthors"
+        "trustedAuthors",
+        "maintainer"
       ],
       "properties": {
         "name": {
@@ -127,6 +128,10 @@
             "minLength": 1
           },
           "uniqueItems": true
+        },
+        "maintainer": {
+          "type": "string",
+          "pattern": "^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$"
         }
       }
     },
@@ -390,7 +395,11 @@
         "name",
         "enforcement",
         "requiredApprovals",
-        "allowedMergeMethods"
+        "allowedMergeMethods",
+        "requireCodeOwnerReview",
+        "strictStatusChecks",
+        "dismissStaleReviews",
+        "requireLastPushApproval"
       ],
       "properties": {
         "name": {
@@ -420,6 +429,18 @@
             ]
           },
           "uniqueItems": true
+        },
+        "requireCodeOwnerReview": {
+          "type": "boolean"
+        },
+        "strictStatusChecks": {
+          "type": "boolean"
+        },
+        "dismissStaleReviews": {
+          "type": "boolean"
+        },
+        "requireLastPushApproval": {
+          "type": "boolean"
         }
       }
     }

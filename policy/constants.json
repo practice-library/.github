@@ -6,7 +6,8 @@
     "defaultBranch": "main",
     "trustedAuthors": [
       "practice-library[bot]"
-    ]
+    ],
+    "maintainer": "@practice-library/maintainers"
   },
   "runner": {
     "image": "ubuntu-24.04",
@@ -113,6 +114,10 @@
     "allowedMergeMethods": [
       "merge",
       "squash"
-    ]
+    ],
+    "requireCodeOwnerReview": true,
+    "strictStatusChecks": true,
+    "dismissStaleReviews": true,
+    "requireLastPushApproval": true
   }
 }
