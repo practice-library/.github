@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "output": "invalid a control character in the block",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/control-del.md"
+  }
+}

@@ -14,6 +14,8 @@ refresh-report and sources moved here from practice-library/graphs in v2.1.0. Th
 
 ## node
 
+The schema is the normative contract and its `$id` is stable ([node/README.md](node/README.md)).
+
 `attrs.verdict` is `allowed`, `denied` or `limited` for what a page states, `unknown` when it could not be confirmed, and `absent` when the page was checked and does not state it. An `absent` node has a `note` naming the page checked and no `value`. `attrs.basis` is `documented` (the default) or `observed`. An observed node's `source` is the run or record that measured it, and its `quote` a line copied exactly from that log. A node with an `observes` edge must be observed. `measuredAt` and `attrs.fetched_at` are real calendar dates. Whether an `observes` edge points at a documented node of the same graph needs the other nodes, so the graph's own checker judges it.
 
 ## refresh-report
