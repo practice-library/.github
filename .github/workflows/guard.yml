@@ -5,7 +5,7 @@ name: guard
 #                     the list (salted sha256 entries) is read from the base commit
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "Release: none"
-#   schema-loosening  a loosened JSON schema needs the label "schema-loosening-approved" from someone other
+#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "schema-loosening-approved" from someone other
 #                     than the author and not a bot; the caller's pull_request types include labeled
 on:
   workflow_call:
@@ -287,7 +287,8 @@ jobs:
             OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
             git show "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
             git show "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
-            jq -e 'type == "object" and has("$schema")' "$OLD_FILE" > /dev/null 2>&1 || continue
+            # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
+            jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
             export OLD_FILE NEW_FILE
             result="$(main)"
             echo "$new: $result"
