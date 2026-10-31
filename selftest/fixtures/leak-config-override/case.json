@@ -1,0 +1,16 @@
+{
+  "check": "leak-scan",
+  "expect": "fail",
+  "base_files": {
+    ".gitleaks.toml": "[extend]\nuseDefault = true\n"
+  },
+  "files": {
+    ".gitleaks.toml": "[extend]\nuseDefault = true\n\n[allowlist]\npaths = ['''.*''']\n"
+  },
+  "plant": {
+    "path": "config.env",
+    "prefix": "ghp_",
+    "length": 36,
+    "format": "TOKEN=%s"
+  }
+}

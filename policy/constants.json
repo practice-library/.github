@@ -43,7 +43,8 @@
     }
   },
   "leakScan": {
-    "config": ".gitleaks.toml"
+    "config": ".gitleaks.toml",
+    "defaultConfig": "[extend]\nuseDefault = true\n"
   },
   "schemas": [
     {

@@ -165,11 +165,16 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "config"
+        "config",
+        "defaultConfig"
       ],
       "properties": {
         "config": {
           "$ref": "#/$defs/path"
+        },
+        "defaultConfig": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

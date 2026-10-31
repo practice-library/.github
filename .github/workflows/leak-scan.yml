@@ -44,7 +44,7 @@ jobs:
             zip) unzip -q "$dir/archive" -d "$dir" ;;
             *) echo "::error::unknown archive type $TOOL_ARCHIVE"; exit 1 ;;
           esac
-      - name: Choose what to scan
+      - name: Choose what to scan, and the commit the config is read from
         id: target
         shell: bash
         env:
@@ -64,11 +64,13 @@ jobs:
           fi
           echo "dir=$GITHUB_WORKSPACE" >> "$GITHUB_OUTPUT"
           range=""
+          base=HEAD
           case "$EVENT" in
-            pull_request|pull_request_target) range="$PR_BASE..$PR_HEAD" ;;
-            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then range="$PUSH_BEFORE..$PUSH_AFTER"; fi ;;
+            pull_request|pull_request_target) range="$PR_BASE..$PR_HEAD"; base="$PR_BASE" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then range="$PUSH_BEFORE..$PUSH_AFTER"; base="$PUSH_BEFORE"; fi ;;
           esac
           echo "range=$range" >> "$GITHUB_OUTPUT"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
       - name: Scan
         id: run
         shell: bash
@@ -76,16 +78,33 @@ jobs:
           GITLEAKS: ${{ runner.temp }}/tools/gitleaks/gitleaks
           DIR: ${{ steps.target.outputs.dir }}
           RANGE: ${{ steps.target.outputs.range }}
+          BASE: ${{ steps.target.outputs.base }}
           CONFIG: ${{ inputs.config }}
+          DEFAULT_CONFIG: '"[extend]\nuseDefault = true\n"'
           FINDING_RC: 42
         run: |
           set -uo pipefail
           # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
-          args=(git --redact --no-banner --exit-code "$FINDING_RC")
-          if [ -f "$GITHUB_WORKSPACE/$CONFIG" ]; then args+=(--config "$GITHUB_WORKSPACE/$CONFIG"); fi
+          cd "$DIR" || exit 1
+          # The config always comes from the base commit, never from the change being scanned, and it is
+          # always passed, so gitleaks never falls back to a .gitleaks.toml in the scanned tree.
+          config="$RUNNER_TEMP/gitleaks-base.toml"
+          if git cat-file -e "$BASE:$CONFIG" 2>/dev/null; then
+            git show "$BASE:$CONFIG" > "$config" || exit 1
+          else
+            jq -nr --argjson d "$DEFAULT_CONFIG" '$d' > "$config" || exit 1
+          fi
+          # No .gitleaksignore and no gitleaks:allow comment can silence a finding. gitleaks also loads a
+          # .gitleaksignore from the scanned root whatever --gitleaks-ignore-path says, so it is removed from
+          # this job's own checkout; the scan reads git history, not the working tree.
+          rm -rf -- .gitleaksignore
+          no_ignore="$RUNNER_TEMP/no-gitleaksignore"
+          mkdir -p "$no_ignore"
+          args=(git --redact --no-banner --exit-code "$FINDING_RC" --config "$config"
+                --ignore-gitleaks-allow --gitleaks-ignore-path "$no_ignore")
           if [ -n "$RANGE" ]; then args+=("--log-opts=$RANGE"); fi
           rc=0
-          "$GITLEAKS" "${args[@]}" "$DIR" || rc=$?
+          "$GITLEAKS" "${args[@]}" . || rc=$?
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
           [ "$rc" -eq 0 ] || [ "$rc" -eq "$FINDING_RC" ]
       - name: Compare the result with the expectation
