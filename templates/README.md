@@ -4,7 +4,7 @@ Organisation defaults for @@org.name@@: community files, reusable workflows, and
 
 ## Plug a repository in
 
-Add one workflow that calls the checks it needs and ends in a job named `@@gate.callerJob@@` (pin `<sha>` to a commit of this repository):
+Add one workflow that calls the checks it needs and ends in a job named `@@gate.callerJob@@` (pin `<sha>` to a commit of this repository), and list exactly the jobs the gate needs in `@@gate.requiredChecksFile@@` as `{"jobs": [...]}`; it must include @@json:gate.mandatoryJobs@@:
 
 ```yaml
 on: [pull_request]
@@ -19,7 +19,6 @@ jobs:
     uses: @@org.name@@/@@org.repo@@/.github/workflows/gate.yml@<sha>
     with:
       needs: ${{ toJSON(needs) }}
-      required: '@@json:gate.requiredJobs@@'
 ```
 
 Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required inputs `allow-paths` and `trusted-authors`. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge. Branches need not be up to date with `@@org.defaultBranch@@` before merging (strict status checks off): a workflow can only update a branch with its own token, and pushes made with that token start no checks, so strict checks would leave automation pull requests waiting forever. The run on `@@org.defaultBranch@@` after every merge shows any combination that breaks.

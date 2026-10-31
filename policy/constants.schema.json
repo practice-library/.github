@@ -346,7 +346,8 @@
         "workflow",
         "callerWorkflow",
         "actionsIntegrationId",
-        "requiredJobs"
+        "mandatoryJobs",
+        "requiredChecksFile"
       ],
       "properties": {
         "callerJob": {
@@ -367,7 +368,7 @@
         "callerWorkflow": {
           "$ref": "#/$defs/path"
         },
-        "requiredJobs": {
+        "mandatoryJobs": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
@@ -375,6 +376,9 @@
             "type": "string",
             "pattern": "^[a-z][a-z0-9-]*$"
           }
+        },
+        "requiredChecksFile": {
+          "$ref": "#/$defs/path"
         }
       }
     },

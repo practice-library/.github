@@ -31,7 +31,7 @@ Do these once, in order, when a repository joins @@org.name@@. The automation ac
 <one line per allowlisted path, with no owner>
 ```
 
-- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `@@gate.callerJob@@`, which calls `gate.yml` with `required: '@@json:gate.requiredJobs@@'` (see the README).
+- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `@@gate.callerJob@@`, which calls `gate.yml`; list exactly the jobs the gate needs in `@@gate.requiredChecksFile@@` as `{"jobs": [...]}`, including @@json:gate.mandatoryJobs@@ (see the README).
 - [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `allow-paths: '<the repository's own allowlist, [] for none>'` and `trusted-authors: '@@json:org.trustedAuthors@@'`.
 - [ ] Pin every `uses:` of this repository to a full commit SHA of `@@org.repo@@`.
 - Confirm: `GET repos/$R/codeowners/errors` returns no errors, and the pull request's `@@gen:context@@` check passes. Neither CODEOWNERS nor the auto-merge caller is on the default branch yet, so this first pull request needs no review and does not merge itself: a maintainer merges it.

@@ -102,4 +102,3 @@ jobs:
     uses: ./.github/workflows/gate.yml
     with:
       needs: ${{ toJSON(needs) }}
-      required: '["leak-scan"]'

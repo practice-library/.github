@@ -91,11 +91,11 @@ def gen:
 def verifyneeds:
   . as $text
   | if ($text | test("@@gen:needs@@")) then
-      ($text | expand | genjobs | fill | jobkeys) as $keys
+      (rendered(lookup("gate.callerWorkflow")) | jobkeys) as $keys
       | (selfneeds - $keys) as $missing
-      | (lookup("gate.requiredJobs") - selfneeds) as $unneeded
+      | (lookup("gate.mandatoryJobs") - selfneeds) as $unneeded
       | if ($missing | length) > 0 then error("gate needs jobs that are not rendered: " + ($missing | tojson))
-        elif ($unneeded | length) > 0 then error("gate.requiredJobs are not among the gate's needs: " + ($unneeded | tojson))
+        elif ($unneeded | length) > 0 then error("gate.mandatoryJobs are not among the gate's needs: " + ($unneeded | tojson))
         else $text end
     else $text end;
 

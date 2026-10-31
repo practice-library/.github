@@ -102,9 +102,10 @@
     "workflow": ".github/workflows/gate.yml",
     "callerWorkflow": ".github/workflows/self.yml",
     "actionsIntegrationId": 15368,
-    "requiredJobs": [
+    "mandatoryJobs": [
       "leak-scan"
-    ]
+    ],
+    "requiredChecksFile": ".github/required-checks.json"
   },
   "automerge": {
     "mergeMethod": "merge",

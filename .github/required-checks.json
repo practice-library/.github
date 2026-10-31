@@ -1,0 +1,11 @@
+{
+  "jobs": [
+    "render",
+    "discover",
+    "unit",
+    "leak-scan",
+    "selftest-leak-scan",
+    "schema-check",
+    "selftest-schema-check"
+  ]
+}

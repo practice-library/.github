@@ -1,7 +1,8 @@
 {
-  "expect": "ok",
+  "expect": "unlisted",
   "env": {
     "NEEDS": "{\"leak-scan\":{\"result\":\"success\"},\"render\":{\"result\":\"success\"}}",
-    "REQUIRED": "[\"leak-scan\"]"
+    "REQUIRED": "[\"leak-scan\"]",
+    "MANDATORY": "[\"leak-scan\"]"
   }
 }

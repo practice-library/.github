@@ -1,7 +1,0 @@
-{
-  "expect": "missing",
-  "env": {
-    "NEEDS": "{\"leak-scan\":{\"result\":\"success\"}}",
-    "REQUIRED": "[]"
-  }
-}
