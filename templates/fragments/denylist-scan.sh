@@ -6,10 +6,11 @@
 # .gitattributes in the change (-diff, binary, a diff driver) can hide a line. Words inside compressed
 # binary files (images, archives) are not visible as text.
 # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
-# added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config.
-# EVENT is the GitHub event. On push, merge commits are not judged: the change was judged as a pull
-# request already, and a merge made in the browser is authored by whoever pressed merge. On any other
-# event, or when EVENT is unset, every commit is judged.
+# added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config;
+# git ends the header with a tab when the path holds a space, and that tab is dropped.
+# EVENT is the GitHub event. On push, the author name of a merge commit is not judged: a merge made in
+# the browser is authored by whoever pressed merge. Its message and committer are judged like any other.
+# On any other event, or when EVENT is unset, every author name is judged.
 collect() {
   local skip=() buf
   if [ "${EVENT:-}" = push ]; then skip=(--no-merges); fi
@@ -18,16 +19,17 @@ collect() {
     || { rm -f "$buf"; return 1; }
   awk '
     /^diff --git / { hdr = 1; next }
-    hdr && /^\+\+\+ / { f = substr($0, 5); next }
+    hdr && /^\+\+\+ / { f = substr($0, 5); sub(/\t$/, "", f); next }
     /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
     !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }' "$buf"
   # An added path is reported by its place in the list, since the path may hold the term.
   git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
   awk '{ print "added path " NR "\t" $0 }' "$buf"
-  git log ${skip[@]+"${skip[@]}"} --format='author %H%x09%an%ncommitter %H%x09%cn' "$MB..$HEAD" > "$buf" \
-    || { rm -f "$buf"; return 1; }
+  git log ${skip[@]+"${skip[@]}"} --format='author %H%x09%an' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
   cat "$buf"
-  git log ${skip[@]+"${skip[@]}"} --format='::guard-commit:: %H%n%B' "$MB..$HEAD" > "$buf" \
+  git log --format='committer %H%x09%cn' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
+  cat "$buf"
+  git log --format='::guard-commit:: %H%n%B' "$MB..$HEAD" > "$buf" \
     || { rm -f "$buf"; return 1; }
   awk '
     /^::guard-commit:: / { c = substr($0, 18); next }
@@ -74,12 +76,15 @@ if not hashes:
     sys.exit(0)
 def h(term):
     return hashlib.sha256((salt + ":" + term).encode()).hexdigest()
+# A name row is exactly "author <id>" or "committer <id>"; a path or a line in a file named "author x"
+# never is, since its where carries ":<line>" or starts with "added path".
+name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
 found = []
 with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
     for line in f:
         where, _, text = line.rstrip("\n").partition("\t")
         words = re.findall(r"[a-z0-9]+", text.lower())
-        if where.startswith(("author ", "committer ")) and h(" ".join(words)) in allow:
+        if name_row.fullmatch(where) and h(" ".join(words)) in allow:
             continue
         terms = set(words)
         for a, b in zip(words, words[1:]):

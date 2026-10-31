@@ -14,7 +14,8 @@
     "message": "Add notes",
     "merge": {
       "author": "Zebracorn",
-      "message": "Merge the notes"
+      "message": "Merge the notes",
+      "committer": "GitHub"
     }
   }
 }

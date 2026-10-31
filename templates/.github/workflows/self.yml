@@ -33,6 +33,8 @@ jobs:
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
+          # The denylist canary reads the author of a past merge commit from history.
+          fetch-depth: 0
           persist-credentials: false
       - name: Unit cases for the logic the workflows embed
         run: bash @@self.unitScript@@

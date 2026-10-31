@@ -2,7 +2,7 @@ name: guard
 # Mechanical review checks, one per call: guard is one of @@gen:guardids@@.
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
-#                     on push, merge commits are not judged (the pull request was)
+#                     on push, a merge commit's author name is not judged (whoever pressed merge)
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "@@guards.loosenLabel@@" from someone other
