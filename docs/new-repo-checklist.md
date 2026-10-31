@@ -1,44 +1,48 @@
 <!-- Generated from templates/docs/new-repo-checklist.md and policy/constants.json by scripts/render.sh. Do not edit. -->
 # New repository checklist
 
-Do these once, in order, when a repository joins practice-library. Each step names how to confirm it. The values come from `policy/constants.json`.
+Do these once, in order, when a repository joins practice-library. The automation account runs every step through the API except step 3, which only an organisation owner can do. Each step names how to confirm it. The values come from `policy/constants.json`. In the commands, `$R` is `practice-library/<repo>`; run each one as the automation account, through the app token wrapper.
 
-## 1. Security settings (Settings, Advanced Security)
+## 0. A clone that pushes as the automation account
 
-- [ ] Private vulnerability reporting: on. Confirm: `GET /repos/practice-library/<repo>/private-vulnerability-reporting` returns `"enabled": true`.
-- [ ] Secret scanning: on.
-- [ ] Push protection: on.
-- [ ] Dependabot alerts: on.
-- Confirm the scanning settings: `GET /repos/practice-library/<repo>` shows `security_and_analysis.secret_scanning` and `secret_scanning_push_protection` as `enabled`.
+- [ ] In a fresh clone, make git ask `gh` for credentials, so pushes use the app token instead of a keychain login (which GitHub refuses):
+  `git config --local --add credential.helper ''` then `git config --local --add credential.helper '!gh auth git-credential'`.
+- [ ] Set the author to the automation account (`user.name` and `user.email`), with no co-author trailer.
 
-## 2. Merge settings (Settings, General)
+## 1. Security settings
 
-- [ ] Allow auto-merge: on. Confirm: `allow_auto_merge` is `true`.
-- [ ] Allowed merge methods match the ruleset: ["merge","squash"].
+- [ ] Private vulnerability reporting: `gh api -X PUT repos/$R/private-vulnerability-reporting`. Confirm: a `GET` of the same path returns `"enabled": true`.
+- [ ] Secret scanning and push protection: `gh api -X PATCH repos/$R -f 'security_and_analysis[secret_scanning][status]=enabled' -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'`. Confirm: both show `enabled` in `GET repos/$R`.
+- [ ] Dependabot alerts: `gh api -X PUT repos/$R/vulnerability-alerts`. Confirm: a `GET` of the same path returns 204.
 
-## 3. Maintainers
+## 2. Merge settings
 
-- [ ] Give the team `@practice-library/maintainers` Write access to the repository.
-- [ ] Add `.github/CODEOWNERS`. Confirm: `GET /repos/practice-library/<repo>/codeowners/errors` returns no errors.
+- [ ] Auto-merge on, and only the ruleset's merge methods (["merge","squash"]) allowed: `gh api -X PATCH repos/$R -F allow_auto_merge=true` plus `-F allow_<method>_merge=false` for every other method. Confirm: `GET repos/$R` shows them.
+
+## 3. Maintainers (organisation owner, by hand)
+
+- [ ] Give the team `@practice-library/maintainers` Write access to the repository: Organisation, Teams, the team, Repositories, Add repository, then Role: Write. The automation account cannot do this: the app has no organisation members permission. Confirm: `GET repos/$R/teams` lists the team with `push`.
+
+## 4. Files, in one pull request from the automation account
+
+- [ ] `.github/CODEOWNERS`, giving everything to the maintainers and leaving the repository's auto-merge allowlist unowned:
 
 ```
 * @practice-library/maintainers
-/ghgraph/graph/nodes/
-/ghgraph/INDEX.md
+<one line per allowlisted path, with no owner>
 ```
 
-## 4. Workflows
+- [ ] A caller workflow on `pull_request` and `push` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml` with `required: '["leak-scan"]'` (see the README).
+- [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `allow-paths: '<the repository's own allowlist, [] for none>'` and `trusted-authors: '["practice-library[bot]"]'`.
+- [ ] Pin every `uses:` of this repository to a full commit SHA of `.github`.
+- Confirm: `GET repos/$R/codeowners/errors` returns no errors, and the pull request's `gate / gate` check passes. Neither CODEOWNERS nor the auto-merge caller is on the default branch yet, so this first pull request needs no review and does not merge itself: a maintainer merges it.
 
-- [ ] A caller workflow on `pull_request` that runs the checks the repository needs and ends in a job named `gate`, which calls `gate.yml` with `required: '["leak-scan"]'` (see the README).
-- [ ] A caller workflow on `pull_request_target` that calls `automerge.yml` with `allow-paths: '<the repository's own allowlist>'` and `trusted-authors: '["practice-library[bot]"]'`.
-- [ ] Pin every `uses:` of this repository to a full commit SHA.
+## 5. Ruleset
 
-## 5. Ruleset (Settings, Rules, Rulesets)
+- [ ] `gh api -X POST repos/$R/rulesets --input rulesets/main.json`, from this repository's default branch.
+- [ ] Confirm: `GET repos/$R/rulesets/<id>` equals `rulesets/main.json` (name, target, enforcement, conditions, bypass actors and rules).
 
-- [ ] New ruleset, Import a ruleset, then choose `rulesets/main.json` from this repository.
-- [ ] Confirm: `GET /repos/practice-library/<repo>/rulesets/<id>` equals `rulesets/main.json` (name, target, enforcement, conditions, bypass actors and rules).
+## 6. Live checks, after the step 4 pull request is merged
 
-## 6. Live checks
-
-- [ ] A pull request from the automation account that touches only allowlisted paths merges on its own after `gate / gate` passes, with no review.
-- [ ] A pull request that touches any other path shows "Review required" and auto-merge stays off.
+- [ ] A pull request from the automation account that touches only allowlisted paths merges on its own after `gate / gate` passes, with no review. Skip it when the allowlist is empty.
+- [ ] A pull request that touches any other path shows "Review required", and auto-merge stays off.

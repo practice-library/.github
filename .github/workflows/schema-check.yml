@@ -15,8 +15,8 @@ on:
         description: Self-test only. A fixture directory under selftest/fixtures that schema and instances are relative to.
         type: string
         default: ''
-      _selftest-expect:
-        description: pass or fail. Callers outside the self-test leave it at pass.
+      expect:
+        description: pass (default) or fail. Use fail for a counter-example that must not validate; the check then passes only when validation fails with the validator's finding exit code.
         type: string
         default: pass
 permissions:
@@ -69,7 +69,7 @@ jobs:
       - name: Compare the result with the expectation
         shell: bash
         env:
-          EXPECT: ${{ inputs._selftest-expect }}
+          EXPECT: ${{ inputs.expect }}
           RC: ${{ steps.run.outputs.rc }}
           FINDING_RC: 2
         run: |
