@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Brings a repository of the organisation to the defaults in docs/new-repo-checklist.md:
-#   steps 1, 2 and 5 (security settings, merge settings, ruleset) are applied through the API;
+#   steps 1, 2 and 5 (security settings and the schema-loosening label, merge settings, ruleset) are
+#   applied through the API;
 #   step 4 (files) is printed as a diff against the consumer templates, for a pull request;
 #   step 3 (team access) needs an organisation owner and is only checked.
 # Usage: PIN=<sha> scripts/onboard.sh [--dry-run] <repo>
@@ -66,6 +67,14 @@ write -X PUT "repos/$repo/private-vulnerability-reporting"
 write -X PATCH "repos/$repo" -f 'security_and_analysis[secret_scanning][status]=enabled' \
   -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
 write -X PUT "repos/$repo/vulnerability-alerts"
+
+label="$(c guards.loosenLabel)"
+if [ -n "$(api "repos/$repo/labels/$label" --jq '.name' 2>/dev/null || true)" ]; then
+  echo "ok: label $label exists"
+else
+  write -X POST "repos/$repo/labels" -f "name=$label" -f color=d93f0b \
+    -f "description=A maintainer reviewed a loosened JSON schema"
+fi
 
 echo "== 2. merge settings"
 merge_args=(-F allow_auto_merge=true)

@@ -1,0 +1,352 @@
+# Generated from templates/.github/workflows/guard.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: guard
+# Mechanical review checks, one per call: guard is one of denylist, removed-paths, release-note, schema-loosening.
+#   denylist          no denied term in the added lines, added paths, or commit messages and names;
+#                     the list (salted sha256 entries) is read from the base commit; no list fails
+#   removed-paths     nothing outside the history files mentions a path the change removed
+#   release-note      a change under a watched path changes the changelog or says "Release: none"
+#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "schema-loosening-approved" from someone other
+#                     than the author and not a bot; the caller's pull_request types include labeled
+on:
+  workflow_call:
+    inputs:
+      guard:
+        description: 'The guard to run: one of denylist, removed-paths, release-note, schema-loosening.'
+        type: string
+        required: true
+      denylist:
+        description: The denylist file, read from the base commit (or from the change that adds it); the guard fails when there is none.
+        type: string
+        default: .github/denylist.json
+      history:
+        description: JSON array of files that may mention removed paths, as a record of the past.
+        type: string
+        default: '["CHANGELOG.md"]'
+      watch:
+        description: JSON array of paths whose change needs a changelog entry or the no-release line; an entry ending in / covers everything under it.
+        type: string
+        default: '[]'
+      changelog:
+        description: The changelog file.
+        type: string
+        default: CHANGELOG.md
+      label:
+        description: The label that lets a loosened schema through.
+        type: string
+        default: schema-loosening-approved
+permissions:
+  contents: read
+jobs:
+  guard:
+    name: ${{ inputs.guard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: The change to check
+        id: range
+        shell: bash
+        env:
+          GUARD: ${{ inputs.guard }}
+          GUARDS: '["denylist","removed-paths","release-note","schema-loosening"]'
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          jq -en --arg g "$GUARD" --argjson all "$GUARDS" 'any($all[]; . == $g)' > /dev/null \
+            || { echo "::error::unknown guard $GUARD; known: $GUARDS"; exit 1; }
+          base=""; head=""
+          case "$EVENT" in
+            pull_request|pull_request_target) base="$PR_BASE"; head="$PR_HEAD" ;;
+            push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi ;;
+          esac
+          if [ -z "$base" ]; then echo "none=true" >> "$GITHUB_OUTPUT"; echo "No change to compare on $EVENT."; exit 0; fi
+          # The change is what head adds to the point where it left base.
+          mb="$(git merge-base "$base" "$head")"
+          { echo "none=false"; echo "base=$base"; echo "mb=$mb"; echo "head=$head"; } >> "$GITHUB_OUTPUT"
+
+      - name: denylist
+        if: inputs.guard == 'denylist'
+        shell: bash
+        env:
+          NONE: ${{ steps.range.outputs.none }}
+          BASE: ${{ steps.range.outputs.base }}
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LIST: ${{ inputs.denylist }}
+        run: |
+          set -euo pipefail
+          # collect: prints "<where><TAB><text>" for every added line, added path, and commit message, author name
+          # and committer name of the change MB..HEAD in the current repository. The content diff is taken with
+          # --text and --no-textconv, so no .gitattributes in the change (-diff, binary, a diff driver) can hide a
+          # line. Words inside compressed binary files (images, archives) are not visible as text.
+          # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
+          # added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config.
+          collect() {
+            git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --unified=0 "$MB" "$HEAD" | awk '
+              /^diff --git / { hdr = 1; next }
+              hdr && /^\+\+\+ / { f = substr($0, 5); next }
+              /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
+              !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
+            # An added path is reported by its place in the list, since the path may hold the term.
+            git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
+            git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
+              /^::guard-commit:: / { c = substr($0, 18); next }
+              { print "commit " c "\t" $0 }'
+          }
+
+          # main: prints "ok ..." when no line holds a denied term, "found <n> <where>..." when lines do,
+          # "unguarded ..." when there is no list or it is empty, or "invalid ..." when DENY cannot be used.
+          # The term itself is never printed.
+          #   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...]}: each entry is sha256(salt + ":" + term),
+          #              where a term is one word or two adjacent words, lower case, words joined by one space;
+          #              empty when the repository has no list
+          #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
+          # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
+          # together are checked. scripts/denylist-hash.sh lists a two-word term both ways ("ab cd" and "abcd"),
+          # so "Ab Cd", "ab-cd" and "AbCd" all match it.
+          main() {
+            if [ -z "${DENY:-}" ]; then echo "unguarded no denylist: add one (scripts/denylist-hash.sh)"; return 0; fi
+            if [ -z "${TEXT_FILE:-}" ]; then
+              TEXT_FILE="$(mktemp)"
+              collect > "$TEXT_FILE" || { echo "invalid the change could not be read"; return 0; }
+            fi
+            TEXT_FILE="$TEXT_FILE" python3 -I -c '
+          import hashlib, json, os, re, sys
+          try:
+              deny = json.loads(os.environ["DENY"])
+              salt = deny["salt"]
+              hashes = set(deny["sha256"])
+              assert isinstance(salt, str) and salt and all(isinstance(h, str) for h in hashes)
+          except Exception:
+              print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...]}")
+              sys.exit(0)
+          if not hashes:
+              print("unguarded the denylist has no entries")
+              sys.exit(0)
+          def h(term):
+              return hashlib.sha256((salt + ":" + term).encode()).hexdigest()
+          found = []
+          with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
+              for line in f:
+                  where, _, text = line.rstrip("\n").partition("\t")
+                  words = re.findall(r"[a-z0-9]+", text.lower())
+                  terms = set(words)
+                  for a, b in zip(words, words[1:]):
+                      terms.add(a + " " + b)
+                      terms.add(a + b)
+                  if any(h(t) in hashes for t in terms):
+                      found.append(where)
+          if found:
+              seen = list(dict.fromkeys(found))
+              print("found %d %s" % (len(found), ", ".join(seen[:20])))
+          else:
+              print("ok no denied term in the change")
+          '
+          }
+          if [ "$NONE" = true ]; then
+            # Nothing to compare, but a repository whose list is missing, empty or unreadable is still
+            # unguarded: main checks the list against no text at all.
+            echo "Nothing to compare; checking $LIST only."
+            DENY=""
+            if git cat-file -e "HEAD:$LIST" 2>/dev/null; then DENY="$(git cat-file blob "HEAD:$LIST")"; fi
+            TEXT_FILE=/dev/null
+            export DENY TEXT_FILE
+            result="$(main)"
+            echo "$result"
+            [ "${result%% *}" = ok ]
+            exit
+          fi
+          # The list comes from the base commit, so a change cannot edit the list it is checked against.
+          # Only when the base has none and the change adds it is the change's own list used.
+          DENY=""
+          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then
+            DENY="$(git cat-file blob "$BASE:$LIST")"
+          elif git cat-file -e "$HEAD:$LIST" 2>/dev/null; then
+            echo "$LIST is new in this change; it is checked with that list."
+            DENY="$(git cat-file blob "$HEAD:$LIST")"
+          fi
+          unset TEXT_FILE
+          export DENY MB HEAD
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: removed-paths
+        if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          HISTORY: ${{ inputs.history }}
+        run: |
+          set -euo pipefail
+          # main: prints "ok ..." when nothing in the tree ROOT mentions a path the change removed, otherwise
+          # "referenced [{path, at}, ...]".
+          #   DELETED  JSON array of paths the change deleted or renamed away
+          #   ROOT     the tree after the change
+          #   HISTORY  JSON array of files whose mentions are a record of the past and are allowed
+          # Besides each removed path, every parent directory that no longer exists is looked for, as "dir/"
+          # and as "dir". A mention must not be preceded by a path character, so "x/a.json" is not "a.json".
+          main() {
+            local terms t esc hits
+            if ! jq -en --argjson d "$DELETED" --argjson h "$HISTORY" '($d | type) == "array" and ($h | type) == "array"' > /dev/null 2>&1; then
+              echo "invalid DELETED and HISTORY must be JSON arrays"; return 0
+            fi
+            terms="$(
+              jq -r '.[]' <<<"$DELETED" | while IFS= read -r p; do
+                [ -n "$p" ] || continue
+                printf '%s\n' "$p"
+                d="$(dirname "$p")"
+                while [ "$d" != . ] && [ "$d" != / ]; do
+                  if [ ! -e "$ROOT/$d" ]; then printf '%s/\n%s\n' "$d" "$d"; fi
+                  d="$(dirname "$d")"
+                done
+              done | sort -u | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2-
+            )"
+            hits="$(
+              while IFS= read -r t; do
+                [ -n "$t" ] || continue
+                esc="$(printf '%s' "$t" | sed 's/[][\.*^$+?(){}|/]/\\&/g')"
+                grep -rnIE --exclude-dir=.git "(^|[^A-Za-z0-9._/-])${esc}(\$|[^A-Za-z0-9_-])" "$ROOT" 2>/dev/null \
+                  | while IFS= read -r m; do
+                      file="${m%%:*}"; rest="${m#*:}"; file="${file#"$ROOT"/}"
+                      jq -en --arg f "$file" --argjson h "$HISTORY" 'any($h[]; . == $f)' > /dev/null && continue
+                      jq -cn --arg p "$t" --arg at "$file:${rest%%:*}" '{path: $p, at: $at}'
+                    done
+              done <<<"$terms" | jq -sc 'unique_by(.at) | .[:20]'
+            )"
+            if [ "$hits" = "[]" ]; then echo "ok no removed path is mentioned"; else echo "referenced $hits"; fi
+          }
+          DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
+          ROOT="$GITHUB_WORKSPACE"
+          export DELETED ROOT HISTORY
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: release-note
+        if: inputs.guard == 'release-note' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          WATCH: ${{ inputs.watch }}
+          CHANGELOG: ${{ inputs.changelog }}
+          MARKER: 'Release: none'
+        run: |
+          set -euo pipefail
+          # main: prints "ok ..." when the change touches no watched path, or changes the changelog, or a commit
+          # message holds the marker line; otherwise "missing ...".
+          #   CHANGED    JSON array of changed paths, old and new
+          #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
+          #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
+          #   MESSAGES   the change's commit messages
+          main() {
+            local touched
+            if ! touched="$(jq -c --argjson w "$WATCH" '
+                [.[] | select(. as $f | any($w[]; . as $p
+                  | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end))] | unique' <<<"$CHANGED" 2>/dev/null)"; then
+              echo "invalid CHANGED and WATCH must be JSON arrays"; return 0
+            fi
+            if [ "$touched" = "[]" ]; then echo "ok no watched path changed"; return 0; fi
+            if jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
+              echo "ok $CHANGELOG changed"; return 0
+            fi
+            if printf '%s\n' "$MESSAGES" | sed 's/[[:space:]]*$//' | grep -qxF -- "$MARKER"; then
+              echo "ok a commit message says: $MARKER"; return 0
+            fi
+            echo "missing $touched changed, but neither $CHANGELOG nor a \"$MARKER\" line in a commit message"
+          }
+          CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
+          MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
+          export CHANGED MESSAGES
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
+
+      - name: schema-loosening
+        if: inputs.guard == 'schema-loosening' && steps.range.outputs.none == 'false'
+        shell: bash
+        env:
+          MB: ${{ steps.range.outputs.mb }}
+          HEAD: ${{ steps.range.outputs.head }}
+          LABEL: ${{ inputs.label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # main: prints "ok ..." when the schema in NEW_FILE accepts nothing more than the one in OLD_FILE by
+          # the rules below, otherwise "loose [<path>, ...]". Rules, at every place in the schema:
+          #   a minimum (minItems, minLength, minProperties, minimum, exclusiveMinimum, minContains) lowered or removed;
+          #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
+          #   a required entry removed; an enum value added; additionalProperties false made anything else;
+          #   const, pattern or format changed or removed.
+          main() {
+            local out
+            if ! out="$(jq -cn --slurpfile o "$OLD_FILE" --slurpfile n "$NEW_FILE" '
+                $o[0] as $old | $n[0] as $new
+                | ["minItems","minLength","minProperties","minimum","exclusiveMinimum","minContains"] as $mins
+                | ["maxItems","maxLength","maxProperties","maximum","exclusiveMaximum","maxContains"] as $maxs
+                | [ $old | paths | select(length > 0 and (.[-1] | type) == "string") ] as $ps
+                | [ $ps[] as $p
+                    | $p[-1] as $k
+                    | ($old | getpath($p)) as $ov
+                    | ($new | try getpath($p) catch null) as $nv
+                    | select(
+                        if ($mins | index([$k])) != null and ($ov | type) == "number" then ($nv | type) != "number" or $nv < $ov
+                        elif ($maxs | index([$k])) != null and ($ov | type) == "number" then ($nv | type) != "number" or $nv > $ov
+                        elif $k == "required" and ($ov | type) == "array" then
+                          ($nv | if type == "array" then . else [] end) as $nr | any($ov[]; . as $x | ($nr | index([$x])) == null)
+                        elif $k == "enum" and ($ov | type) == "array" then
+                          ($nv | type) != "array" or any($nv[]; . as $x | ($ov | index([$x])) == null)
+                        elif $k == "additionalProperties" and $ov == false then $nv != false
+                        elif $k == "const" or (($k == "pattern" or $k == "format") and ($ov | type) == "string") then $nv != $ov
+                        else false end)
+                    | $p | map(tostring) | join("/") ]' 2>/dev/null)"; then
+              echo "invalid both files must be JSON"; return 0
+            fi
+            if [ "$out" = "[]" ]; then echo "ok nothing loosened"; else echo "loose $out"; fi
+          }
+          loose="[]"
+          while IFS=$'\t' read -r status old new; do
+            new="${new:-$old}"
+            OLD_FILE="$RUNNER_TEMP/old.json"; NEW_FILE="$RUNNER_TEMP/new.json"
+            git cat-file blob "$MB:$old" > "$OLD_FILE" 2>/dev/null || continue
+            git cat-file blob "$HEAD:$new" > "$NEW_FILE" 2>/dev/null || continue
+            # A schema names a JSON Schema meta-schema; an instance that points at its own schema is not one.
+            jq -e 'type == "object" and ((.["$schema"] // "") | type == "string" and test("^https?://json-schema\\.org/"))' "$OLD_FILE" > /dev/null 2>&1 || continue
+            export OLD_FILE NEW_FILE
+            result="$(main)"
+            echo "$new: $result"
+            case "$result" in
+              ok*) ;;
+              loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
+              *) echo "::error file=$new::$result"; exit 1 ;;
+            esac
+          done < <(git diff --name-status -M --diff-filter=MR --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
+          if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
+          echo "loosened: $loose"
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
+          if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" 'any($ls[]; . == $l)' > /dev/null; then
+            echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1
+          fi
+          by="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv" | tail -n 1)"
+          login="${by%%$'\t'*}"; type="${by#*$'\t'}"
+          if [ -z "$by" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
+            echo "::error::the label $LABEL must be added by someone other than the author and not by a bot (added by: ${login:-unknown})"; exit 1
+          fi
+          echo "ok loosening accepted: $LABEL added by $login"

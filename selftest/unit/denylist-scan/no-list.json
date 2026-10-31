@@ -1,0 +1,7 @@
+{
+  "expect": "unguarded",
+  "env": {
+    "DENY": "",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/word.txt"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\"spec/node/schema.json\"]",
+    "WATCH": "[]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "x"
+  }
+}

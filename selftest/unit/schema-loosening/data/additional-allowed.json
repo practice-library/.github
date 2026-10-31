@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "a",
+    "b"
+  ],
+  "properties": {
+    "a": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "enum": [
+          "x",
+          "y"
+        ]
+      }
+    },
+    "b": {
+      "type": "string",
+      "pattern": "^v"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\"README.md\"]",
+    "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Fix a typo"
+  }
+}

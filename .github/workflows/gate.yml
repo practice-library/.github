@@ -26,7 +26,7 @@ jobs:
         env:
           NEEDS: ${{ inputs.needs }}
           FILE: .github/required-checks.json
-          MANDATORY: '["leak-scan"]'
+          MANDATORY: '["leak-scan","denylist","removed-paths","release-note","schema-loosening"]'
         run: |
           set -euo pipefail
           # main: prints "ok ..." when the job ids in REQUIRED (the jobs array of the repository's required-checks

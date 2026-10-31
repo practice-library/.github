@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "env": {
+    "DELETED": "[\"old/index.md\"]",
+    "ROOT": "selftest/unit/removed-refs/tree",
+    "HISTORY": "[\"docs/history.md\"]"
+  }
+}

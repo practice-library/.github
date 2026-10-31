@@ -1,0 +1,10 @@
+{
+  "expect": "missing",
+  "env": {
+    "CHANGED": "[\"spec/node/schema.json\"]",
+    "WATCH": "[\"consumer/\",\"spec/\",\".github/workflows/\",\"rulesets/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Widen the envelope"
+  }
+}

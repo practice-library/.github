@@ -1,0 +1,7 @@
+{
+  "expect": "unguarded",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/word.txt"
+  }
+}
