@@ -93,7 +93,10 @@ def verifyneeds:
   | if ($text | test("@@gen:needs@@")) then
       ($text | expand | genjobs | fill | jobkeys) as $keys
       | (selfneeds - $keys) as $missing
-      | if ($missing | length) > 0 then error("gate needs jobs that are not rendered: " + ($missing | tojson)) else $text end
+      | (lookup("gate.requiredJobs") - selfneeds) as $unneeded
+      | if ($missing | length) > 0 then error("gate needs jobs that are not rendered: " + ($missing | tojson))
+        elif ($unneeded | length) > 0 then error("gate.requiredJobs are not among the gate's needs: " + ($unneeded | tojson))
+        else $text end
     else $text end;
 
 $t | verifyneeds | expand | genjobs | gen | fill

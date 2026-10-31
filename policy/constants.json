@@ -69,15 +69,19 @@
     "author": {
       "name": "selftest",
       "email": "selftest@example.invalid"
-    }
+    },
+    "unitDir": "selftest/unit",
+    "libDir": "selftest/lib"
   },
   "self": {
     "discoverJob": "discover",
     "staticJobs": [
       "render",
-      "discover"
+      "discover",
+      "unit"
     ],
-    "discoverScript": "scripts/discover.sh"
+    "discoverScript": "scripts/discover.sh",
+    "unitScript": "scripts/unit.sh"
   },
   "render": {
     "script": "scripts/render.sh",
@@ -89,7 +93,10 @@
     "innerJob": "gate",
     "workflow": ".github/workflows/gate.yml",
     "callerWorkflow": ".github/workflows/self.yml",
-    "actionsIntegrationId": 15368
+    "actionsIntegrationId": 15368,
+    "requiredJobs": [
+      "leak-scan"
+    ]
   },
   "automerge": {
     "mergeMethod": "merge",

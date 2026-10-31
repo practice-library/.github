@@ -20,6 +20,7 @@ jobs:
     uses: practice-library/.github/.github/workflows/gate.yml@<sha>
     with:
       needs: ${{ toJSON(needs) }}
+      required: '["leak-scan"]'
 ```
 
 Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write` and `pull-requests: write`. The ruleset in `rulesets/main.json` requires the `gate / gate` check, so a failed check always blocks the merge.

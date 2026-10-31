@@ -220,7 +220,9 @@
         "fixturesDir",
         "caseFile",
         "builder",
-        "author"
+        "author",
+        "unitDir",
+        "libDir"
       ],
       "properties": {
         "fixturesDir": {
@@ -250,6 +252,12 @@
               "pattern": "@example\\.invalid$"
             }
           }
+        },
+        "unitDir": {
+          "$ref": "#/$defs/path"
+        },
+        "libDir": {
+          "$ref": "#/$defs/path"
         }
       }
     },
@@ -259,7 +267,8 @@
       "required": [
         "discoverJob",
         "staticJobs",
-        "discoverScript"
+        "discoverScript",
+        "unitScript"
       ],
       "properties": {
         "discoverJob": {
@@ -276,6 +285,9 @@
           }
         },
         "discoverScript": {
+          "$ref": "#/$defs/path"
+        },
+        "unitScript": {
           "$ref": "#/$defs/path"
         }
       }
@@ -308,7 +320,8 @@
         "innerJob",
         "workflow",
         "callerWorkflow",
-        "actionsIntegrationId"
+        "actionsIntegrationId",
+        "requiredJobs"
       ],
       "properties": {
         "callerJob": {
@@ -328,6 +341,15 @@
         },
         "callerWorkflow": {
           "$ref": "#/$defs/path"
+        },
+        "requiredJobs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
         }
       }
     },

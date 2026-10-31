@@ -7,6 +7,10 @@ on:
         description: The caller's toJSON(needs). The gate passes only when every one of those jobs succeeded.
         type: string
         required: true
+      required:
+        description: JSON array of job ids that must be among the needs, so a check cannot be dropped from the gate unnoticed.
+        type: string
+        required: true
 permissions: {}
 jobs:
   gate:
@@ -14,6 +18,29 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      - name: Every required job is among the needs
+        shell: bash
+        env:
+          NEEDS: ${{ inputs.needs }}
+          REQUIRED: ${{ inputs.required }}
+        run: |
+          set -euo pipefail
+          # main: prints "ok ..." when every job id in REQUIRED (a JSON array) is a key of NEEDS (the caller's
+          # toJSON(needs)); otherwise "missing ..." or "invalid ...". The caller fails unless the first word is ok.
+          main() {
+            local count missing
+            if ! count="$(jq -n --argjson r "$REQUIRED" 'if ($r | type) == "array" then $r | length else error("not an array") end' 2>/dev/null)"; then
+              echo "invalid required must be a JSON array of job ids"; return 0
+            fi
+            if ! missing="$(jq -cn --argjson n "$NEEDS" --argjson r "$REQUIRED" '$r - ($n | keys)' 2>/dev/null)"; then
+              echo "invalid needs must be the caller's toJSON(needs)"; return 0
+            fi
+            if [ "$count" -eq 0 ]; then echo "missing no required job was named"; return 0; fi
+            if [ "$missing" = "[]" ]; then echo "ok every required job is among the needs"; else echo "missing $missing"; fi
+          }
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ]
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ inputs.needs }}

@@ -19,6 +19,7 @@ jobs:
     uses: @@org.name@@/@@org.repo@@/.github/workflows/gate.yml@<sha>
     with:
       needs: ${{ toJSON(needs) }}
+      required: '@@json:gate.requiredJobs@@'
 ```
 
 Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write` and `pull-requests: write`. The ruleset in `rulesets/main.json` requires the `@@gen:context@@` check, so a failed check always blocks the merge.
