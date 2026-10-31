@@ -1,0 +1,5 @@
+jobs:
+  a:
+    steps:
+      - name: x
+        uses: practice-library/machinery/actions/refresh@main

@@ -52,6 +52,18 @@ jobs:
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
+      - name: Every @@org.name@@ workflow or action is pinned to a commit, not a branch
+        shell: bash
+        env:
+          ROOT: .
+          ORG: @@org.name@@
+        run: |
+          set -euo pipefail
+          #@include pin-check.sh
+          export ROOT ORG
+          result="$(main)"
+          echo "$result"
+          [ "${result%% *}" = ok ] || { echo "::error::$result: pin the full commit SHA of a release, with the tag as a comment (ADOPTING.md)"; exit 1; }
       - uses: @@actions.allsGreen.repo@@@@@actions.allsGreen.sha@@ # @@actions.allsGreen.version@@
         with:
           jobs: ${{ inputs.needs }}

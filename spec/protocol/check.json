@@ -1,0 +1,4 @@
+[
+  {"schema": "message.schema.json", "instances": "examples"},
+  {"schema": "message.schema.json", "instances": "counter-examples", "expect": "fail", "each": "true"}
+]

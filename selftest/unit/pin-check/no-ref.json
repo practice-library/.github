@@ -1,0 +1,8 @@
+{
+  "expect": "unpinned",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/no-ref",
+    "ORG": "practice-library"
+  },
+  "output": "unpinned [\".github/workflows/checks.yml:3 (none)\"]"
+}

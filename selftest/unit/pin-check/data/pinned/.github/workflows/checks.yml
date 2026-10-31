@@ -1,0 +1,8 @@
+jobs:
+  a:
+    uses: practice-library/.github/.github/workflows/leak-scan.yml@3267684c2fbf40a655a64942437e806423cce9fb # v2.1.0
+  b:
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./local-action
+      - uses: docker://alpine:3

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/practice-library/.github/spec/ratchet/schema.json",
+  "title": "Shrink-only baseline",
+  "description": "The findings a repository check keeps for now, each with why and who owns it. A run that finds a key not listed fails (fresh); a listed key with an empty or missing reason or owner fails (unexplained); a listed key no longer found fails until its entry is removed (paidOff). A key may be listed once; the reference reconciler (reconcile.sh) refuses a duplicate, which this schema cannot see.",
+  "type": "object",
+  "required": [
+    "ratchet",
+    "check",
+    "entries"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "ratchet": {
+      "const": 1,
+      "description": "The version of this format."
+    },
+    "check": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The check whose findings these are."
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^\\S(.*\\S)?$",
+            "description": "The finding's stable key, as the check prints it, with no surrounding spaces."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why the finding is kept. Empty or missing makes the entry unexplained, which fails."
+          },
+          "owner": {
+            "type": "string",
+            "description": "Who pays the finding off. Empty or missing makes the entry unexplained, which fails."
+          }
+        }
+      }
+    }
+  }
+}

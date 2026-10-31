@@ -117,7 +117,8 @@
         "repo",
         "defaultBranch",
         "trustedAuthors",
-        "maintainer"
+        "maintainer",
+        "appLogin"
       ],
       "properties": {
         "name": {
@@ -143,6 +144,10 @@
         "maintainer": {
           "type": "string",
           "pattern": "^@[A-Za-z0-9-]+(/[A-Za-z0-9_.-]+)?$"
+        },
+        "appLogin": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+\\[bot\\]$"
         }
       }
     },

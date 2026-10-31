@@ -1,0 +1,114 @@
+name: message-check
+# Protocol v0 (docs/protocol.md): judges an issue that is a message. Call it on issues events (opened,
+# edited, labeled) with issues: write. An issue is a message when it carries a kind:* label and its
+# author is an owner or member of the organisation, or the app-login identity; anything else is an
+# external signal and is left alone. A message must hold exactly one ```json block that matches
+# spec/protocol/message.schema.json, whose type agrees with the kind:* label, and the body must hold no
+# denied term. An invalid message gets the label state:invalid and one comment saying why; the author's
+# text is never edited, and no part of it is repeated in the comment.
+on:
+  workflow_call:
+    inputs:
+      app-login:
+        description: The login of the organisation's app, whose issues are messages too, for example name[bot]. Empty means none.
+        type: string
+        default: ''
+      denylist:
+        description: The denylist file on the default branch.
+        type: string
+        default: @@guards.denylistFile@@
+permissions:
+  contents: read
+jobs:
+  message:
+    name: message-check
+    runs-on: @@runner.image@@
+    timeout-minutes: @@runner.timeoutMinutes@@
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Is this issue a message?
+        id: who
+        shell: bash
+        env:
+          ASSOCIATION: ${{ github.event.issue.author_association }}
+          LOGIN: ${{ github.event.issue.user.login }}
+          APP: ${{ inputs.app-login }}
+          LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+        run: |
+          set -euo pipefail
+          kind="$(jq -r '[.[] | select(startswith("kind:")) | ltrimstr("kind:")] | if length == 1 then .[0] elif length == 0 then "" else "many" end' <<<"$LABELS")"
+          trusted=false
+          case "$ASSOCIATION" in OWNER|MEMBER) trusted=true ;; esac
+          if [ -n "$APP" ] && [ "$LOGIN" = "$APP" ]; then trusted=true; fi
+          if [ -z "$kind" ]; then echo "not a message: no kind:* label"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          { echo "judge=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        if: steps.who.outputs.judge == 'true'
+        with:
+          persist-credentials: false
+      #@fetch jsonschema
+      - name: Judge the message
+        if: steps.who.outputs.judge == 'true'
+        id: judge
+        shell: bash
+        env:
+          BODY: ${{ github.event.issue.body }}
+          KIND: ${{ steps.who.outputs.kind }}
+          LIST: ${{ inputs.denylist }}
+          JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/@@tools.jsonschema.bin@@
+          MESSAGE_SPEC: '@@render:spec/protocol/message.schema.json@@'
+        run: |
+          set -uo pipefail
+          verdict() { echo "$1"; printf 'reason=%s\n' "$2" >> "$GITHUB_OUTPUT"; exit 0; }
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          #@include message-extract.sh
+          BODY_FILE="$RUNNER_TEMP/body.md"; export BODY_FILE
+          got="$(main)"
+          case "$got" in
+            ok*) printf '%s\n' "${got#ok }" > "$RUNNER_TEMP/message.json" ;;
+            none*) verdict "$got" "it has a kind:* label but no \`\`\`json message block" ;;
+            *) verdict "$got" "its message block is not usable: ${got#invalid }" ;;
+          esac
+          [ "$KIND" != many ] || verdict "more than one kind:* label" "it carries more than one kind:* label"
+          printf '%s' "$MESSAGE_SPEC" > "$RUNNER_TEMP/message.schema.json"
+          rc=0; "$JSONSCHEMA" validate "$RUNNER_TEMP/message.schema.json" "$RUNNER_TEMP/message.json" || rc=$?
+          [ "$rc" -eq 0 ] || verdict "schema exit $rc" "its message block does not match spec/protocol/message.schema.json (the run log says where)"
+          type="$(jq -r '.type' "$RUNNER_TEMP/message.json")"
+          [ "${type##*.}" = "$KIND" ] || verdict "type ${type##*.} against label kind:$KIND" "its type does not agree with its kind:* label"
+          unset -f main
+          #@include denylist-scan.sh
+          DENY=""
+          if [ -f "$LIST" ]; then DENY="$(cat "$LIST")"; fi
+          awk '{ print "issue body:" NR "\t" $0 }' "$RUNNER_TEMP/body.md" > "$RUNNER_TEMP/text.tsv"
+          TEXT_FILE="$RUNNER_TEMP/text.tsv"; export DENY TEXT_FILE
+          scan="$(main)"
+          echo "$scan"
+          case "$scan" in
+            ok*) ;;
+            found*) verdict "$scan" "it holds a denied term (${scan#found })" ;;
+            *) verdict "$scan" "the denylist could not judge it: ${scan%% *}" ;;
+          esac
+          echo "ok a valid protocol v0 message"
+      - name: Label and comment
+        if: steps.who.outputs.judge == 'true'
+        shell: bash
+        env:
+          REASON: ${{ steps.judge.outputs.reason }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          HAS_INVALID: ${{ contains(github.event.issue.labels.*.name, 'state:invalid') }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ -z "$REASON" ]; then
+            if [ "$HAS_INVALID" = true ]; then gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/state:invalid" > /dev/null; fi
+            echo "valid"; exit 0
+          fi
+          if [ "$HAS_INVALID" != true ]; then
+            gh api -X POST "repos/$REPO/issues/$NUMBER/labels" -f "labels[]=state:invalid" > /dev/null
+            gh api -X POST "repos/$REPO/issues/$NUMBER/comments" -f "body=This issue is not a valid protocol v0 message: $REASON. See docs/protocol.md in @@org.name@@/@@org.repo@@." > /dev/null
+          fi
+          echo "::error::invalid message: $REASON"; exit 1

@@ -1,0 +1,8 @@
+{
+  "expect": "fail",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/clean.json",
+    "FOUND": "a\nb\nx"
+  },
+  "output": "fail {\"fresh\":[\"x\"],\"unexplained\":[],\"paidOff\":[],\"explained\":[\"a\",\"b\"]}"
+}

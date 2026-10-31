@@ -1,0 +1,1 @@
+{"ratchet": 1, "check": "example-check", "entries": [{"key": "a", "reason": "Known, tracked in issue 1.", "owner": "maintainers"}, {"key": "b", "reason": "Known.", "owner": "maintainers"}]}

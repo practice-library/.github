@@ -7,7 +7,8 @@
     "trustedAuthors": [
       "practice-library[bot]"
     ],
-    "maintainer": "@practice-library/maintainers"
+    "maintainer": "@practice-library/maintainers",
+    "appLogin": "practice-library[bot]"
   },
   "runner": {
     "image": "ubuntu-24.04",
