@@ -14,6 +14,7 @@ Do these once, in order, when a repository joins @@org.name@@. The automation ac
 - [ ] Secret scanning and push protection: `gh api -X PATCH repos/$R -f 'security_and_analysis[secret_scanning][status]=enabled' -f 'security_and_analysis[secret_scanning_push_protection][status]=enabled'`. Confirm: both show `enabled` in `GET repos/$R`.
 - [ ] Dependabot alerts: `gh api -X PUT repos/$R/vulnerability-alerts`. Confirm: a `GET` of the same path returns 204.
 - [ ] A denylist, `@@guards.denylistFile@@` (`{"salt": "<random hex>", "sha256": []}`, then `scripts/denylist-hash.sh @@guards.denylistFile@@ < terms` for the entries); without one, `denylist` fails as unguarded. Confirm: the file has at least one entry.
+- [ ] If a maintainer's account name, or any name that merges or commits, holds a denied word: its hash in the list's `allowAuthorNames` (`scripts/denylist-hash.sh --names @@guards.denylistFile@@ < names`), so that name never fails `denylist`. Confirm: a commit by that name in a pull request passes `denylist`.
 - [ ] The label `@@guards.loosenLabel@@`, which lets a loosened JSON schema through: `gh api -X POST repos/$R/labels -f name=@@guards.loosenLabel@@ -f color=d93f0b`. Confirm: `GET repos/$R/labels/@@guards.loosenLabel@@` returns it.
 
 ## 2. Merge settings

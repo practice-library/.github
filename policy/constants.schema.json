@@ -298,6 +298,7 @@
         "staticJobs",
         "discoverScript",
         "unitScript",
+        "denylistCanary",
         "historyFiles",
         "releaseWatch"
       ],
@@ -319,6 +320,9 @@
           "$ref": "#/$defs/path"
         },
         "unitScript": {
+          "$ref": "#/$defs/path"
+        },
+        "denylistCanary": {
           "$ref": "#/$defs/path"
         },
         "historyFiles": {

@@ -1,29 +1,53 @@
 # Generated from templates/selftest/lib/denylist-scan.sh and policy/constants.json by scripts/render.sh. Do not edit.
 # collect: prints "<where><TAB><text>" for every added line, added path, and commit message, author name
-# and committer name of the change MB..HEAD in the current repository. The content diff is taken with
-# --text and --no-textconv, so no .gitattributes in the change (-diff, binary, a diff driver) can hide a
-# line. Words inside compressed binary files (images, archives) are not visible as text.
+# and committer name of the change MB..HEAD in the current repository. A name is printed with the where
+# "author <sha>" or "committer <sha>" by a git log of its own, so no message line can pose as a name.
+# Each git read goes to a file first and any failed read makes collect fail, so a change that cannot be
+# read is never judged clean. The content diff is taken with --text and --no-textconv, so no
+# .gitattributes in the change (-diff, binary, a diff driver) can hide a line. Words inside compressed
+# binary files (images, archives) are not visible as text.
 # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
-# added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config.
+# added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config;
+# git ends the header with a tab when the path holds a space, and that tab is dropped.
+# EVENT is the GitHub event. On push, the author name of a merge commit is not judged: a merge made in
+# the browser is authored by whoever pressed merge. Its message and committer are judged like any other.
+# On any other event, or when EVENT is unset, every author name is judged.
 collect() {
-  git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --unified=0 "$MB" "$HEAD" | awk '
+  local skip=() buf
+  if [ "${EVENT:-}" = push ]; then skip=(--no-merges); fi
+  buf="$(mktemp)" || return 1
+  git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --unified=0 "$MB" "$HEAD" > "$buf" \
+    || { rm -f "$buf"; return 1; }
+  awk '
     /^diff --git / { hdr = 1; next }
-    hdr && /^\+\+\+ / { f = substr($0, 5); next }
+    hdr && /^\+\+\+ / { f = substr($0, 5); sub(/\t$/, "", f); next }
     /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-    !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }'
+    !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }' "$buf"
   # An added path is reported by its place in the list, since the path may hold the term.
-  git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" | awk '{ print "added path " NR "\t" $0 }'
-  git log --format='::guard-commit:: %H%n%an%n%cn%n%B' "$MB..$HEAD" | awk '
+  git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
+  awk '{ print "added path " NR "\t" $0 }' "$buf"
+  git log ${skip[@]+"${skip[@]}"} --format='author %H%x09%an' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
+  cat "$buf"
+  git log --format='committer %H%x09%cn' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
+  cat "$buf"
+  git log --format='::guard-commit:: %H%n%B' "$MB..$HEAD" > "$buf" \
+    || { rm -f "$buf"; return 1; }
+  awk '
     /^::guard-commit:: / { c = substr($0, 18); next }
-    { print "commit " c "\t" $0 }'
+    { print "commit " c "\t" $0 }' "$buf"
+  rm -f "$buf"
 }
 
 # main: prints "ok ..." when no line holds a denied term, "found <n> <where>..." when lines do,
 # "unguarded ..." when there is no list or it is empty, or "invalid ..." when DENY cannot be used.
 # The term itself is never printed.
-#   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...]}: each entry is sha256(salt + ":" + term),
-#              where a term is one word or two adjacent words, lower case, words joined by one space;
-#              empty when the repository has no list
+#   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...], "allowAuthorNames": ["<hex>", ...]}: each
+#              sha256 entry is sha256(salt + ":" + term), where a term is one word or two adjacent words,
+#              lower case, words joined by one space; empty when the repository has no list. The optional
+#              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
+#              64 lower-case hex characters each; an author or committer name that is one of them is
+#              not judged. Messages, added lines and added paths are judged whatever the name.
+#   EVENT      the GitHub event; push leaves merge commits out (see collect)
 #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
 # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
 # together are checked. scripts/denylist-hash.sh lists a two-word term both ways ("ab cd" and "abcd"),
@@ -40,20 +64,29 @@ try:
     deny = json.loads(os.environ["DENY"])
     salt = deny["salt"]
     hashes = set(deny["sha256"])
-    assert isinstance(salt, str) and salt and all(isinstance(h, str) for h in hashes)
+    allow = deny.get("allowAuthorNames", [])
+    assert isinstance(salt, str) and salt and isinstance(allow, list)
+    allow = set(allow)
+    assert all(isinstance(h, str) for h in hashes)
+    assert all(re.fullmatch(r"[0-9a-f]{64}", h) for h in allow)
 except Exception:
-    print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...]}")
+    print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...], \"allowAuthorNames\": [hex, ...]}")
     sys.exit(0)
 if not hashes:
     print("unguarded the denylist has no entries")
     sys.exit(0)
 def h(term):
     return hashlib.sha256((salt + ":" + term).encode()).hexdigest()
+# A name row is exactly "author <id>" or "committer <id>"; a path or a line in a file named "author x"
+# never is, since its where carries ":<line>" or starts with "added path".
+name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
 found = []
 with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
     for line in f:
         where, _, text = line.rstrip("\n").partition("\t")
         words = re.findall(r"[a-z0-9]+", text.lower())
+        if name_row.fullmatch(where) and h(" ".join(words)) in allow:
+            continue
         terms = set(words)
         for a, b in zip(words, words[1:]):
             terms.add(a + " " + b)

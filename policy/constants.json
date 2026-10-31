@@ -95,6 +95,7 @@
     ],
     "discoverScript": "scripts/discover.sh",
     "unitScript": "scripts/unit.sh",
+    "denylistCanary": "scripts/denylist-canary.sh",
     "historyFiles": [
       "CHANGELOG.md",
       "docs/live-proof.md"
