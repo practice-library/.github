@@ -1,0 +1,8 @@
+{
+  "expect": "over",
+  "env": {
+    "NUMSTAT": "700\t0\tdocs/other/generated.md",
+    "FIXTURES": "[\"docs/generated.md\"]",
+    "LIMIT": "600"
+  }
+}

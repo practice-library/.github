@@ -300,7 +300,8 @@
         "unitScript",
         "denylistCanary",
         "historyFiles",
-        "releaseWatch"
+        "releaseWatch",
+        "sizeFixtures"
       ],
       "properties": {
         "discoverJob": {
@@ -338,6 +339,14 @@
           "items": {
             "$ref": "#/$defs/path"
           }
+        },
+        "sizeFixtures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
         }
       }
     },
@@ -637,7 +646,11 @@
         "releaseWatch",
         "changelog",
         "noReleaseMarker",
-        "loosenLabel"
+        "loosenLabel",
+        "optional",
+        "sizeLimit",
+        "sizeFixtures",
+        "sizeLabel"
       ],
       "properties": {
         "workflow": {
@@ -679,6 +692,32 @@
           "pattern": "^[^\\n]+$"
         },
         "loosenLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "optional": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "uniqueItems": true,
+          "description": "Guards a caller may run that the gate does not require."
+        },
+        "sizeLimit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sizeFixtures": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        },
+        "sizeLabel": {
           "type": "string",
           "minLength": 1,
           "maxLength": 50

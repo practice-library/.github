@@ -91,7 +91,8 @@
       "denylist",
       "removed-paths",
       "release-note",
-      "schema-loosening"
+      "schema-loosening",
+      "size"
     ],
     "discoverScript": "scripts/discover.sh",
     "unitScript": "scripts/unit.sh",
@@ -105,6 +106,23 @@
       "spec/",
       ".github/workflows/",
       "rulesets/"
+    ],
+    "sizeFixtures": [
+      "selftest/",
+      "examples/",
+      "counter-examples/",
+      "tests/fixtures/",
+      "README.md",
+      "docs/new-repo-checklist.md",
+      ".github/workflows/",
+      ".github/automerge-paths.json",
+      ".github/CODEOWNERS",
+      ".github/dependabot.yml",
+      ".github/required-checks.json",
+      ".gitleaks.toml",
+      "consumer/",
+      "rulesets/",
+      "spec/node/schema.json"
     ]
   },
   "render": {
@@ -210,6 +228,17 @@
     "releaseWatch": [],
     "changelog": "CHANGELOG.md",
     "noReleaseMarker": "Release: none",
-    "loosenLabel": "schema-loosening-approved"
+    "loosenLabel": "schema-loosening-approved",
+    "optional": [
+      "size"
+    ],
+    "sizeLimit": 600,
+    "sizeFixtures": [
+      "selftest/",
+      "examples/",
+      "counter-examples/",
+      "tests/fixtures/"
+    ],
+    "sizeLabel": "size-approved"
   }
 }

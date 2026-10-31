@@ -1,0 +1,9 @@
+{
+  "expect": "ok",
+  "env": {
+    "NUMSTAT": "600\t0\tscripts/a.sh",
+    "FIXTURES": "[\"selftest/\",\"examples/\",\"counter-examples/\",\"tests/fixtures/\",\"INDEX.md\"]",
+    "LIMIT": "600"
+  },
+  "output": "ok 600 non-fixture lines (limit 600)"
+}

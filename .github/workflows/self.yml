@@ -81,6 +81,15 @@ jobs:
     with:
       guard: schema-loosening
 
+  size:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: ./.github/workflows/guard.yml
+    with:
+      guard: size
+      size-fixtures: '["selftest/","examples/","counter-examples/","tests/fixtures/","README.md","docs/new-repo-checklist.md",".github/workflows/",".github/automerge-paths.json",".github/CODEOWNERS",".github/dependabot.yml",".github/required-checks.json",".gitleaks.toml","consumer/","rulesets/","spec/node/schema.json"]'
+
   discover:
     name: discover
     runs-on: ubuntu-24.04
@@ -146,7 +155,7 @@ jobs:
 
   gate:
     if: always()
-    needs: ["render","discover","unit","denylist","removed-paths","release-note","schema-loosening","leak-scan","selftest-leak-scan","schema-check","selftest-schema-check"]
+    needs: ["render","discover","unit","denylist","removed-paths","release-note","schema-loosening","size","leak-scan","selftest-leak-scan","schema-check","selftest-schema-check"]
     uses: ./.github/workflows/gate.yml
     with:
       needs: ${{ toJSON(needs) }}

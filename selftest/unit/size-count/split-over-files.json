@@ -1,0 +1,9 @@
+{
+  "expect": "over",
+  "env": {
+    "NUMSTAT": "300\t0\ta.sh\n301\t5\tb/c.yml",
+    "FIXTURES": "[\"selftest/\",\"examples/\",\"counter-examples/\",\"tests/fixtures/\",\"INDEX.md\"]",
+    "LIMIT": "600"
+  },
+  "output": "over 601 non-fixture lines, more than 600: split the pull request"
+}

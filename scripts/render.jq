@@ -9,7 +9,8 @@
 #   @@gen:context@@           the required check name, callerJob / innerJob, after proving both are rendered job ids
 #   @@render:<template>@@     that template rendered, as compact JSON for a single-quoted YAML scalar
 #   @@gen:unowned@@           one CODEOWNERS line per auto-merge allowlist path, with no owner
-#   @@gen:guardids@@          the guard ids, comma separated (guard.yml)
+#   @@gen:guardids@@          the guard ids, required and optional, comma separated (guard.yml)
+#   @@gen:guardidsjson@@      the same ids as a JSON array
 # Inputs: $c (constants, --slurpfile), $frags (fragment name -> text), $all (template path -> text), $t (this template).
 
 def lookup($k):
@@ -88,7 +89,8 @@ def gen:
     if .k == "needs" then selfneeds | tojson
     elif .k == "context" then context
     elif .k == "checkids" then lookup("checks") | map(.id) | join(", ")
-    elif .k == "guardids" then lookup("guards.ids") | join(", ")
+    elif .k == "guardids" then (lookup("guards.ids") + lookup("guards.optional")) | join(", ")
+    elif .k == "guardidsjson" then (lookup("guards.ids") + lookup("guards.optional")) | tojson
     elif .k == "outputs" then
       lookup("checks") | map(.id as $id | ("targets", "fixtures")
         | . + "-" + $id + ": ${{ steps.list.outputs." + . + "-" + $id + " }}") | join("\n      ")
