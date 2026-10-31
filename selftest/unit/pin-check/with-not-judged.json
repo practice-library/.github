@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/with-not-judged",
+    "ORG": "practice-library"
+  }
+}

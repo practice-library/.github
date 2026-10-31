@@ -1,0 +1,8 @@
+{
+  "expect": "invalid",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/not-yaml",
+    "ORG": "practice-library"
+  },
+  "output": "invalid .github/workflows/checks.yml is not YAML"
+}

@@ -93,40 +93,64 @@ jobs:
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
+      - name: Fetch yq 4.44.3, pinned by sha256
+        shell: bash
+        env:
+          TOOL_URL: https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz
+          TOOL_SHA256: a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd
+          TOOL_ARCHIVE: tar.gz
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/tools/yq"
+          mkdir -p "$dir"
+          curl -fsSL --retry 3 "$TOOL_URL" -o "$dir/archive"
+          echo "$TOOL_SHA256  $dir/archive" | sha256sum -c -
+          case "$TOOL_ARCHIVE" in
+            tar.gz) tar -xzf "$dir/archive" -C "$dir" ;;
+            zip) unzip -q "$dir/archive" -d "$dir" ;;
+            *) echo "::error::unknown archive type $TOOL_ARCHIVE"; exit 1 ;;
+          esac
       - name: Every practice-library workflow or action is pinned to a commit, not a branch
         shell: bash
         env:
           ROOT: .
           ORG: practice-library
+          YQ: ${{ runner.temp }}/tools/yq/yq_linux_amd64
         run: |
           set -euo pipefail
           # main: prints "ok ..." when every uses: in ROOT/.github/workflows/*.yml or *.yaml that names a workflow
           # or action of ORG is pinned to a full commit (40 lower-case hex characters), otherwise
           # "unpinned [<file>:<line> <ref>, ...]". A branch or a tag can move, so either is refused; a uses: of
           # another owner, a local ./ path or a docker:// image is not judged. The owner is compared without case.
+          # Each file is parsed as YAML (yq, which follows anchors, aliases and merge keys), so a uses: written as
+          # a quoted key, a flow mapping, a block scalar or an alias is judged like any other. The uses: GitHub reads
+          # are judged: jobs.<id>.uses and jobs.<id>.steps[].uses. A file that does not parse prints "invalid".
           #   ROOT  the checked-out repository     ORG  the organisation whose references must be pinned
+          #   YQ    the yq (mikefarah, v4) binary, default yq
           main() {
-            local dir="${ROOT:-.}/.github/workflows" files=() f found
+            local dir="${ROOT:-.}/.github/workflows" yq="${YQ:-yq}" files=() f found="" uses one
             [ -n "${ORG:-}" ] || { echo "invalid ORG is empty"; return 0; }
             [ -d "$dir" ] || { echo "ok no workflows"; return 0; }
             for f in "$dir"/*.yml "$dir"/*.yaml; do [ -f "$f" ] && files+=("$f"); done
             [ "${#files[@]}" -gt 0 ] || { echo "ok no workflows"; return 0; }
-            found="$(awk -v org="$(printf '%s' "$ORG" | tr '[:upper:]' '[:lower:]')" '
-              /^[ \t]*(-[ \t]+)?uses:[ \t]*/ {
-                v = $0
-                sub(/^[ \t]*(-[ \t]+)?uses:[ \t]*/, "", v)
-                sub(/[ \t]+#.*$/, "", v); sub(/[ \t]+$/, "", v)
-                if (v ~ /^".*"$/ || v ~ /^'"'"'.*'"'"'$/) v = substr(v, 2, length(v) - 2)
-                owner = v; sub(/\/.*$/, "", owner)
-                if (tolower(owner) != org || v !~ /\//) next
-                ref = v; if (ref ~ /@/) sub(/^.*@/, "", ref); else ref = "(none)"
-                if (ref !~ /^[0-9a-f]+$/ || length(ref) != 40) {
-                  f = FILENAME; sub(/^.*\/\.github\/workflows\//, ".github/workflows/", f)
-                  print f ":" FNR " " ref
-                }
-              }' "${files[@]}")"
+            command -v "$yq" > /dev/null 2>&1 || { echo "invalid no yq to read the workflows"; return 0; }
+            for f in "${files[@]}"; do
+              uses="$("$yq" -o=json '[.jobs // {} | to_entries[]
+                  | ((.value.uses | select(. != null)), (.value.steps // [] | .[] | .uses | select(. != null)))
+                  | {"line": line, "v": .}]' "$f" 2>/dev/null)" \
+                || { echo "invalid ${f#"${ROOT:-.}/"} is not YAML"; return 0; }
+              one="$(jq -sr --arg org "$(printf '%s' "$ORG" | tr '[:upper:]' '[:lower:]')" --arg f "${f#"${ROOT:-.}/"}" '
+                  (add // []) | .[]
+                  | (.v | tostring | gsub("^\\s+|\\s+$"; "")) as $v
+                  | ($v | split("/")[0] | ascii_downcase) as $owner
+                  | select($owner == $org and ($v | contains("/")))
+                  | (if ($v | contains("@")) then ($v | sub("^.*@"; "")) else "(none)" end) as $ref
+                  | select($ref | test("^[0-9a-f]{40}$") | not)
+                  | "\($f):\(.line) \($ref)"' <<<"$uses")" || { echo "invalid ${f#"${ROOT:-.}/"} could not be judged"; return 0; }
+              [ -n "$one" ] && found="$found$one"$'\n'
+            done
             if [ -z "$found" ]; then echo "ok every $ORG reference is pinned to a commit"; return 0; fi
-            echo "unpinned $(printf '%s\n' "$found" | jq -Rsc 'split("\n") | map(select(length > 0))')"
+            echo "unpinned $(printf '%s' "$found" | jq -Rsc 'split("\n") | map(select(length > 0))')"
           }
           export ROOT ORG
           result="$(main)"

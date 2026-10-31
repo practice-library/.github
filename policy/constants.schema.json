@@ -67,9 +67,7 @@
         "url",
         "sha256",
         "archive",
-        "bin",
-        "findingExitCode",
-        "expectInput"
+        "bin"
       ],
       "properties": {
         "version": {
@@ -102,7 +100,8 @@
           "pattern": "^_?[a-z][a-z0-9-]*$"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "description": "A tool fetched by URL and pinned by sha256. findingExitCode and expectInput are needed only by a tool a check runs (#@expect); render fails when one is missing there."
     }
   },
   "properties": {

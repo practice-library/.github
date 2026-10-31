@@ -1,0 +1,8 @@
+---
+jobs:
+  a:
+    uses: practice-library/.github/.github/workflows/gate.yml@0123456789abcdef0123456789abcdef01234567
+---
+jobs:
+  b:
+    uses: practice-library/.github/.github/workflows/gate.yml@main
