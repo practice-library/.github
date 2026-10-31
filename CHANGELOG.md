@@ -6,7 +6,7 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Additive; the breaking surface is unchanged. A repository pinned to v2.0.0 is unaffected, and every existing fact node keeps its meaning with no edit.
 
-- spec/node/schema.json: `attrs.basis`, optional, `documented` or `observed`; absent means `documented`. An observed node's `source` is the https run or record that measured it, its `quote` a line copied exactly from that log or record, and its `fetched_at` when the measurement ran. Any other `basis` value, including another spelling or case, fails. A new edge kind, `observes`, links an observed node to the documented node about the same quantity, so the two are never merged. schema-check.yml carries the updated copy of the envelope; its inputs and outputs do not change.
+- spec/node/schema.json: `attrs.basis`, optional, `documented` or `observed`; absent means `documented`. An observed node's `source` is the https run or record that measured it, its `quote` a line copied exactly from that log or record, and its `fetched_at` when the measurement ran. Any other `basis` value, including another spelling or case, fails. A new edge kind, `observes`, links an observed node to the documented node about the same quantity, so the two are never merged; a node with an `observes` edge must say `basis: "observed"`. schema-check.yml carries the updated copy of the envelope; its inputs and outputs do not change.
 
 ## v2.0.0
 

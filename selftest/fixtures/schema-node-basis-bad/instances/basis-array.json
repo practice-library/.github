@@ -15,10 +15,5 @@
     "unit": "jobs",
     "scope": "example repository"
   },
-  "edges": [
-    {
-      "rel": "observes",
-      "to": "example.limit.concurrent-jobs"
-    }
-  ]
+  "edges": []
 }

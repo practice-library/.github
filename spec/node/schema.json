@@ -72,7 +72,8 @@
             "documented",
             "observed"
           ],
-          "description": "Where the number comes from: documented (the vendor states it) or observed (our own measurement). Absent means documented. A documented node and an observed node about the same quantity stay two nodes, linked by an observes edge from the observed one."
+          "description": "Where the number comes from: documented (the vendor states it) or observed (our own measurement). Absent means documented. A documented node and an observed node about the same quantity stay two nodes, linked by an observes edge from the observed one. A node with an observes edge must say basis observed.",
+          "default": "documented"
         },
         "value": {
           "type": "number",
@@ -151,6 +152,39 @@
       "type": "string",
       "format": "uri",
       "pattern": "^https://"
+    }
+  },
+  "if": {
+    "required": [
+      "edges"
+    ],
+    "properties": {
+      "edges": {
+        "contains": {
+          "required": [
+            "rel"
+          ],
+          "properties": {
+            "rel": {
+              "const": "observes"
+            }
+          }
+        }
+      }
+    }
+  },
+  "then": {
+    "properties": {
+      "attrs": {
+        "required": [
+          "basis"
+        ],
+        "properties": {
+          "basis": {
+            "const": "observed"
+          }
+        }
+      }
     }
   }
 }
