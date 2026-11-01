@@ -71,7 +71,7 @@ jobs:
           source selftest/lib/schema-loosening.sh
           data=selftest/unit/schema-loosening/data
           got="$(OLD_FILE="$data/node-v2.0.0.json" NEW_FILE="$data/node-v2.1.0.json" main)"
-          want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum"]'
+          want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum","properties/attrs/properties/basis"]'
           [ "$got" = "$want" ] || { echo "::error::v2.0.0 to v2.1.0 node schema: got $got"; exit 1; }
           echo "$got"
           # Every shipped entry is one of these reviewed fixture pairs, and every pair is shipped.

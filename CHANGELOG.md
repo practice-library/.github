@@ -4,6 +4,15 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+Additive in the surface; several guards refuse more than before (part 1 of #35).
+
+- guard.yml `schema-loosening`: a key added under `properties` or `patternProperties` beside an `additionalProperties` or `unevaluatedProperties` that was `false` is reported as a loosening, as is `unevaluatedProperties: false` made anything else. v2.4.0's `attrs.status` and v2.1.0's `attrs.basis` are the cases this would have reported.
+- message-check.yml: a protocol message whose JSON block gives a key twice is refused. Fences follow CommonMark, so a ```` ```json ```` quoted inside a longer fence is not read as the message, and a block opened with `~~~json` or ```` ````json ```` is refused.
+- guard.yml `release-note`: the changelog count is taken inside the guard from the diff. A line moved within the changelog no longer counts, and a content line starting with `++` now does.
+- spec/ratchet/reconcile.sh: `--check <name>` refuses a baseline recorded for another check.
+- guard.yml `size`: a file git treats as binary is recounted from its text diff, so a NUL byte cannot hide lines; a real binary file now counts its newline-separated lines, so a repository adding images may list those folders as fixtures. The fixture entry `"/"` is refused.
+- scripts/mutants.sh: a mutant that leaves its library unparseable is an error, not a caught mutant.
+
 ## v2.4.0
 
 Additive. All three changes widen a schema and were reviewed as loosenings (label on #48). `schema-loosening` reports the new `rel` and `format` values but not the new `attrs.status` property, since it does not yet see a property added under `additionalProperties: false` (#35).

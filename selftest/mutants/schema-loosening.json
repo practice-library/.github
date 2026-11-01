@@ -93,5 +93,35 @@
     "name": "recursive-ref-unseen",
     "find": "IN(\"$ref\", \"$dynamicRef\", \"$recursiveRef\")",
     "replace": "IN(\"$ref\", \"$dynamicRef\")"
+  },
+  {
+    "name": "added-keys-unchecked",
+    "find": "paths(. == false)",
+    "replace": "paths(. == \"never\")"
+  },
+  {
+    "name": "pattern-properties-unchecked",
+    "find": "[\"properties\", \"patternProperties\"][] as $kw",
+    "replace": "[\"properties\"][] as $kw"
+  },
+  {
+    "name": "unevaluated-added-unchecked",
+    "find": "IN(\"additionalProperties\", \"unevaluatedProperties\")))",
+    "replace": "IN(\"additionalProperties\")))"
+  },
+  {
+    "name": "unevaluated-opened-unchecked",
+    "find": "($k == \"additionalProperties\" or $k == \"unevaluatedProperties\") and $ov == false",
+    "replace": "$k == \"additionalProperties\" and $ov == false"
+  },
+  {
+    "name": "existing-keys-reported",
+    "find": "| select(. as $x | $ok | index([$x]) | not)",
+    "replace": "| select(true)"
+  },
+  {
+    "name": "duplicates-kept",
+    "find": "| reduce .[] as $e ([]; if any(.[]; .path == $e.path) then . else . + [$e] end)",
+    "replace": ""
   }
 ]

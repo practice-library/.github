@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/open-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/open-property-added.json"
+  },
+  "output": "ok nothing loosened"
+}
