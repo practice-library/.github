@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"bogus\"]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/clean.txt"
+  }
+}

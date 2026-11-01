@@ -32,11 +32,17 @@ collect() {
   cat "$buf"
   git log --format='committer %H%x09%cn' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
   cat "$buf"
-  git log --format='::guard-commit:: %H%n%B' "$MB..$HEAD" > "$buf" \
-    || { rm -f "$buf"; return 1; }
-  awk '
-    /^::guard-commit:: / { c = substr($0, 18); next }
-    { print "commit " c "\t" $0 }' "$buf"
+  # Each commit is one NUL-ended record, "<sha>\n<message>", so no line of a message can pose as the
+  # start of the next commit: the whole message is payload.
+  git log -z --format='%H%n%B' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
+  local rec sha line
+  while IFS= read -r -d '' rec; do
+    sha="${rec%%$'\n'*}"
+    [ "$rec" = "$sha" ] && continue
+    while IFS= read -r line || [ -n "$line" ]; do
+      printf 'commit %s\t%s\n' "$sha" "$line"
+    done <<<"${rec#*$'\n'}"
+  done < "$buf"
   rm -f "$buf"
 }
 
@@ -44,7 +50,7 @@ collect() {
 # "unguarded ..." when there is no list or it is empty, or "invalid ..." when DENY cannot be used.
 # The term itself is never printed.
 #   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...], "allowAuthorNames": ["<hex>", ...]}: each
-#              sha256 entry is sha256(salt + ":" + term), where a term is one word or two adjacent words,
+#              sha256 entry is 64 lower-case hex characters, sha256(salt + ":" + term), where a term is one word or two adjacent words,
 #              lower case, words joined by one space; empty when the repository has no list. The optional
 #              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
 #              64 lower-case hex characters each; an author or committer name that is one of them is
@@ -71,15 +77,18 @@ main() {
 import hashlib, json, os, re, sys
 try:
     deny = json.loads(os.environ["DENY"])
+    assert isinstance(deny, dict)
     salt = deny["salt"]
-    hashes = set(deny["sha256"])
+    terms = deny["sha256"]
     allow = deny.get("allowAuthorNames", [])
-    assert isinstance(salt, str) and salt and isinstance(allow, list)
+    assert isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)
+    # Every entry is a digest: an entry no digest can equal would make the list look full and match nothing.
+    assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in terms)
+    assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in allow)
+    hashes = set(terms)
     allow = set(allow)
-    assert all(isinstance(h, str) for h in hashes)
-    assert all(re.fullmatch(r"[0-9a-f]{64}", h) for h in allow)
 except Exception:
-    print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...], \"allowAuthorNames\": [hex, ...]}")
+    print("invalid the denylist must be {\"salt\": text, \"sha256\": [64 lower-case hex, ...], \"allowAuthorNames\": [64 lower-case hex, ...]}")
     sys.exit(0)
 def glob_re(g):
     segs = g.split("/")

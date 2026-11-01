@@ -161,6 +161,16 @@ left="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"do
 HEAD_LIST="$moved" BASE_AFTER_LIST="$left" NUMBER=1 scenario exempt-moved-then-dropped-on-base 1 pull_request "$two" "Contributor" "Reorder" "Clean." ""
 HEAD_LIST="{" scenario exempt-head-list-unreadable-push 1 push "$tree" "Contributor" "Break the list" "Clean." ""
 
+# The list a change writes is the one the next change is judged with: it must be digests only and not empty.
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"bogus\"]}" scenario head-list-not-digests 1 pull_request "$plain" "Contributor" "Edit the list" "Clean." ""
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[]}" scenario head-list-emptied 1 pull_request "$plain" "Contributor" "Empty the list" "Clean." ""
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"$(hash quokka)\"]}" scenario head-list-grows 0 pull_request "$plain" "Contributor" "Add an entry" "Clean." ""
+# The hash tool refuses a list that is not digests, so its output is never appended to a broken list.
+printf '%s\n' "{\"salt\":\"$salt\",\"sha256\":[\"bogus\"]}" > "$work/bad.json"
+if printf 'zebracorn\n' | bash "$root/scripts/denylist-hash.sh" "$work/bad.json" > /dev/null 2>&1; then
+  echo "FAIL denylist-hash.sh accepted a list that is not digests"; failed=$((failed + 1))
+else echo "ok   denylist-hash.sh refuses a list that is not digests"; fi
+
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).
 real="$(git -C "$root" log -1 --format=%an "$MAINTAINER_MERGE" 2> /dev/null)" \
