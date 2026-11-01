@@ -41,10 +41,11 @@ plain="{\"salt\":\"$salt\",\"sha256\":[\"$term\"]}"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-# A stand-in for gh: it prints the label events the scenario sets in GH_EVENTS, as the step's --jq would.
-mkdir -p "$work/bin"
-printf '#!/bin/sh\nprintf "%%s\\n" "${GH_EVENTS:-}"\n' > "$work/bin/gh"
-chmod +x "$work/bin/gh"
+# A stand-in for the approval tooling (tooling/practice_ci/approvals.py, covered by its own tests): it
+# prints the verdict line the scenario sets in APPROVAL, as the real module would after reading the reviews.
+mkdir -p "$work/tooling/practice_ci"
+: > "$work/tooling/practice_ci/__init__.py"
+printf 'import os\nprint(os.environ.get("APPROVAL") or "missing no approving review")\n' > "$work/tooling/practice_ci/approvals.py"
 # The maintainer's name is three words holding the term; its exemption comes from the hash tool itself.
 maintainer="Zebracorn Account Name"
 printf '%s\n' "$plain" > "$work/list.json"
@@ -56,8 +57,8 @@ failed=0
 # scenario <name> <want 0|1> <event> <list or "" for none on base> <author> <message> <added line> <merge author or "">
 # Optional, set for one call: HEAD_LIST (the list the head commit writes), FILE (the file the head commit
 # adds, default notes.md), MERGE_COMMITTER (default GitHub), MERGE_MESSAGE, and for the exemption label
-# NUMBER (a pull request number; empty means not a pull request), LABELS (JSON, default []) and
-# GH_EVENTS (the label events, "<login><TAB><type>" lines). MOVE_FROM puts the line in that file on the
+# NUMBER (a pull request number; empty means not a pull request) and APPROVAL (the approval verdict line;
+# default: missing). MOVE_FROM puts the line in that file on the
 # base and has the head commit move it to FILE (git mv) instead of adding the line. BASE_AFTER_LIST writes
 # that list on the base line after the head branched (DELETE_LIST=1 has the head commit delete the list), so BASE moves on while MB stays where it branched.
 scenario() {
@@ -97,8 +98,8 @@ scenario() {
   fi
   got=0
   out="$(cd "$repo" && NONE=false BASE="$tip" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
-    LABEL=schema-loosening-approved LABELS="${LABELS:-[]}" AUTHOR=contributor NUMBER="${NUMBER:-}" \
-    REPO=example/repo GH_TOKEN=unused GH_EVENTS="${GH_EVENTS:-}" PATH="$work/bin:$PATH" bash -c "$step" 2>&1)" || got=$?
+    LABEL=schema-loosening-approved NUMBER="${NUMBER:-}" TOOLING="$work/tooling" \
+    REPO=example/repo GH_TOKEN=unused APPROVAL="${APPROVAL:-}" bash -c "$step" 2>&1)" || got=$?
   [ "$got" -eq 0 ] || got=1
   if [ "$got" = "$want" ]; then
     echo "ok   $name: ${out##*$'\n'}"
@@ -145,11 +146,11 @@ FILE=docs/a.md scenario exempt-cr-forged-row 1 pull_request "$tree" "Contributor
 # An exemption never applies to the change that adds it: not to a list on the base, nor to a first list.
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-added-by-change 1 pull_request "$plain" "Contributor" "Add a node" "Zebracorn quoted." ""
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-in-first-list 1 pull_request "" "Contributor" "Add a node" "Zebracorn quoted." ""
-# Adding or widening an exemption needs the label from someone other than the author and not a bot.
+# Adding or widening an exemption needs an approving review of the exact head (the verdict line is staged).
 HEAD_LIST="$tree" NUMBER=1 scenario exempt-widened-no-label 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="maintainer	User" scenario exempt-widened-labelled 0 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="contributor	User" scenario exempt-widened-self-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="helper[bot]	Bot" scenario exempt-widened-bot-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 APPROVAL="ok approved by maintainer at head" scenario exempt-widened-approved 0 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 APPROVAL="refused contributor is the author of the pull request" scenario exempt-widened-self-approved 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 APPROVAL="refused helper[bot] is a bot" scenario exempt-widened-bot-approved 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$tree" scenario exempt-widened-push 0 push "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$plain" NUMBER=1 scenario exempt-removed 0 pull_request "$tree" "Contributor" "Drop the exemption" "Clean." ""
 HEAD_LIST="{" NUMBER=1 scenario exempt-head-list-unreadable 1 pull_request "$tree" "Contributor" "Break the list" "Clean." ""
