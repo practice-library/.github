@@ -211,11 +211,6 @@
     "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
     "nodeSchemaPath": "spec/node/schema.json"
   },
-  "git": {
-    "runnerScript": "tooling/run_practice_ci.py",
-    "runnerEnv": "PRACTICE_CI_RUNNER",
-    "reportLimit": 20
-  },
   "tagRuleset": {
     "name": "release-tags",
     "enforcement": "active",
@@ -268,6 +263,115 @@
       }
     ]
   },
+  "protocol": {
+    "api": {
+      "base": "https://api.github.com",
+      "version": "2022-11-28",
+      "accept": "application/vnd.github+json",
+      "perPage": 100,
+      "maxPages": 50,
+      "timeoutSeconds": 30
+    },
+    "tokenEnv": "GH_TOKEN",
+    "prefixes": {
+      "kind": "kind:",
+      "to": "to:",
+      "from": "from:",
+      "state": "state:"
+    },
+    "poll": {
+      "kind": "request",
+      "state": "open"
+    },
+    "verdict": {
+      "marker": "message-check: accepted sha256=",
+      "authors": [
+        "github-actions[bot]"
+      ],
+      "invalidState": "invalid"
+    },
+    "labels": [
+      {
+        "name": "kind:request",
+        "color": "1d76db",
+        "description": "Protocol message: a request for work"
+      },
+      {
+        "name": "kind:answer",
+        "color": "0e8a16",
+        "description": "Protocol message: an answer to a request"
+      },
+      {
+        "name": "kind:status",
+        "color": "c5def5",
+        "description": "Protocol message: a status update"
+      },
+      {
+        "name": "kind:blocked",
+        "color": "b60205",
+        "description": "Protocol message: the sender is blocked"
+      },
+      {
+        "name": "kind:decision",
+        "color": "5319e7",
+        "description": "Protocol message: records a human decision"
+      },
+      {
+        "name": "kind:proposal",
+        "color": "fbca04",
+        "description": "Protocol message: proposes a protocol change"
+      },
+      {
+        "name": "state:open",
+        "color": "ededed",
+        "description": "Protocol state: not yet acknowledged"
+      },
+      {
+        "name": "state:ack",
+        "color": "bfdadc",
+        "description": "Protocol state: acknowledged by the receiver"
+      },
+      {
+        "name": "state:done",
+        "color": "0e8a16",
+        "description": "Protocol state: the work has landed"
+      },
+      {
+        "name": "state:rejected",
+        "color": "d93f0b",
+        "description": "Protocol state: the receiver declined"
+      },
+      {
+        "name": "state:invalid",
+        "color": "e11d21",
+        "description": "Protocol state: message-check refused the message"
+      }
+    ],
+    "canary": {
+      "tokenSecret": "PROTOCOL_CANARY_TOKEN",
+      "titlePrefix": "protocol-canary",
+      "timeoutMinutes": 10,
+      "waitSeconds": 180,
+      "pollSeconds": 10,
+      "specVersion": "1.0",
+      "messageType": "org.practice-library.protocol.v0.request",
+      "protocolVersion": "0"
+    }
+  },
+  "helpers": {
+    "yq": {
+      "version": "4.44.3",
+      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
+      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
+      "archive": "tar.gz",
+      "bin": "yq_linux_amd64"
+    }
+  },
+  "git": {
+    "runnerScript": "tooling/run_practice_ci.py",
+    "runnerEnv": "PRACTICE_CI_RUNNER",
+    "reportLimit": 20
+  },
   "approvals": {
     "apiUrl": "https://api.github.com",
     "apiVersion": "2022-11-28",
@@ -297,14 +401,5 @@
     "toolingPath": ".practice-ci",
     "schemaLooseningKind": "schema-loosening",
     "sizeKind": "size"
-  },
-  "helpers": {
-    "yq": {
-      "version": "4.44.3",
-      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
-      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
-      "archive": "tar.gz",
-      "bin": "yq_linux_amd64"
-    }
   }
 }
