@@ -243,5 +243,20 @@
     "name": "defs-without-ref",
     "find": "| select(any($old, $new | paths; .[-1] | IN($refs[])))",
     "replace": "| ."
+  },
+  {
+    "name": "identity-as-annotation",
+    "find": "\"contentMediaType\",\"contentEncoding\",\"contentSchema\",\"$defs\",\"definitions\"] as $annot",
+    "replace": "\"contentMediaType\",\"contentEncoding\",\"contentSchema\",\"$defs\",\"definitions\",\"$schema\",\"$id\",\"$anchor\",\"$dynamicAnchor\",\"$vocabulary\"] as $annot"
+  },
+  {
+    "name": "identity-added-ignored",
+    "find": "| $ident[] as $k | select(($o | has($k) | not) and ($n | has($k)))",
+    "replace": "| $ident[] as $k | select(false)"
+  },
+  {
+    "name": "shape-change-ignored",
+    "find": "is not compared.\n                    where($s)",
+    "replace": "is not compared.\n                    empty"
   }
 ]

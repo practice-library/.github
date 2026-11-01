@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "output": "ok nothing loosened",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-annotation-only-made-true-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-annotation-only-made-true-new.json"
+  }
+}

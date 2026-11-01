@@ -29,7 +29,9 @@ main() {
 #   minContains below 1 added beside contains; a changed $defs or definitions in a file with a reference
 #   and an unevaluated keyword that is not true; a $ref, $dynamicRef or $recursiveRef added,
 #   removed or changed; an allOf, anyOf, prefixItems or list items that changes length; any constraint
-#   keyword removed; a subschema made true or a false one opened; and any other keyword changed
+#   keyword removed; a subschema made true, a false one opened, or one replaced by another shape (a list
+#   items for a schema items); a $schema, $id, $anchor, $dynamicAnchor or $vocabulary added, removed or
+#   changed (they move what a reference reaches or which keywords count); and any other keyword changed
 #   (multipleOf, uniqueItems, ...).
 #   Annotations (title, description, default, examples, $comment, ...) and $defs entries are not judged.
 # A pattern changed to another string is not loose when the pair is listed in TIGHTEN (unset means no
@@ -78,8 +80,10 @@ compare() {
           | ["properties","patternProperties","dependentSchemas","$defs","definitions"] as $submap
           | ["allOf","anyOf","oneOf","prefixItems","items"] as $subarr
           | ["title","description","default","examples","$comment","deprecated","readOnly","writeOnly",
-             "contentMediaType","contentEncoding","contentSchema","$anchor","$dynamicAnchor","$id","$schema",
-             "$vocabulary","$defs","definitions"] as $annot
+             "contentMediaType","contentEncoding","contentSchema","$defs","definitions"] as $annot
+          # What a reference resolves to or which dialect applies: removed or changed is judged like any
+          # other keyword below; added, it is judged here.
+          | ["$schema","$id","$anchor","$dynamicAnchor","$vocabulary"] as $ident
           | ["$ref","$dynamicRef","$recursiveRef"] as $refs
           | ($mins + $maxs + ["required","enum","const","pattern","format","type"]) as $handled
           | def isschema: length == 0
@@ -99,7 +103,10 @@ compare() {
                   elif $n == true then
                     # A subschema with constraints made true.
                     (select(any($o | keys[]; IN($annot[]) | not)) | where($s))
-                  elif ($n | type) != "object" then empty
+                  elif $n == false or $n == null then empty
+                  elif ($n | type) != "object" then
+                    # A subschema replaced by another shape (a list items for a schema items) is not compared.
+                    where($s)
                   else
                     ( $o | keys[] as $k
                       | select($k | IN($annot[]) | not)
@@ -170,6 +177,11 @@ compare() {
                                                  or (has("unevaluatedItems") and .unevaluatedItems != true)))
                 | select(any($old, $new | paths; .[-1] | IN($refs[])))
                 | ["$defs", "definitions"][] as $k | select(at($old; [$k]) != at($new; [$k])) | where([$k]) ),
+              # A $schema, $id, $anchor, $dynamicAnchor or $vocabulary added: it can move what a reference reaches
+              # or which keywords count.
+              ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
+                | select(($o | type) == "object" and ($n | type) == "object")
+                | $ident[] as $k | select(($o | has($k) | not) and ($n | has($k))) | where($s + [$k]) ),
               # A reference added, removed or changed: the guard cannot follow it.
               ( ($places + $newplaces | unique)[] as $s
                 | $refs[] as $r

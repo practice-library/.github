@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"$schema\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-dialect-changed-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-dialect-changed-new.json"
+  }
+}
