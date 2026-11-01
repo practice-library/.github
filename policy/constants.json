@@ -262,97 +262,7 @@
     "verdictAuthor": "github-actions[bot]",
     "verdictMarker": "protocol-verdict",
     "toolingDir": "tooling",
-    "toolingCheckout": ".practice-ci"
-  },
-  "guards": {
-    "workflow": "guard.yml",
-    "ids": [
-      "denylist",
-      "removed-paths",
-      "release-note",
-      "schema-loosening"
-    ],
-    "denylistFile": ".github/denylist.json",
-    "historyFiles": [
-      "CHANGELOG.md"
-    ],
-    "releaseWatch": [],
-    "changelog": "CHANGELOG.md",
-    "noReleaseMarker": "Release: none",
-    "loosenLabel": "schema-loosening-approved",
-    "optional": [
-      "size"
-    ],
-    "sizeLimit": 600,
-    "sizeFixtures": [
-      "selftest/",
-      "examples/",
-      "counter-examples/",
-      "tests/fixtures/"
-    ],
-    "sizeLabel": "size-approved",
-    "tighteningPairs": [
-      {
-        "sha256": "a848fee9389b26eedeb2b9846e13b2972010c2015b0a0c9e420d159914db5c01",
-        "why": "v3.0.0 protocol message time and data.expires: the same time of day and Z, on a real calendar date, with an hour below 24 and a second below 60"
-      },
-      {
-        "sha256": "7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e",
-        "why": "v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"
-      },
-      {
-        "sha256": "b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983",
-        "why": "v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z"
-      },
-      {
-        "sha256": "ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d",
-        "why": "v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"
-      }
-    ]
-  },
-  "pluginGateway": {
-    "workflow": "plugin-matrix.yml",
-    "protocol": "0",
-    "operations": {
-      "describe": "describe",
-      "plan": "plan",
-      "runUnit": "run-unit",
-      "merge": "merge"
-    },
-    "maxParallel": 3,
-    "retry": {
-      "exitCode": 75,
-      "attempts": 3,
-      "waitSeconds": 60
-    },
-    "caps": {
-      "timeSeconds": 300,
-      "outputBytes": 10000000
-    },
-    "unitIdPattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
-    "files": {
-      "plan": "plan.json",
-      "partialsDir": "partials",
-      "report": "report.json"
-    },
-    "artifacts": {
-      "plan": "gateway-plan",
-      "partialPrefix": "gateway-partial-",
-      "report": "gateway-report",
-      "retentionDays": 7
-    },
-    "module": "tooling.practice_ci.plugin_gateway"
-  },
-  "helpers": {
-    "yq": {
-      "version": "4.44.3",
-      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
-      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
-      "archive": "tar.gz",
-      "bin": "yq_linux_amd64"
-    }
-  },
-  "protocol": {
+    "toolingCheckout": ".practice-ci",
     "api": {
       "base": "https://api.github.com",
       "version": "2022-11-28",
@@ -445,6 +355,94 @@
       "specVersion": "1.0",
       "messageType": "org.practice-library.protocol.v0.request",
       "protocolVersion": "0"
+    }
+  },
+  "guards": {
+    "workflow": "guard.yml",
+    "ids": [
+      "denylist",
+      "removed-paths",
+      "release-note",
+      "schema-loosening"
+    ],
+    "denylistFile": ".github/denylist.json",
+    "historyFiles": [
+      "CHANGELOG.md"
+    ],
+    "releaseWatch": [],
+    "changelog": "CHANGELOG.md",
+    "noReleaseMarker": "Release: none",
+    "loosenLabel": "schema-loosening-approved",
+    "optional": [
+      "size"
+    ],
+    "sizeLimit": 600,
+    "sizeFixtures": [
+      "selftest/",
+      "examples/",
+      "counter-examples/",
+      "tests/fixtures/"
+    ],
+    "sizeLabel": "size-approved",
+    "tighteningPairs": [
+      {
+        "sha256": "a848fee9389b26eedeb2b9846e13b2972010c2015b0a0c9e420d159914db5c01",
+        "why": "v3.0.0 protocol message time and data.expires: the same time of day and Z, on a real calendar date, with an hour below 24 and a second below 60"
+      },
+      {
+        "sha256": "7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e",
+        "why": "v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"
+      },
+      {
+        "sha256": "b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983",
+        "why": "v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z"
+      },
+      {
+        "sha256": "ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d",
+        "why": "v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"
+      }
+    ]
+  },
+  "pluginGateway": {
+    "workflow": "plugin-matrix.yml",
+    "protocol": "0",
+    "operations": {
+      "describe": "describe",
+      "plan": "plan",
+      "runUnit": "run-unit",
+      "merge": "merge"
+    },
+    "maxParallel": 3,
+    "retry": {
+      "exitCode": 75,
+      "attempts": 3,
+      "waitSeconds": 60
+    },
+    "caps": {
+      "timeSeconds": 300,
+      "outputBytes": 10000000
+    },
+    "unitIdPattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    "files": {
+      "plan": "plan.json",
+      "partialsDir": "partials",
+      "report": "report.json"
+    },
+    "artifacts": {
+      "plan": "gateway-plan",
+      "partialPrefix": "gateway-partial-",
+      "report": "gateway-report",
+      "retentionDays": 7
+    },
+    "module": "tooling.practice_ci.plugin_gateway"
+  },
+  "helpers": {
+    "yq": {
+      "version": "4.44.3",
+      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
+      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
+      "archive": "tar.gz",
+      "bin": "yq_linux_amd64"
     }
   },
   "git": {
