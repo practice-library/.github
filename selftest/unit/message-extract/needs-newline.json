@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/needs-newline.md"
+  },
+  "output": "invalid a needs entry spans more than one line"
+}
