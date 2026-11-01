@@ -1,9 +1,0 @@
-{
-  "expect": "missing",
-  "env": {
-    "LABEL": "schema-loosening-approved",
-    "LABELS": "[]",
-    "AUTHOR": "contributor",
-    "EVENTS": ""
-  }
-}
