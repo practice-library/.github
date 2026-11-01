@@ -145,6 +145,12 @@ jobs:
           if [ -n "$HEAD_LIST" ] && [ "$HEAD_LIST" != "$BASE_LIST" ]; then
             next="$(DENY="$HEAD_LIST" TEXT_FILE=/dev/null main)"
             [ "${next%% *}" = ok ] || { echo "::error file=$LIST::the list this change writes cannot be used: $next"; exit 1; }
+          elif [ -z "$HEAD_LIST" ]; then
+            # Deleting the list leaves the next change unguarded. Judged against the merge base, so a list
+            # the base gained after the change branched is not counted as deleted by it.
+            MB_HAD=""
+            if git cat-file -e "$MB:$LIST" 2>/dev/null; then MB_HAD="$(git cat-file blob "$MB:$LIST")"; fi
+            [ -z "$MB_HAD" ] || { echo "::error file=$LIST::this change deletes $LIST, so the next change would be unguarded"; exit 1; }
           fi
           # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
           #@include denylist-exempt.sh
