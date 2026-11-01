@@ -193,9 +193,8 @@ jobs:
         run: |
           set -euo pipefail
           #@include removed-refs.sh
-          DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           ROOT="$GITHUB_WORKSPACE"
-          export DELETED ROOT HISTORY
+          export ROOT HISTORY
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -212,9 +211,7 @@ jobs:
         run: |
           set -euo pipefail
           #@include release-note.sh
-          CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
-          MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES MB HEAD
+          export WATCH CHANGELOG MARKER MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]

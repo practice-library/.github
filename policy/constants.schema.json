@@ -20,6 +20,7 @@
     "dependabot",
     "canary",
     "spec",
+    "git",
     "tagRuleset",
     "release",
     "guards",
@@ -640,6 +641,28 @@
         },
         "nodeSchemaPath": {
           "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runnerScript",
+        "runnerEnv",
+        "reportLimit"
+      ],
+      "properties": {
+        "runnerScript": {
+          "$ref": "#/$defs/path"
+        },
+        "runnerEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "reportLimit": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
