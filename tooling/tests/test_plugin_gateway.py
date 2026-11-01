@@ -17,7 +17,7 @@ from unittest import mock
 from tooling.practice_ci import config, plugin_gateway as gw
 
 PLUGIN_SOURCE = """#!%(python)s
-import json, os, sys
+import json, os, sys, time
 here = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(here, "behaviour.json"), encoding="utf-8") as f:
     behaviour = json.load(f)
@@ -36,6 +36,11 @@ with open(log, "a", encoding="utf-8") as f:
     f.write(json.dumps({"operation": operation, "unit": unit, "request": request}) + "\\n")
 codes = behaviour.get("exit", {}).get(operation + ":" + unit, [0])
 code = codes[min(previous, len(codes) - 1)]
+if "rawBytes" in behaviour:
+    sys.stdout.buffer.write(b"x" * behaviour["rawBytes"])
+    sys.stdout.buffer.flush()
+    time.sleep(behaviour.get("holdSeconds", 0))
+    sys.exit(code)
 if code != 0:
     sys.stderr.write("fake plugin exits %%d\\n" %% code)
     sys.exit(code)
@@ -189,6 +194,36 @@ class PlanStep(Fake):
     def test_a_missing_plugin_is_a_setup_error(self):
         with quiet(), self.assertRaisesRegex(gw.GatewayError, "cannot run"):
             gw.describe(os.path.join(self.dir, "absent"), self.caps)
+
+
+class OutputCap(Fake):
+    def test_overflow_is_fatal_on_success_retry_and_fatal_exits(self):
+        for code in (0, RETRY, 2):
+            with self.subTest(code=code):
+                self.behave(rawBytes=101, exit={"run-unit:a": [code]})
+                outcome, clock = self.unit("a", caps={**self.caps, "outputBytes": 100})
+                self.assertEqual(outcome["state"], "fatal")
+                self.assertIn("output cap", outcome["reason"])
+                self.assertEqual(outcome["attempts"], 1)
+                self.assertEqual(clock.sleeps, [])
+
+    def test_overflow_is_detected_before_the_plugin_exits(self):
+        self.behave(rawBytes=101, holdSeconds=10)
+        with quiet():
+            result = gw.call(self.plugin, "run-unit", {}, {"outputBytes": 100, "timeSeconds": 1})
+        self.assertIn("output cap", result.problem)
+
+    def test_exact_cap_on_retry_is_allowed(self):
+        self.behave(rawBytes=100, exit={"run-unit:": [RETRY]})
+        with quiet():
+            result = gw.call(self.plugin, "run-unit", {}, {**self.caps, "outputBytes": 100})
+        self.assertEqual(result, gw.Call(RETRY, None, None))
+
+    def test_timeout_still_applies_while_reading(self):
+        self.behave(rawBytes=1, holdSeconds=10)
+        with quiet():
+            result = gw.call(self.plugin, "run-unit", {}, {"outputBytes": 100, "timeSeconds": 0.1})
+        self.assertIn("time cap", result.problem)
 
 
 class UnitStep(Fake):

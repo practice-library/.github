@@ -14,8 +14,11 @@ Exit status: 0 on success, 1 when the step failed (a warning or error annotation
 import argparse
 import collections
 import json
+import io
 import os
 import re
+import selectors
+import select
 import subprocess
 import sys
 import time
@@ -65,31 +68,67 @@ def _envelope_problem(envelope):
 
 def call(plugin, operation, request, caps):
     """Run one operation. A problem is set when the call itself broke the contract (time, size, envelope)."""
+    payload = memoryview(json.dumps(request).encode("utf-8"))
+    output = bytearray()
+    deadline = time.monotonic() + caps["timeSeconds"]
     try:
-        done = subprocess.run(
-            [plugin, operation],
-            input=json.dumps(request).encode("utf-8"),
-            stdout=subprocess.PIPE,
+        with subprocess.Popen(
+            [plugin, operation], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            timeout=caps["timeSeconds"],
-            check=False,
-        )
+        ) as process, selectors.DefaultSelector() as selector:
+            try:
+                for stream in (process.stdin, process.stdout, process.stderr):
+                    os.set_blocking(stream.fileno(), False)
+                    selector.register(stream, selectors.EVENT_WRITE if stream is process.stdin else selectors.EVENT_READ)
+                while selector.get_map():
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise subprocess.TimeoutExpired(process.args, caps["timeSeconds"])
+                    for key, _ in selector.select(remaining):
+                        stream = key.fileobj
+                        if stream is process.stdin:
+                            try:
+                                written = os.write(stream.fileno(), payload[:select.PIPE_BUF])
+                                payload = payload[written:]
+                            except BrokenPipeError:
+                                payload = payload[:0]
+                            if not payload:
+                                selector.unregister(stream)
+                                stream.close()
+                            continue
+                        size = io.DEFAULT_BUFFER_SIZE
+                        if stream is process.stdout:
+                            # Read only through the first byte beyond the cap.
+                            size = min(size, caps["outputBytes"] - len(output) + 1)
+                        chunk = os.read(stream.fileno(), size)
+                        if not chunk:
+                            selector.unregister(stream)
+                            stream.close()
+                        elif stream is process.stderr:
+                            sys.stderr.write(chunk.decode("utf-8", "replace"))
+                        else:
+                            output.extend(chunk)
+                            if len(output) > caps["outputBytes"]:
+                                return Call(None, None, f"{operation} wrote more than the output cap of {caps['outputBytes']} bytes")
+                process.wait(timeout=max(0, deadline - time.monotonic()))
+            finally:
+                # Reap on every path, including overflow and timeout; never drain
+                # an unbounded producer with communicate().
+                if process.poll() is None:
+                    process.kill()
+                process.wait()
     except subprocess.TimeoutExpired:
         return Call(None, None, f"{operation} ran past the time cap of {caps['timeSeconds']} s")
     except OSError as error:
         raise GatewayError(f"cannot run {plugin}: {error}") from error
-    if done.stderr:
-        sys.stderr.write(done.stderr.decode("utf-8", "replace"))
-    if done.returncode != 0:
-        return Call(done.returncode, None, None)
-    if len(done.stdout) > caps["outputBytes"]:
-        return Call(done.returncode, None, f"{operation} wrote more than the output cap of {caps['outputBytes']} bytes")
+    if process.returncode != 0:
+        return Call(process.returncode, None, None)
     try:
-        envelope = json.loads(done.stdout.decode("utf-8"))
+        envelope = json.loads(output.decode("utf-8"))
     except ValueError:
-        return Call(done.returncode, None, f"{operation} did not write one JSON envelope")
+        return Call(process.returncode, None, f"{operation} did not write one JSON envelope")
     problem = _envelope_problem(envelope)
-    return Call(done.returncode, None if problem else envelope, problem)
+    return Call(process.returncode, None if problem else envelope, problem)
 
 
 def _must_succeed(plugin, operation, request, caps):
