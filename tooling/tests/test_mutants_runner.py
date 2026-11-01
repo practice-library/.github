@@ -86,6 +86,22 @@ class MutantsRunnerTest(unittest.TestCase):
         self.assertIn("FAIL demo/jq-broken", out)
         self.assertNotIn("caught demo/jq-broken", out)
 
+    def test_python_indentation_compile_errors_are_not_kills(self):
+        programs = {
+            "IndentationError": 'if True:\nprint("ok")',
+            "TabError": 'if True:\n\tprint("ok")\n        print("ok")',
+        }
+        for error, program in programs.items():
+            with self.subTest(error=error):
+                self.lib([{"name": "python-broken", "find": "jq -nr '\"ok\"'",
+                           "replace": "python3 -c '" + program + "'"}])
+                rc, out = self.run_runner("demo")
+                self.assertNotEqual(rc, 0, out)
+                self.assertIn(error, out)
+                self.assertIn("a parse error, not a behaviour", out)
+                self.assertIn("1 mutants, 1 not caught", out)
+                self.assertNotIn("caught demo/python-broken", out)
+
     def test_a_shell_syntax_error_is_not_a_kill(self):
         self.lib([{"name": "sh-broken", "find": "; }", "replace": ";"}])
         rc, out = self.run_runner("demo")
