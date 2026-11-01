@@ -64,7 +64,13 @@
         "supersedes",
         "hasRelease",
         "introducedIn",
-        "removedIn"
+        "removedIn",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy"
       ]
     },
     {
@@ -81,6 +87,12 @@
         "introducedIn",
         "removedIn",
         "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy",
         "observe"
       ]
     },

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "https://github.com/practice-library/.github/spec/node/schema.json",
+  "properties": {
+    "type": {
+      "enum": [
+        "limit"
+      ]
+    },
+    "edges": {
+      "items": {
+        "properties": {
+          "rel": {
+            "enum": [
+              "partOf",
+              "amends"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
