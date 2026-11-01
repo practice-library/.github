@@ -239,7 +239,7 @@ class _Judge:
         for s in self.places:
             o, n = _at(old, s), _at(new, s)
             if isinstance(o, bool):
-                if o is False and s and n is not False and n is not None:
+                if o is False and n is not False and n is not None:
                     yield s, "false-subschema-opened"
                 continue
             if not isinstance(o, dict):

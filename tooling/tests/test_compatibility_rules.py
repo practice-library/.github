@@ -61,6 +61,10 @@ class Verdicts(unittest.TestCase):
         new = schema(additionalProperties=False, properties={"x": {}})
         self.assertEqual(review(old, new)[0], c.REQUIRES_REVIEW)
 
+    def test_root_false_schema_opened(self):
+        for new in (True, {}):
+            self.assertEqual(c.classify(False, new)["verdict"], c.REQUIRES_REVIEW)
+
     def test_change_under_not_means_review_even_when_tighter(self):
         old = schema(properties={"s": {"not": {"maxLength": 5}}})
         new = schema(properties={"s": {"not": {"maxLength": 3}}})

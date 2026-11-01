@@ -27,7 +27,7 @@
   {"name": "items-list-length-ignored", "find": "if not isinstance(n[k], list) or len(n[k]) != len(o[k]):", "replace": "if False:"},
   {"name": "entry-removal-ignored", "find": "if x in _keys_of(n[k]):", "replace": "if True:"},
   {"name": "made-true-ignored", "find": "if any(k not in ANNOTATIONS for k in o):", "replace": "if False:"},
-  {"name": "false-opened-ignored", "find": "if o is False and s and n is not False and n is not None:", "replace": "if False:"},
+  {"name": "false-opened-ignored", "find": "if o is False and n is not False and n is not None:", "replace": "if False:"},
   {"name": "annotations-judged", "find": "for k in sorted(o):\n                if k in ANNOTATIONS:\n                    continue", "replace": "for k in sorted(o):"},
   {"name": "other-change-ignored", "find": "elif not _eq(o[k], n[k]):", "replace": "elif False:"},
   {"name": "nonmonotonic-ignored", "find": "elif k in REVERSING:", "replace": "elif False:"},
