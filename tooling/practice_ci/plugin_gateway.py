@@ -9,8 +9,15 @@ Every limit, name and default is in policy/constants.json under pluginGateway.
     python3 -m tooling.practice_ci.plugin_gateway unit  --plugin P --plan plan.json --unit ID --out-dir DIR
     python3 -m tooling.practice_ci.plugin_gateway merge --plugin P --plan plan.json --partials-dir DIR --out report.json
 
+    python3 -m tooling.practice_ci.plugin_gateway run   --plugin P --plan-input F --out report.json
+
+`run` is plan, every unit (in parallel, at most the matrix width) and merge in one step. It writes the report and
+sets the `report` output (compact JSON) even when a unit was fatal; that unit has no partial, merge reports its
+facts unreadable, and the step then exits 1.
+
 Exit status: 0 on success, 1 when the step failed (a warning or error annotation says why), 2 on bad arguments.
 """
+from concurrent.futures import ThreadPoolExecutor
 import argparse
 import collections
 import json
@@ -284,20 +291,23 @@ def _at_least(minimum):
 def _parser():
     parser = argparse.ArgumentParser(prog="plugin_gateway", description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="step", required=True)
-    for name in ("plan", "unit", "merge"):
+    for name in ("plan", "unit", "merge", "run"):
         step = sub.add_parser(name)
         step.add_argument("--plugin", required=True)
         step.add_argument("--time-seconds", type=_at_least(1), default=_policy("caps", "timeSeconds"))
         step.add_argument("--output-bytes", type=_at_least(1), default=_policy("caps", "outputBytes"))
-        if name == "plan":
+        if name in ("plan", "run"):
             step.add_argument("--plan-input", required=True)
             step.add_argument("--out", required=True)
             step.add_argument("--max-parallel", type=_at_least(1), default=_policy("maxParallel"))
         else:
             step.add_argument("--plan", required=True)
-        if name == "unit":
-            step.add_argument("--unit", required=True)
-            step.add_argument("--out-dir", required=True)
+        if name in ("unit", "run"):
+            if name == "unit":
+                step.add_argument("--unit", required=True)
+                step.add_argument("--out-dir", required=True)
+            # Retry bounds apply to each unit.
+
             step.add_argument("--retry-attempts", type=_at_least(1), default=_policy("retry", "attempts"))
             step.add_argument("--retry-wait-seconds", type=_at_least(0), default=_policy("retry", "waitSeconds"))
         if name == "merge":
@@ -340,10 +350,34 @@ def _step_merge(args, caps):
     return EXIT_OK
 
 
+def _step_run(args, caps, sleep, clock):
+    data, ids, width = plan(args.plugin, _read_json(args.plan_input), caps, args.max_parallel)
+    def execute(unit_id):
+        return run_unit(args.plugin, data, unit_id, caps, args.retry_attempts,
+                        args.retry_wait_seconds, sleep, clock)
+    partials = []
+    fatal = []
+    with ThreadPoolExecutor(max_workers=width) as pool:
+        for unit_id, outcome in zip(ids, pool.map(execute, ids)):
+            if outcome["state"] == "fatal":
+                fatal.append(unit_id)
+                print(f"::warning::unit {unit_id}: {outcome['reason']}; no partial, so merge reports its facts unreadable")
+            else:
+                partials.append(outcome["partial"])
+    report = _must_succeed(args.plugin, _policy("operations", "merge"),
+                           {"plan": data, "partials": partials}, caps)
+    _write_json(args.out, report)
+    _output("report", report)
+    # The report is complete either way; a fatal unit still fails the step, as the unit step did.
+    return EXIT_FAILED if fatal else EXIT_OK
+
+
 def main(argv=None, sleep=time.sleep, clock=time.monotonic):
     args = _parser().parse_args(argv)
     caps = {"timeSeconds": args.time_seconds, "outputBytes": args.output_bytes}
     try:
+        if args.step == "run":
+            return _step_run(args, caps, sleep, clock)
         if args.step == "plan":
             return _step_plan(args, caps)
         if args.step == "unit":

@@ -1,37 +1,76 @@
-[
-  {
-    "name": "whitespace-edit-counts",
-    "find": "[ \"$CHANGELOG_ADDED\" -gt 0 ] &&",
-    "replace": "true &&"
-  },
-  {
-    "name": "count-check-off",
-    "find": "[[ \"${CHANGELOG_ADDED:-}\" =~ ^[0-9]+$ ]] ||",
-    "replace": "true ||"
-  },
-  {
-    "name": "one-line-not-enough",
-    "find": "[ \"$CHANGELOG_ADDED\" -gt 0 ]",
-    "replace": "[ \"$CHANGELOG_ADDED\" -gt 1 ]"
-  },
-  {
-    "name": "moves-counted",
-    "find": "| reduce $removed[] as $r ($added; (index([$r]) // null) as $k | if $k == null then . else del(.[$k]) end)\n",
-    "replace": "\n"
-  },
-  {
-    "name": "header-lines-counted",
-    "find": "select($l[.] | startswith(\"@@\"))] | first) as $i",
-    "replace": "select(true)] | first) as $i"
-  },
-  {
-    "name": "diff-failure-ignored",
-    "find": "|| { echo \"invalid the changelog diff could not be read\"; return 0; }",
-    "replace": "|| true"
-  },
-  {
-    "name": "no-range-counted",
-    "find": "[ -n \"${MB:-}\" ] && [ -n \"${HEAD:-}\" ] || { echo \"invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from\"; return 0; }",
-    "replace": "true"
-  }
-]
+{
+  "target": "tooling/practice_ci/guards/release_note.py",
+  "unit": "release-note",
+  "mutants": [
+    {
+      "name": "whitespace-edit-counts",
+      "find": "if added > 0 and changelog in changed:",
+      "replace": "if changelog in changed:"
+    },
+    {
+      "name": "count-check-off",
+      "find": "if not re.fullmatch(r\"[0-9]+\", env[\"CHANGELOG_ADDED\"]):",
+      "replace": "if False:"
+    },
+    {
+      "name": "one-line-not-enough",
+      "find": "if added > 0 and changelog in changed:",
+      "replace": "if added > 1 and changelog in changed:"
+    },
+    {
+      "name": "changelog-not-touched-counts",
+      "find": "if added > 0 and changelog in changed:",
+      "replace": "if added > 0:"
+    },
+    {
+      "name": "moves-counted",
+      "find": "        if removed[l] > 0:",
+      "replace": "        if False:"
+    },
+    {
+      "name": "header-lines-counted",
+      "find": "first = next((i for i, l in enumerate(lines) if l.startswith(b\"@@\")), None)",
+      "replace": "first = 0"
+    },
+    {
+      "name": "diff-failure-ignored",
+      "find": "            except go.GitError:\n                return \"invalid the changelog diff could not be read\"",
+      "replace": "            except go.GitError:\n                env = dict(env, CHANGELOG_ADDED=\"1\")"
+    },
+    {
+      "name": "no-range-counted",
+      "find": "            if not (mb and head):",
+      "replace": "            if False:"
+    },
+    {
+      "name": "watched-dir-is-prefix-of-name",
+      "find": "f.startswith(p) if p.endswith(\"/\") else f == p",
+      "replace": "f.startswith(p)"
+    },
+    {
+      "name": "marker-trailing-space-kept",
+      "find": "l.rstrip(_TRAILING_SPACE) == marker",
+      "replace": "l == marker"
+    },
+    {
+      "name": "marker-anywhere-in-line",
+      "find": "l.rstrip(_TRAILING_SPACE) == marker",
+      "replace": "marker in l"
+    },
+    {
+      "name": "renamed-from-path-unwatched",
+      "find": "for p in c.paths]",
+      "replace": "for p in [c.path]]"
+    },
+    {
+      "name": "no-watched-path-needs-note",
+      "find": "        if not touched:\n            return \"ok no watched path changed\"",
+      "replace": "        if False:\n            return \"ok no watched path changed\""
+    },
+    {
+      "name": "lists-not-checked",
+      "find": "if not isinstance(value, list) or not all(isinstance(x, str) for x in value):",
+      "replace": "if False:"
+    }
+  ]
+}

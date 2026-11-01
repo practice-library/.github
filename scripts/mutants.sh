@@ -4,8 +4,10 @@
 #   library mutants   <mutantsDir>/<lib>.json is an array; it mutates <libDir>/<lib>.sh and runs that
 #                     library's unit cases (scripts/unit.sh); a case must report "FAIL <lib>/<case>: want ...".
 #   step mutants      an object {"target": <file>, "tests": [<unittest module>, ...], "mutants": [...]};
-#                     it mutates the workflow or fragment <file> (the shell inside its steps) and runs the
-#                     tests; a test must fail an assertion ("FAIL: <test>").
+#                     it mutates the workflow or fragment <file> (the shell inside its steps), or a Python
+#                     module when <file> ends in .py, and runs the tests; a test must fail an assertion
+#                     ("FAIL: <test>"). Instead of "tests" the object may hold "unit": <lib>, and then the
+#                     mutant is judged by that library's unit cases, as for a library mutant.
 # A mutant counts as killed only by such a behavioural failure. One that leaves the shell with a syntax
 # error, a jq program that does not compile (selftest.parseErrorPatterns) or a step that does not parse
 # proves nothing and is an error. Also an error: a mutant that survives, or whose find text is not in the
@@ -42,9 +44,15 @@ for f in "${files[@]}"; do
     red_of() { sed -n 's/^FAIL \([^ :]*\): want .*/\1/p' <<<"$1" | tr '\n' ' '; }
   else
     target="$(jq -er '.target' "$f")"
-    while IFS= read -r t; do tests+=("$t"); done < <(jq -r '.tests[]' "$f")
-    run_tests() { python3 -m unittest "${tests[@]}" 2>&1; }
-    red_of() { sed -n 's/^FAIL: \([^ ]*\) .*/\1/p' <<<"$1" | tr '\n' ' '; }
+    if jq -e 'has("unit")' "$f" > /dev/null; then
+      unit_lib="$(jq -er '.unit' "$f")"
+      run_tests() { PYTHONDONTWRITEBYTECODE=1 bash scripts/unit.sh "$unit_lib" 2>&1; }
+      red_of() { sed -n 's/^FAIL \([^ :]*\): want .*/\1/p' <<<"$1" | tr '\n' ' '; }
+    else
+      while IFS= read -r t; do tests+=("$t"); done < <(jq -r '.tests[]' "$f")
+      run_tests() { PYTHONDONTWRITEBYTECODE=1 python3 -m unittest "${tests[@]}" 2>&1; }
+      red_of() { sed -n 's/^FAIL: \([^ ]*\) .*/\1/p' <<<"$1" | tr '\n' ' '; }
+    fi
   fi
   [ -f "$target" ] || { echo "FAIL $name: no file $target"; bad=$((bad + 1)); target=""; continue; }
   cp "$target" "$orig"
@@ -67,6 +75,8 @@ open(p, "w").write(s.replace(f, os.environ["REPLACE"], 1))' "$target"; then
     # A mutant that breaks the syntax would turn every case red without testing anything.
     if [ "$kind" = lib ]; then
       parses=true; bash -n "$target" 2> /dev/null || parses=false
+    elif [[ "$target" == *.py ]]; then
+      parses=true; python3 -I -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read())' "$target" > /dev/null 2>&1 || parses=false
     else
       parses=true; python3 -I "$launcher" check-steps "$target" > /dev/null 2>&1 || parses=false
     fi

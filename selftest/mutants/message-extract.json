@@ -1,102 +1,141 @@
-[
-  {
-    "name": "two-blocks-take-first",
-    "find": "elif (.blocks | length) > 1 then",
-    "replace": "elif false then"
-  },
-  {
-    "name": "unclosed-accepted",
-    "find": "elif .cur != null then \"invalid a ```json block is not closed\"",
-    "replace": "elif false then \"invalid\""
-  },
-  {
-    "name": "control-allowed",
-    "find": "elif (.blocks[0] | test(\"[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f]\")) then",
-    "replace": "elif false then"
-  },
-  {
-    "name": "bidi-allowed",
-    "find": "elif (.blocks[0] | test(\"[\\u200e\\u200f\\u202a-\\u202e\\u2066-\\u2069]\")) then",
-    "replace": "elif false then"
-  },
-  {
-    "name": "size-unlimited",
-    "find": "[ \"$size\" -le 65536 ]",
-    "replace": "true"
-  },
-  {
-    "name": "size-off-by-one",
-    "find": "[ \"$size\" -le 65536 ]",
-    "replace": "[ \"$size\" -lt 65536 ]"
-  },
-  {
-    "name": "array-accepted",
-    "find": "jq -se 'length == 1 and (.[0] | type) == \"object\"'",
-    "replace": "jq -se 'length == 1'"
-  },
-  {
-    "name": "fence-suffix-accepted",
-    "find": "test(\"^```json[ \\t]*$\")",
-    "replace": "test(\"^```json\")"
-  },
-  {
-    "name": "several-values-accepted",
-    "find": "jq -se 'length == 1 and (.[0] | type) == \"object\"'",
-    "replace": "jq -se '(.[0] | type) == \"object\"'"
-  },
-  {
-    "name": "short-close-accepted",
-    "find": "\"\\($c){\\($m.f | length),}\"",
-    "replace": "\"\\($c){3,}\""
-  },
-  {
-    "name": "json-fence-any-length",
-    "find": "| (if ($m.info | test(\"^[ \\t]*json[ \\t]*$\")) then .bad = true else . end)",
-    "replace": ""
-  },
-  {
-    "name": "crlf-kept",
-    "find": "gsub(\"\\r\\n\"; \"\\n\") | split",
-    "replace": "split"
-  },
-  {
-    "name": "dup-keys-allowed",
-    "find": "twice) echo \"invalid a key is given twice in the block\"; return 0 ;;",
-    "replace": "twice) ;;"
-  },
-  {
-    "name": "seen-not-recorded",
-    "find": "        seen.add(k)\n",
-    "replace": "        pass\n"
-  },
-  {
-    "name": "other-fences-ignored",
-    "find": "elif ($l | test(\"^ {0,3}(`{3,}[^`]*|~{3,}.*)$\")) then",
-    "replace": "elif false then"
-  },
-  {
-    "name": "exact-close-only",
-    "find": "(if ($l | test(\"^ {0,3}```+[ \\t]*$\"))",
-    "replace": "(if ($l | test(\"^ {0,3}```[ \\t]*$\"))"
-  },
-  {
-    "name": "backtick-info-allowed",
-    "find": "(`{3,}[^`]*|~{3,}.*)",
-    "replace": "(`{3,}.*|~{3,}.*)"
-  },
-  {
-    "name": "other-close-unindented",
-    "find": "test(\"^ {0,3}\" + $o + \"[ \\t]*$\")",
-    "replace": "test(\"^\" + $o + \"[ \\t]*$\")"
-  },
-  {
-    "name": "other-open-unindented",
-    "find": "elif ($l | test(\"^ {0,3}(`{3,}",
-    "replace": "elif ($l | test(\"^(`{3,}"
-  },
-  {
-    "name": "json-close-unindented",
-    "find": "(if ($l | test(\"^ {0,3}```+[ \\t]*$\"))",
-    "replace": "(if ($l | test(\"^```+[ \\t]*$\"))"
-  }
-]
+{
+  "target": "tooling/practice_ci/protocol.py",
+  "unit": "message-extract",
+  "mutants": [
+    {
+      "name": "two-blocks-take-first",
+      "find": "    if len(blocks) > 1:\n        return \"invalid",
+      "replace": "    if False:\n        return \"invalid"
+    },
+    {
+      "name": "unclosed-accepted",
+      "find": "    if cur is not None:\n        return \"invalid",
+      "replace": "    if False:\n        return \"invalid"
+    },
+    {
+      "name": "control-allowed",
+      "find": "    if has_unsafe(value):\n        return",
+      "replace": "    if False:\n        return"
+    },
+    {
+      "name": "unsafe-category-dropped",
+      "find": "unicodedata.category(ch) in config.get(\"protocol\", \"unsafeCategories\") or",
+      "replace": "False or"
+    },
+    {
+      "name": "lone-surrogate-allowed",
+      "find": " or \"\\ud800\" <= ch <= \"\\udfff\"",
+      "replace": ""
+    },
+    {
+      "name": "unsafe-key-allowed",
+      "find": "            if any(_unsafe_string(key) for key in item):\n                return True\n",
+      "replace": ""
+    },
+    {
+      "name": "unsafe-nested-list-skipped",
+      "find": "            pending.extend(item)\n",
+      "replace": "            pass\n"
+    },
+    {
+      "name": "unsafe-nested-object-skipped",
+      "find": "            pending.extend(item.values())",
+      "replace": "            pass"
+    },
+    {
+      "name": "size-unlimited",
+      "find": "    if len(body) > limit:",
+      "replace": "    if False:"
+    },
+    {
+      "name": "size-off-by-one",
+      "find": "    if len(body) > limit:",
+      "replace": "    if len(body) >= limit:"
+    },
+    {
+      "name": "not-utf8-accepted",
+      "find": "body.decode(\"utf-8\")",
+      "replace": "body.decode(\"utf-8\", \"replace\")"
+    },
+    {
+      "name": "array-accepted",
+      "find": "    if not isinstance(value, dict):\n        return None, \"the block is not one JSON object\"\n    return value, None",
+      "replace": "    return value, None"
+    },
+    {
+      "name": "dup-keys-allowed",
+      "find": "object_pairs_hook=_pairs, ",
+      "replace": ""
+    },
+    {
+      "name": "seen-not-recorded",
+      "find": "        seen.add(key)\n",
+      "replace": "        pass\n"
+    },
+    {
+      "name": "constants-accepted",
+      "find": ", parse_constant=_refuse_constant",
+      "replace": ""
+    },
+    {
+      "name": "fence-suffix-accepted",
+      "find": "re.escape(config.get(\"protocol\", \"fenceOpen\")) + r\"[ \\t]*\"",
+      "replace": "re.escape(config.get(\"protocol\", \"fenceOpen\"))"
+    },
+    {
+      "name": "json-fence-any-length",
+      "find": "            if re.fullmatch(r\"[ \\t]*\" + re.escape(info) + r\"[ \\t]*\", m[\"info\"]):\n                bad = True\n",
+      "replace": ""
+    },
+    {
+      "name": "other-fences-ignored",
+      "find": "        elif _OTHER_FENCE.fullmatch(line):",
+      "replace": "        elif False:"
+    },
+    {
+      "name": "crlf-kept",
+      "find": "text.replace(\"\\r\\n\", \"\\n\").split",
+      "replace": "text.split"
+    },
+    {
+      "name": "short-close-accepted",
+      "find": "\"{\" + str(len(m[\"f\"])) + \",}\"",
+      "replace": "\"{3,}\""
+    },
+    {
+      "name": "exact-close-only",
+      "find": "`{3,}[ \\t]*$\")\n_HTML",
+      "replace": "```[ \\t]*$\")\n_HTML"
+    },
+    {
+      "name": "html-comment-allowed",
+      "find": "        elif _COMMENT_OPEN in line:",
+      "replace": "        elif False:"
+    },
+    {
+      "name": "html-block-allowed",
+      "find": "        elif _HTML_BLOCK.match(line):",
+      "replace": "        elif False:"
+    },
+    {
+      "name": "backtick-info-allowed",
+      "find": "(?P<f>`{3,}[^`]*|~{3,}.*)$\")\n_FENCE",
+      "replace": "(?P<f>`{3,}.*|~{3,}.*)$\")\n_FENCE"
+    },
+    {
+      "name": "other-close-unindented",
+      "find": "re.fullmatch(r\" {0,3}\" + other + r\"[ \\t]*\", line)",
+      "replace": "re.fullmatch(other + r\"[ \\t]*\", line)"
+    },
+    {
+      "name": "multiline-needs-allowed",
+      "find": "    if needs_multiline(value):\n        return",
+      "replace": "    if False:\n        return"
+    },
+    {
+      "name": "no-block-is-ok",
+      "find": "    if not blocks:\n        return \"none\"",
+      "replace": "    if False:\n        return \"none\""
+    }
+  ]
+}

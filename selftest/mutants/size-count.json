@@ -1,107 +1,101 @@
-[
-  {
-    "name": "limit-exclusive",
-    "find": "[ \"$n\" -le \"$LIMIT\" ]",
-    "replace": "[ \"$n\" -lt \"$LIMIT\" ]"
-  },
-  {
-    "name": "fixture-dir-prefix-only",
-    "find": "((\"/\" + $p) | contains(\"/\" + $e))",
-    "replace": "($p | startswith($e))"
-  },
-  {
-    "name": "fixture-dir-substring",
-    "find": "((\"/\" + $p) | contains(\"/\" + $e))",
-    "replace": "($p | contains($e))"
-  },
-  {
-    "name": "fixture-name-substring",
-    "find": "($p | split(\"/\") | last) == $e",
-    "replace": "($p | contains($e))"
-  },
-  {
-    "name": "rename-old-path",
-    "find": "\"\\(.b)\")",
-    "replace": "\"\\(.a)\")"
-  },
-  {
-    "name": "binary-counts",
-    "find": "if .[0] == \"-\" then 0 else",
-    "replace": "if .[0] == \"-\" then 9999 else"
-  },
-  {
-    "name": "deleted-lines-count",
-    "find": "{added: (if",
-    "replace": "{added: ((.[1]|tonumber? // 0) + (if"
-  },
-  {
-    "name": "fixtures-ignored",
-    "find": "| select(fixture(.path) | not)",
-    "replace": ""
-  },
-  {
-    "name": "limit-check-off",
-    "find": "[[ \"${LIMIT:-}\" =~ ^[0-9]+$ ]] ||",
-    "replace": "true ||"
-  },
-  {
-    "name": "numstat-check-off",
-    "find": "if length < 3 or (.[0] | test(\"^([0-9]+|-)$\") | not) then error(\"bad numstat line: \" + join(\"\\t\")) else . end",
-    "replace": "."
-  },
-  {
-    "name": "leading-slash-kept",
-    "find": "$p == ($e | ltrimstr(\"/\"))",
-    "replace": "$p == $e"
-  },
-  {
-    "name": "root-dir-anywhere",
-    "find": "($p | startswith($e | ltrimstr(\"/\")))",
-    "replace": "((\"/\" + $p) | contains($e))"
-  },
-  {
-    "name": "binary-not-recounted",
-    "find": "    NUMSTAT=\"$recount\"\n",
-    "replace": "\n"
-  },
-  {
-    "name": "slash-entry-allowed",
-    "find": " and . != \"/\")",
-    "replace": ")"
-  },
-  {
-    "name": "header-plus-counted",
-    "find": "f && /^\\+/ { n++ }",
-    "replace": "/^\\+/ { n++ }"
-  },
-  {
-    "name": "text-flag-dropped",
-    "find": "added=\"$(git --literal-pathspecs diff --text --no-textconv",
-    "replace": "added=\"$(git --literal-pathspecs diff --no-textconv"
-  },
-  {
-    "name": "pathspec-as-glob",
-    "find": "git --literal-pathspecs diff --text",
-    "replace": "git diff --text"
-  },
-  {
-    "name": "git-paths-rewritten",
-    "find": "if $plain then . else newpath end",
-    "replace": "newpath"
-  },
-  {
-    "name": "rename-paths-swapped",
-    "find": "IFS= read -r -d '' old; IFS= read -r -d '' path",
-    "replace": "IFS= read -r -d '' path; IFS= read -r -d '' old"
-  },
-  {
-    "name": "path-tabs-trimmed",
-    "find": "    while IFS= read -r -d '' rec; do\n      added=\"${rec%%$'\\t'*}\"; rec=\"${rec#*$'\\t'}\"; deleted=\"${rec%%$'\\t'*}\"; path=\"${rec#*$'\\t'}\"",
-    "replace": "    while IFS=$'\\t' read -r -d '' added deleted path; do"
-  },
-  {
-    "name": "newline-path-allowed",
-    "find": "if [[ \"$path\" == *$'\\n'* ]]; then",
-    "replace": "if false; then"
-  }
-]
+{
+  "target": "tooling/practice_ci/guards/size.py",
+  "unit": "size-count",
+  "mutants": [
+    {
+      "name": "limit-exclusive",
+      "find": "    if n <= int(limit):",
+      "replace": "    if n < int(limit):"
+    },
+    {
+      "name": "fixture-dir-prefix-only",
+      "find": "hit = (\"/\" + path).find(\"/\" + e) >= 0",
+      "replace": "hit = path.startswith(e)"
+    },
+    {
+      "name": "fixture-dir-substring",
+      "find": "hit = (\"/\" + path).find(\"/\" + e) >= 0",
+      "replace": "hit = e in path"
+    },
+    {
+      "name": "fixture-name-substring",
+      "find": "hit = path.split(\"/\")[-1] == e",
+      "replace": "hit = e in path"
+    },
+    {
+      "name": "rename-old-path",
+      "find": "return re.sub(r\"^.* => \", \"\", path)",
+      "replace": "return re.sub(r\" => .*$\", \"\", path)"
+    },
+    {
+      "name": "rename-braces-old-side",
+      "find": "lambda m: m.group(2)",
+      "replace": "lambda m: m.group(1)"
+    },
+    {
+      "name": "binary-counts",
+      "find": "0 if parts[0] == \"-\" else int(parts[0])",
+      "replace": "9999 if parts[0] == \"-\" else int(parts[0])"
+    },
+    {
+      "name": "deleted-lines-count",
+      "find": "else int(parts[0]), newpath(",
+      "replace": "else int(parts[0]) + int(parts[1]), newpath("
+    },
+    {
+      "name": "fixtures-ignored",
+      "find": "if not is_fixture(path, fixtures))",
+      "replace": "if True)"
+    },
+    {
+      "name": "limit-check-off",
+      "find": "    if not re.fullmatch(r\"[0-9]+\", limit):",
+      "replace": "    if False:"
+    },
+    {
+      "name": "numstat-check-off",
+      "find": "if len(parts) < 3 or not _NUMSTAT_LINE.fullmatch(parts[0]):",
+      "replace": "if False:"
+    },
+    {
+      "name": "leading-slash-kept",
+      "find": "hit = path == e.removeprefix(\"/\")",
+      "replace": "hit = path == e"
+    },
+    {
+      "name": "root-dir-anywhere",
+      "find": "hit = path.startswith(e[1:])",
+      "replace": "hit = (\"/\" + path).find(e) >= 0"
+    },
+    {
+      "name": "slash-entry-allowed",
+      "find": "isinstance(f, str) and f and f != \"/\"",
+      "replace": "isinstance(f, str) and f"
+    },
+    {
+      "name": "binary-not-recounted",
+      "find": "        if added == b\"-\":",
+      "replace": "        if False:"
+    },
+    {
+      "name": "text-flag-dropped",
+      "find": "\"diff\", \"--text\", \"--no-textconv\"",
+      "replace": "\"diff\", \"--no-textconv\""
+    },
+    {
+      "name": "pathspec-as-glob",
+      "find": "go.git(\"--literal-pathspecs\", \"diff\", \"--text\"",
+      "replace": "go.git(\"diff\", \"--text\""
+    },
+    {
+      "name": "rename-paths-swapped",
+      "find": "            path = tokens[i + 1]",
+      "replace": "            path = tokens[i]"
+    },
+    {
+      "name": "header-plus-counted",
+      "find": "elif in_hunk and line.startswith(b\"+\"):",
+      "replace": "elif line.startswith(b\"+\"):"
+    }
+  ]
+}

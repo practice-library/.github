@@ -7,6 +7,10 @@ name: message-check
 # spec/protocol/message.schema.json, whose type agrees with the kind:* label, and the body must hold no
 # denied term. An invalid message gets the label state:invalid and one comment saying why; the author's
 # text is never edited, and no part of it is repeated in the comment.
+# Trust comes from the current GitHub body edit's editor and immutable edit ID. Foreign revisions
+# remain invalid even if their workflow runs are skipped or reordered and the original bytes return.
+# Before the run acts, it reads the edit identity again and stops if that revision has changed.
+# The rules live in tooling/practice_ci/protocol.py, read from a checkout of this repository at its release tag.
 on:
   workflow_call:
     inputs:
@@ -23,13 +27,19 @@ permissions:
 jobs:
   message:
     name: message-check
+    # Serialize writers. Trust comes from GitHub edit history, not delivery of pending runs.
+    concurrency:
+      group: message-check-${{ github.repository }}-${{ github.event.issue.number }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
       issues: write
+    env:
+      PRACTICE_CI_TOOLING: ${{ github.workspace }}/.practice-ci/tooling
     steps:
-      - name: Is this issue a message?
+      - name: Is this issue from a trusted author?
         id: who
         shell: bash
         env:
@@ -43,13 +53,57 @@ jobs:
           trusted=false
           case "$ASSOCIATION" in OWNER|MEMBER) trusted=true ;; esac
           if [ -n "$APP" ] && [ "$LOGIN" = "$APP" ]; then trusted=true; fi
-          if [ -z "$kind" ]; then echo "not a message: no kind:* label"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          { echo "judge=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
+          if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "trusted=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          { echo "trusted=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.who.outputs.judge == 'true'
+        if: steps.who.outputs.trusted == 'true'
         with:
           persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.who.outputs.trusted == 'true'
+        with:
+          repository: practice-library/.github
+          ref: v3.0.0
+          path: .practice-ci
+          persist-credentials: false
+      - name: Whose revision is this body?
+        if: steps.who.outputs.trusted == 'true'
+        id: trust
+        shell: bash
+        env:
+          ISSUE_NODE: ${{ github.event.issue.node_id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # protocol: runs tooling/practice_ci/protocol.py (docs/protocol.md), which holds every rule about a message
+          # body and about whom a message trusts. PRACTICE_CI_TOOLING is the directory holding practice_ci; unset, it is
+          # the tooling directory of the working directory. The body is untrusted text, read only as data.
+          protocol() {
+            python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from practice_ci import protocol; sys.exit(protocol.main(sys.argv[2:]))' \
+              "${PRACTICE_CI_TOOLING:-tooling}" "$@"
+          }
+
+          # main: finds the message block in an issue body. BODY_FILE is a file holding the body. Prints one line:
+          #   ok <compact JSON>   one message block, decoded once without a key given twice
+          #   none ...            no message block: the issue is not a message
+          #   invalid <why>       anything else (docs/protocol.md, "A message")
+          main() {
+            protocol extract "${BODY_FILE:-}"
+          }
+          read_revision() {
+            gh api graphql -f query='query($id:ID!){node(id:$id){... on Issue{body createdAt lastEditedAt author{login} userContentEdits(last:1){nodes{id editor{login}}}}}}' -f "id=$ISSUE_NODE" | jq -e '.data.node' > "$1"
+          }
+          read_revision "$RUNNER_TEMP/revision.json"
+          jq -j '.body' "$RUNNER_TEMP/revision.json" > "$RUNNER_TEMP/body.md"
+          got="$(protocol snapshot "$RUNNER_TEMP/revision.json")"
+          digest="$(jq -r '.digest' <<<"$got")"
+          echo "$got"
+          {
+            echo "digest=$digest"
+            echo "what=$(jq -r '.what' <<<"$got")"
+            echo "status=$(jq -r '.status // ""' <<<"$got")"
+            echo "reason=$(jq -r '.reason // ""' <<<"$got")"
+          } >> "$GITHUB_OUTPUT"
       - name: Fetch jsonschema 17.2.1, pinned by sha256
         shell: bash
         env:
@@ -68,91 +122,31 @@ jobs:
             *) echo "::error::unknown archive type $TOOL_ARCHIVE"; exit 1 ;;
           esac
       - name: Judge the message
-        if: steps.who.outputs.judge == 'true'
+        if: steps.trust.outputs.what == 'judge' && steps.who.outputs.kind != ''
         id: judge
         shell: bash
         env:
-          BODY: ${{ github.event.issue.body }}
           KIND: ${{ steps.who.outputs.kind }}
           LIST: ${{ inputs.denylist }}
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/jsonschema-17.2.1-linux-x86_64/bin/jsonschema
-          MESSAGE_SPEC: '{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/practice-library/.github/spec/protocol/message.schema.json","title":"Protocol v0 message","description":"The one fenced json block of an issue that is a message between two repositories of the organisation. Top-level names follow CloudEvents 1.0 (specversion, id, source, type, time, datacontenttype, data); protocol is an extension attribute. See docs/protocol.md.","type":"object","required":["specversion","id","source","type","protocol","data"],"additionalProperties":false,"properties":{"specversion":{"const":"1.0","description":"The CloudEvents version the field names follow."},"id":{"type":"string","pattern":"^[a-z0-9][a-z0-9._:-]{2,127}$","description":"The stable idempotency key: the sender looks for an open message with this id before creating one."},"source":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The sending repository."},"type":{"enum":["org.practice-library.protocol.v0.request","org.practice-library.protocol.v0.answer","org.practice-library.protocol.v0.status","org.practice-library.protocol.v0.blocked","org.practice-library.protocol.v0.decision","org.practice-library.protocol.v0.proposal"],"description":"The kind of message."},"protocol":{"const":"0","description":"The protocol version; a reader ignores a message of a version it does not know, with a warning."},"time":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$","description":"When the message was written, UTC."},"datacontenttype":{"const":"application/json"},"data":{"type":"object","required":["to"],"additionalProperties":false,"properties":{"to":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The receiving repository."},"refs":{"type":"array","maxItems":20,"uniqueItems":true,"items":{"type":"string","pattern":"^[A-Za-z0-9-]+/[A-Za-z0-9._-]+#[1-9][0-9]{0,6}$"},"description":"Related issues and pull requests, as owner/repo#n."},"needs":{"type":"array","maxItems":10,"items":{"type":"string","minLength":1,"maxLength":200},"description":"What the sender needs, one short line each."},"expires":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}}}},"allOf":[{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.blocked"}},"required":["type"]},"then":{"properties":{"data":{"required":["needs"],"properties":{"needs":{"minItems":1}}}}}},{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.decision"}},"required":["type"]},"then":{"properties":{"data":{"required":["refs"],"properties":{"refs":{"minItems":1}}}}}}]}'
+          MESSAGE_SPEC: '{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/practice-library/.github/spec/protocol/message.schema.json","title":"Protocol v0 message","description":"The one fenced json block of an issue that is a message between two repositories of the organisation. Top-level names follow CloudEvents 1.0 (specversion, id, source, type, time, datacontenttype, data); protocol is an extension attribute. See docs/protocol.md.","type":"object","required":["specversion","id","source","type","protocol","data"],"additionalProperties":false,"properties":{"specversion":{"const":"1.0","description":"The CloudEvents version the field names follow."},"id":{"type":"string","pattern":"^[a-z0-9][a-z0-9._:-]{2,127}$","description":"The stable idempotency key: the sender looks for an open message with this id before creating one."},"source":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The sending repository."},"type":{"enum":["org.practice-library.protocol.v0.request","org.practice-library.protocol.v0.answer","org.practice-library.protocol.v0.status","org.practice-library.protocol.v0.blocked","org.practice-library.protocol.v0.decision","org.practice-library.protocol.v0.proposal"],"description":"The kind of message."},"protocol":{"const":"0","description":"The protocol version; a reader ignores a message of a version it does not know, with a warning."},"time":{"type":"string","pattern":"^(?:[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$","description":"When the message was written, UTC."},"datacontenttype":{"const":"application/json"},"data":{"type":"object","required":["to"],"additionalProperties":false,"properties":{"to":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The receiving repository."},"refs":{"type":"array","maxItems":20,"uniqueItems":true,"items":{"type":"string","pattern":"^[A-Za-z0-9-]+/[A-Za-z0-9._-]+#[1-9][0-9]{0,6}$"},"description":"Related issues and pull requests, as owner/repo#n."},"needs":{"type":"array","maxItems":10,"items":{"type":"string","minLength":1,"maxLength":200},"description":"What the sender needs, one short line each."},"expires":{"type":"string","pattern":"^(?:[0-9]{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-8]))|(?:[0-9]{2}(?:0[48]|[2468][048]|[13579][26])|(?:[02468][048]|[13579][26])00)-02-29)T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]Z$"}}}},"allOf":[{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.blocked"}},"required":["type"]},"then":{"properties":{"data":{"required":["needs"],"properties":{"needs":{"minItems":1}}}}}},{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.decision"}},"required":["type"]},"then":{"properties":{"data":{"required":["refs"],"properties":{"refs":{"minItems":1}}}}}}]}'
         run: |
           set -uo pipefail
           verdict() { echo "$1"; printf 'reason=%s\n' "$2" >> "$GITHUB_OUTPUT"; exit 0; }
-          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
-          # main: finds the message block in an issue body (docs/protocol.md). The body is untrusted text, read
-          # only as data. Prints one line:
-          #   ok <compact JSON>   exactly one fenced block opened by a line ```json, holding one JSON object
-          #   none ...            no such block: the issue is not a message
-          #   invalid <why>       more than one block, an unclosed block, a body over 65536 bytes, control or
-          #                       bidirectional-override characters in the block, a block that is not one JSON
-          #                       object, an object with a key given twice, or a json block opened by any fence
-          #                       other than exactly ``` at the start of the line (````json, ~~~json, an indented ```json)
-          # Fences follow CommonMark: any other fence (``` or ~~~, three or more, indented by up to three spaces,
-          # with any info string, which for a backtick fence holds no backtick) opens a block that is skipped until
-          # a closing fence of the same character at least as long, so a ```json quoted inside a longer fence is
-          # an example, not the message. A line like ```x``` is inline code, not a fence.
-          #   BODY_FILE  a file holding the issue body
+          # protocol: runs tooling/practice_ci/protocol.py (docs/protocol.md), which holds every rule about a message
+          # body and about whom a message trusts. PRACTICE_CI_TOOLING is the directory holding practice_ci; unset, it is
+          # the tooling directory of the working directory. The body is untrusted text, read only as data.
+          protocol() {
+            python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from practice_ci import protocol; sys.exit(protocol.main(sys.argv[2:]))' \
+              "${PRACTICE_CI_TOOLING:-tooling}" "$@"
+          }
+
+          # main: finds the message block in an issue body. BODY_FILE is a file holding the body. Prints one line:
+          #   ok <compact JSON>   one message block, decoded once without a key given twice
+          #   none ...            no message block: the issue is not a message
+          #   invalid <why>       anything else (docs/protocol.md, "A message")
           main() {
-            [ -r "${BODY_FILE:-}" ] || { echo "invalid cannot read the body"; return 0; }
-            local size found block
-            size="$(wc -c < "$BODY_FILE" | tr -d ' ')"
-            [ "$size" -le 65536 ] || { echo "invalid the body is $size bytes, more than 65536"; return 0; }
-            found="$(jq -Rsr '
-              gsub("\r\n"; "\n") | split("\n")
-              | reduce .[] as $l ({blocks: [], cur: null, other: null, bad: false};
-                  if .other != null then
-                    (.other as $o | if ($l | test("^ {0,3}" + $o + "[ \t]*$")) then .other = null else . end)
-                  elif .cur != null then
-                    (if ($l | test("^ {0,3}```+[ \t]*$")) then .blocks += [.cur | join("\n")] | .cur = null
-                     else .cur += [$l] end)
-                  elif ($l | test("^```json[ \t]*$")) then .cur = []
-                  elif ($l | test("^ {0,3}(`{3,}[^`]*|~{3,}.*)$")) then
-                    ($l | capture("^ {0,3}(?<f>`{3,}|~{3,})(?<info>.*)$")) as $m
-                    | (if ($m.info | test("^[ \t]*json[ \t]*$")) then .bad = true else . end)
-                    | .other = (($m.f[0:1] | if . == "`" then "`" else "~" end) as $c
-                                | "\($c){\($m.f | length),}")
-                  else . end)
-              | if .bad then "invalid a json block must open with exactly ```json"
-                elif .cur != null then "invalid a ```json block is not closed"
-                elif (.blocks | length) == 0 then "none no ```json block"
-                elif (.blocks | length) > 1 then "invalid \(.blocks | length) ```json blocks; a message has one"
-                elif (.blocks[0] | test("[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]")) then "invalid a control character in the block"
-                elif (.blocks[0] | test("[\u200e\u200f\u202a-\u202e\u2066-\u2069]")) then "invalid a bidirectional-override character in the block"
-                else "block " + (.blocks[0] | @base64) end' "$BODY_FILE")"
-            [ "${found%% *}" = block ] || { echo "$found"; return 0; }
-            block="$(printf '%s' "${found#block }" | jq -Rr '@base64d')"
-            jq -se 'length == 1 and (.[0] | type) == "object"' <<<"$block" > /dev/null 2>&1 \
-              || { echo "invalid the block is not one JSON object"; return 0; }
-            # A key given twice: jq keeps one of the values, so the block is read again by a parser that is handed
-            # every key of every object, at any depth, whatever the values are.
-            local keys
-            keys="$(python3 -I -c '
-          import json, sys
-          class Twice(Exception):
-              pass
-          def pairs(ps):
-              seen = set()
-              for k, _ in ps:
-                  if k in seen:
-                      raise Twice()
-                  seen.add(k)
-              return dict(ps)
-          try:
-              json.loads(sys.stdin.read(), object_pairs_hook=pairs)
-          except Twice:
-              print("twice")
-          except Exception:
-              print("unread")
-          else:
-              print("once")' <<<"$block")" || keys=unread
-            case "$keys" in
-              once) ;;
-              twice) echo "invalid a key is given twice in the block"; return 0 ;;
-              *) echo "invalid the block could not be read for keys given twice"; return 0 ;;
-            esac
-            echo "ok $(jq -c . <<<"$block")"
+            protocol extract "${BODY_FILE:-}"
           }
           BODY_FILE="$RUNNER_TEMP/body.md"; export BODY_FILE
           got="$(main)"
@@ -188,10 +182,17 @@ jobs:
             *) verdict "$scan" "the denylist could not judge it: ${scan%% *}" ;;
           esac
           echo "ok a valid protocol v0 message"
-      - name: Label and comment
-        if: steps.who.outputs.judge == 'true'
+      - name: Record the verdict, label and comment
+        if: steps.who.outputs.trusted == 'true'
         shell: bash
         env:
+          ISSUE_NODE: ${{ github.event.issue.node_id }}
+          RUN_ID: ${{ github.run_id }}
+          WHAT: ${{ steps.trust.outputs.what }}
+          TRUST_STATUS: ${{ steps.trust.outputs.status }}
+          TRUST_REASON: ${{ steps.trust.outputs.reason }}
+          DIGEST: ${{ steps.trust.outputs.digest }}
+          KIND: ${{ steps.who.outputs.kind }}
           REASON: ${{ steps.judge.outputs.reason }}
           NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
@@ -199,6 +200,51 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # protocol: runs tooling/practice_ci/protocol.py (docs/protocol.md), which holds every rule about a message
+          # body and about whom a message trusts. PRACTICE_CI_TOOLING is the directory holding practice_ci; unset, it is
+          # the tooling directory of the working directory. The body is untrusted text, read only as data.
+          protocol() {
+            python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); from practice_ci import protocol; sys.exit(protocol.main(sys.argv[2:]))' \
+              "${PRACTICE_CI_TOOLING:-tooling}" "$@"
+          }
+
+          # main: finds the message block in an issue body. BODY_FILE is a file holding the body. Prints one line:
+          #   ok <compact JSON>   one message block, decoded once without a key given twice
+          #   none ...            no message block: the issue is not a message
+          #   invalid <why>       anything else (docs/protocol.md, "A message")
+          main() {
+            protocol extract "${BODY_FILE:-}"
+          }
+          # Compare durable revision identities, not just body bytes (A -> B -> A).
+          gh api graphql -f query='query($id:ID!){node(id:$id){... on Issue{body createdAt lastEditedAt author{login} userContentEdits(last:1){nodes{id editor{login}}}}}}' -f "id=$ISSUE_NODE" | jq -e '.data.node' > "$RUNNER_TEMP/revision-now.json"
+          now="$(protocol snapshot "$RUNNER_TEMP/revision-now.json")"
+          if [ "$(jq -r '.digest' <<<"$now")" != "$DIGEST" ]; then
+            echo "the revision changed while it was judged"; exit 0
+          fi
+          if [ "$WHAT" != judge ]; then
+            REASON="$TRUST_REASON"; status="$TRUST_STATUS"
+          elif [ "$KIND" = "" ] || [ -z "$REASON" ]; then
+            status=accepted
+          else
+            status=invalid
+          fi
+          gh api --paginate "repos/$REPO/issues/$NUMBER/comments" | jq -s 'add // []' > "$RUNNER_TEMP/comments.json"
+          if [ "$(protocol can-record "$RUN_ID" "$RUNNER_TEMP/comments.json")" != true ]; then
+            echo "a verdict from this or a newer run is already recorded"; exit 0
+          fi
+          existing="$(protocol verdict-id "$RUNNER_TEMP/comments.json")"
+          # An issue that is not a message gets a verdict only to clear an earlier one: the author's edit resubmits it.
+          if [ "$KIND" = "" ] && [ -z "$existing" ] && [ "$status" = accepted ]; then
+            echo "not a message: no kind:* label"; exit 0
+          fi
+          line="$(protocol verdict "$status" "$DIGEST" "$RUN_ID")"
+          text="$line"$'\n'"Protocol verdict ($status) for this revision of the message. It is bound to the body and its GitHub edit identity; a foreign revision is invalid until the author edits again."
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f "body=$text" > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$NUMBER/comments" -f "body=$text" > /dev/null
+          fi
+          if [ "$KIND" = "" ]; then echo "not a message: no kind:* label"; exit 0; fi
           if [ -z "$REASON" ]; then
             if [ "$HAS_INVALID" = true ]; then gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/state:invalid" > /dev/null; fi
             echo "valid"; exit 0

@@ -19,6 +19,9 @@ if [ $# -eq 0 ]; then
     || { echo "FAIL the rendered workflows are not the render of templates/ (scripts/render.sh --check)"; exit 1; }
 fi
 workflow="${1:-$root/.github/workflows/guard.yml}"
+# The scenarios run in throwaway repositories, so the guards' runner is given by absolute path.
+runner_env="$(jq -er '.git.runnerEnv' "$root/policy/constants.json")"
+runner_path="$root/$(jq -er '.git.runnerScript' "$root/policy/constants.json")"
 
 # The run block of the step named denylist, without its indentation.
 step="$(awk '
@@ -97,7 +100,7 @@ scenario() {
     tip="$(git -C "$repo" rev-parse HEAD)"
   fi
   got=0
-  out="$(cd "$repo" && NONE=false BASE="$tip" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
+  out="$(cd "$repo" && env "$runner_env=$runner_path" NONE=false BASE="$tip" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
     LABEL=schema-loosening-approved NUMBER="${NUMBER:-}" TOOLING="$work/tooling" \
     REPO=example/repo GH_TOKEN=unused APPROVAL="${APPROVAL:-}" bash -c "$step" 2>&1)" || got=$?
   [ "$got" -eq 0 ] || got=1

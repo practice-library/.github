@@ -23,24 +23,20 @@ def job(name):
 
 
 class Template(unittest.TestCase):
-    def test_three_jobs_plan_unit_merge(self):
+    def test_one_job_runs_plan_units_and_merge(self):
         body = text().split("\njobs:\n", 1)[1]
-        self.assertEqual(re.findall(r"(?m)^  ([a-z]+):\n", body), ["plan", "unit", "merge"])
+        self.assertEqual(re.findall(r"(?m)^  ([a-z]+):\n", body), ["run"])
+        self.assertIn("python3 -m @@pluginGateway.module@@ run", job("run"))
 
-    def test_merge_runs_even_when_a_unit_fails_but_not_without_a_plan(self):
-        merge = job("merge")
-        self.assertIn("needs: [plan, unit]", merge)
-        self.assertIn("if: always() && needs.plan.result == 'success'", merge)
+    def test_the_report_is_the_workflow_output(self):
+        self.assertIn("value: ${{ jobs.run.outputs.report }}", text())
+        self.assertIn("report: ${{ steps.run.outputs.report }}", job("run"))
 
-    def test_unit_matrix_width_and_units_come_from_the_plan(self):
-        unit = job("unit")
-        self.assertIn("max-parallel: ${{ fromJSON(needs.plan.outputs.max-parallel) }}", unit)
-        self.assertIn("unit: ${{ fromJSON(needs.plan.outputs.units) }}", unit)
-        self.assertIn("fail-fast: false", unit)
-        self.assertIn("needs.plan.outputs.has-units == 'true'", unit)
+    def test_no_artifact_actions_are_used(self):
+        self.assertNotIn("artifact", text().lower())
 
-    def test_partials_are_uploaded_even_after_a_failure(self):
-        self.assertRegex(job("unit"), r"if: always\(\)\n\s+with:\n\s+name: @@pluginGateway\.artifacts\.partialPrefix@@")
+    def test_the_gateway_helpers_are_checked_out_at_the_tooling_ref(self):
+        self.assertIn("ref: ${{ inputs.tooling-ref }}", job("run"))
 
     def test_defaults_are_policy_placeholders_not_literals(self):
         for name in ("time-seconds", "output-bytes", "max-parallel", "retry-attempts", "retry-wait-seconds"):

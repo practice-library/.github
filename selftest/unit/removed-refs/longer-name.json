@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "env": {
+    "DELETED": "[\"index.md\"]",
+    "ROOT": "selftest/unit/removed-refs/tree-longer-name",
+    "HISTORY": "[]"
+  }
+}

@@ -1,5 +1,5 @@
 name: plugin-matrix
-# Runs a contract v0 plugin as plan, one job per unit, merge. The logic is in
+# Runs a contract v0 plugin with bounded parallel units in one job. The logic is in
 # @@pluginGateway.module@@ (policy: pluginGateway); this file only wires the jobs.
 on:
   workflow_call:
@@ -37,19 +37,17 @@ on:
         type: string
         default: @@release.tag@@
     outputs:
-      report-artifact:
-        description: The name of the artifact that holds the merged report.
-        value: ${{ jobs.merge.outputs.report-artifact }}
+      report:
+        description: The merged report as JSON.
+        value: ${{ jobs.run.outputs.report }}
 permissions:
   contents: read
 jobs:
-  plan:
+  run:
     runs-on: @@runner.image@@
     timeout-minutes: @@runner.timeoutMinutes@@
     outputs:
-      units: ${{ steps.plan.outputs.units }}
-      has-units: ${{ steps.plan.outputs.has-units }}
-      max-parallel: ${{ steps.plan.outputs.max-parallel }}
+      report: ${{ steps.run.outputs.report }}
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
@@ -58,7 +56,7 @@ jobs:
         with:
           repository: @@org.name@@/@@org.repo@@
           ref: ${{ inputs.tooling-ref }}
-          path: .gateway-tooling
+          path: @@protocol.toolingCheckout@@
           persist-credentials: false
       - name: Prepare the plan input
         shell: bash
@@ -70,125 +68,22 @@ jobs:
           export PLAN_INPUT
           bash -c "$PREPARE"
           [ -f "$PLAN_INPUT" ] || { echo "::error::prepare did not write \$PLAN_INPUT"; exit 1; }
-      - name: describe and plan
-        id: plan
+      - name: Plan, run units and merge
+        id: run
         shell: bash
         env:
-          PYTHONPATH: .gateway-tooling
+          PYTHONPATH: @@protocol.toolingCheckout@@
           PLUGIN: ${{ inputs.plugin }}
           TIME_SECONDS: ${{ inputs.time-seconds }}
           OUTPUT_BYTES: ${{ inputs.output-bytes }}
           MAX_PARALLEL: ${{ inputs.max-parallel }}
-        run: |
-          set -euo pipefail
-          python3 -m @@pluginGateway.module@@ plan \
-            --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
-            --plan-input "$RUNNER_TEMP/plan-input.json" \
-            --out "$RUNNER_TEMP/@@pluginGateway.files.plan@@" \
-            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" --max-parallel "$MAX_PARALLEL"
-      - uses: @@actions.uploadArtifact.repo@@@@@actions.uploadArtifact.sha@@ # @@actions.uploadArtifact.version@@
-        with:
-          name: @@pluginGateway.artifacts.plan@@
-          path: ${{ runner.temp }}/@@pluginGateway.files.plan@@
-          retention-days: @@pluginGateway.artifacts.retentionDays@@
-          if-no-files-found: error
-
-  unit:
-    needs: [plan]
-    if: needs.plan.outputs.has-units == 'true'
-    runs-on: @@runner.image@@
-    timeout-minutes: @@runner.timeoutMinutes@@
-    strategy:
-      fail-fast: false
-      max-parallel: ${{ fromJSON(needs.plan.outputs.max-parallel) }}
-      matrix:
-        unit: ${{ fromJSON(needs.plan.outputs.units) }}
-    steps:
-      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          persist-credentials: false
-      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          repository: @@org.name@@/@@org.repo@@
-          ref: ${{ inputs.tooling-ref }}
-          path: .gateway-tooling
-          persist-credentials: false
-      - uses: @@actions.downloadArtifact.repo@@@@@actions.downloadArtifact.sha@@ # @@actions.downloadArtifact.version@@
-        with:
-          name: @@pluginGateway.artifacts.plan@@
-          path: ${{ runner.temp }}/plan
-      - name: run-unit
-        shell: bash
-        env:
-          PYTHONPATH: .gateway-tooling
-          PLUGIN: ${{ inputs.plugin }}
-          UNIT: ${{ matrix.unit }}
-          TIME_SECONDS: ${{ inputs.time-seconds }}
-          OUTPUT_BYTES: ${{ inputs.output-bytes }}
           RETRY_ATTEMPTS: ${{ inputs.retry-attempts }}
           RETRY_WAIT_SECONDS: ${{ inputs.retry-wait-seconds }}
         run: |
           set -euo pipefail
-          python3 -m @@pluginGateway.module@@ unit \
+          python3 -m @@pluginGateway.module@@ run \
             --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
-            --plan "$RUNNER_TEMP/plan/@@pluginGateway.files.plan@@" \
-            --unit "$UNIT" --out-dir "$RUNNER_TEMP/@@pluginGateway.files.partialsDir@@" \
-            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" \
-            --retry-attempts "$RETRY_ATTEMPTS" --retry-wait-seconds "$RETRY_WAIT_SECONDS"
-      - uses: @@actions.uploadArtifact.repo@@@@@actions.uploadArtifact.sha@@ # @@actions.uploadArtifact.version@@
-        if: always()
-        with:
-          name: @@pluginGateway.artifacts.partialPrefix@@${{ matrix.unit }}
-          path: ${{ runner.temp }}/@@pluginGateway.files.partialsDir@@/${{ matrix.unit }}.json
-          retention-days: @@pluginGateway.artifacts.retentionDays@@
-          if-no-files-found: ignore
-
-  merge:
-    needs: [plan, unit]
-    # Runs when a unit failed or was skipped; a failed plan has nothing to merge.
-    if: always() && needs.plan.result == 'success'
-    runs-on: @@runner.image@@
-    timeout-minutes: @@runner.timeoutMinutes@@
-    outputs:
-      report-artifact: ${{ steps.merge.outputs.report-artifact }}
-    steps:
-      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          persist-credentials: false
-      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          repository: @@org.name@@/@@org.repo@@
-          ref: ${{ inputs.tooling-ref }}
-          path: .gateway-tooling
-          persist-credentials: false
-      - uses: @@actions.downloadArtifact.repo@@@@@actions.downloadArtifact.sha@@ # @@actions.downloadArtifact.version@@
-        with:
-          name: @@pluginGateway.artifacts.plan@@
-          path: ${{ runner.temp }}/plan
-      - uses: @@actions.downloadArtifact.repo@@@@@actions.downloadArtifact.sha@@ # @@actions.downloadArtifact.version@@
-        with:
-          pattern: @@pluginGateway.artifacts.partialPrefix@@*
-          merge-multiple: true
-          path: ${{ runner.temp }}/@@pluginGateway.files.partialsDir@@
-      - name: merge
-        id: merge
-        shell: bash
-        env:
-          PYTHONPATH: .gateway-tooling
-          PLUGIN: ${{ inputs.plugin }}
-          TIME_SECONDS: ${{ inputs.time-seconds }}
-          OUTPUT_BYTES: ${{ inputs.output-bytes }}
-        run: |
-          set -euo pipefail
-          python3 -m @@pluginGateway.module@@ merge \
-            --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
-            --plan "$RUNNER_TEMP/plan/@@pluginGateway.files.plan@@" \
-            --partials-dir "$RUNNER_TEMP/@@pluginGateway.files.partialsDir@@" \
+            --plan-input "$RUNNER_TEMP/plan-input.json" \
             --out "$RUNNER_TEMP/@@pluginGateway.files.report@@" \
-            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES"
-      - uses: @@actions.uploadArtifact.repo@@@@@actions.uploadArtifact.sha@@ # @@actions.uploadArtifact.version@@
-        with:
-          name: @@pluginGateway.artifacts.report@@
-          path: ${{ runner.temp }}/@@pluginGateway.files.report@@
-          retention-days: @@pluginGateway.artifacts.retentionDays@@
-          if-no-files-found: error
+            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" --max-parallel "$MAX_PARALLEL" \
+            --retry-attempts "$RETRY_ATTEMPTS" --retry-wait-seconds "$RETRY_WAIT_SECONDS"

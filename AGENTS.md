@@ -42,7 +42,7 @@ python3 -I scripts/practice-ci check-steps <file>...  # the shell in workflow st
 
 A mutant counts as killed only by a behavioural failure: a mutated file that does not parse (bash, a jq
 program, a step) is an error, not a kill. Mutant files are arrays (a library under `templates/fragments`)
-or `{"target", "tests", "mutants"}` objects (the shell inside a workflow or fragment's steps).
+or `{"target", "tests", "mutants"}` objects (the shell inside a workflow or fragment's steps, or a Python module when `target` ends in `.py`). An object may hold `"unit": "<lib>"` instead of `"tests"`: the mutant is then judged by that library's unit cases (the shell fragments that call the Python guards).
 
 ## The literals rule
 

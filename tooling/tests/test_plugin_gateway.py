@@ -431,6 +431,82 @@ class Cli(Fake):
         self.assertEqual(status, 1)
         self.assertIn("::error::describe", out)
 
+    def run_args(self, **extra):
+        plan_input = os.path.join(self.dir, "plan-input.json")
+        with open(plan_input, "w", encoding="utf-8") as f:
+            json.dump({"x": 1}, f)
+        argv = self.common("run") + ["--plan-input", plan_input, "--out", os.path.join(self.dir, "report.json")]
+        for key, value in extra.items():
+            argv += ["--" + key.replace("_", "-"), str(value)]
+        return argv
+
+    def run_step(self, *argv, clock=None):
+        outputs = os.path.join(self.dir, "github-output")
+        with mock.patch.dict(os.environ, {gw.OUTPUT_ENV: outputs}):
+            status, out = self.run_cli(*argv, clock=clock)
+        lines = []
+        if os.path.exists(outputs):
+            with open(outputs, encoding="utf-8") as f:
+                lines = f.read().splitlines()
+        return status, out, lines
+
+    def test_run_plans_runs_every_unit_and_merges(self):
+        status, _, lines = self.run_step(*self.run_args())
+        self.assertEqual(status, 0)
+        self.assertEqual([c["operation"] for c in self.calls()].count("run-unit"), 2)
+        self.assertEqual(len(self.calls("run-unit", "a")), 1)
+        self.assertEqual(len(self.calls("run-unit", "b")), 1)
+        report = self.report()
+        self.assertEqual(report["partials"], 2)
+        self.assertEqual(report["reached"], ["a1", "a2", "b1"])
+        self.assertEqual(report["unreadable"], [])
+        # The report output is one compact line, so it works as a step output.
+        self.assertEqual(lines, ["report=" + json.dumps(report, separators=(",", ":"))])
+
+    def test_run_width_is_the_least_of_input_plan_and_policy(self):
+        for requested, want in (("9", 2), ("1", 1)):
+            with self.subTest(requested):
+                with mock.patch.object(gw, "ThreadPoolExecutor", wraps=gw.ThreadPoolExecutor) as pool:
+                    self.run_step(*self.run_args(max_parallel=requested))
+                self.assertEqual(pool.call_args.kwargs["max_workers"], want)
+
+    def test_run_with_no_units_merges_nothing(self):
+        self.behave(plan={"units": []})
+        status, _, lines = self.run_step(*self.run_args())
+        self.assertEqual(status, 0)
+        self.assertEqual(self.calls("run-unit"), [])
+        self.assertEqual(self.report()["partials"], 0)
+        self.assertEqual(len(lines), 1)
+
+    def test_run_a_fatal_unit_is_merged_around_warned_and_fails_the_step(self):
+        self.behave(exit={"run-unit:b": [2]})
+        status, out, lines = self.run_step(*self.run_args())
+        self.assertEqual(status, 1)
+        self.assertIn("::warning::unit b", out)
+        self.assertNotIn("::warning::unit a", out)
+        report = self.report()
+        self.assertEqual(report["partials"], 1)
+        self.assertEqual(report["reached"], ["a1", "a2"])
+        self.assertEqual(report["unreadable"], ["b1"])
+        self.assertEqual(len(lines), 1)
+        self.assertTrue(lines[0].startswith("report="))
+
+    def test_run_a_persistent_75_is_a_partial_not_a_failure(self):
+        self.behave(exit={"run-unit:b": [RETRY]})
+        status, out, _ = self.run_step(*self.run_args(retry_attempts=2, retry_wait_seconds=0))
+        self.assertEqual(status, 0)
+        self.assertEqual(len(self.calls("run-unit", "b")), 2)
+        self.assertEqual(self.report()["notReached"], ["b1"])
+        self.assertEqual(self.report()["unreadable"], [])
+
+    def test_run_a_failing_merge_fails_the_step_without_a_report(self):
+        self.behave(exit={"merge:": [2]})
+        status, out, lines = self.run_step(*self.run_args())
+        self.assertEqual(status, 1)
+        self.assertIn("::error::merge", out)
+        self.assertEqual(lines, [])
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "report.json")))
+
     def test_bad_arguments_exit_two(self):
         for argv in (["unit"], self.unit_args("a", retry_attempts=0), self.unit_args("a", time_seconds=0)):
             with self.subTest(argv):
