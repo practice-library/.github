@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "output": "ok no exemption added or widened",
+  "env": {
+    "BASE_LIST": "",
+    "HEAD_LIST": ""
+  }
+}

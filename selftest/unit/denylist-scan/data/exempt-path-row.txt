@@ -1,0 +1,2 @@
+vendors/acme/graph/nodes/a.json:3	  "quote": "Zebracorn rules the plan."
+added path 1	vendors/zebracorn/graph/nodes/b.json

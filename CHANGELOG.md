@@ -4,6 +4,10 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+Additive in the surface (#42): the denylist file gains an optional key, and a change that adds or widens an exemption needs the existing loosening label. The denylist guard also refuses more for every repository: a renamed file is read whole at its new path, and a head list that is not JSON fails.
+
+- guard.yml `denylist`: the denylist file may carry `exemptPaths`, a list of `{"glob", "terms"}`. An added line of a file under a glob is not found for the hashes in `terms`, or for any entry when `terms` is left out; added paths, commit messages, names and every other file are judged as before. A glob is relative to the root, `*` and `?` stay in one segment, a `**` segment spans any number, and the first segment holds no wildcard. The exemptions come from the base commit, so they never apply to the change that adds them, and a first list is used without them. A pull request that adds or widens an entry fails until a maintainer who is not the author adds the `label` input's label (default `schema-loosening-approved`); on a push it is reported. A head list that is not JSON now fails the guard. Each line an exemption lets through is printed with its glob. The content diff is read with `--no-renames`, so a file moved out of an exempt tree is judged whole at its new path.
+
 ## v2.5.0
 
 Additive in the surface; several guards refuse more than before (part 1 of #35).

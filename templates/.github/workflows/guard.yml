@@ -2,7 +2,8 @@ name: guard
 # Mechanical review checks, one per call: guard is one of @@gen:guardids@@.
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
-#                     on push, a merge commit's author name is not judged (whoever pressed merge)
+#                     on push, a merge commit's author name is not judged (whoever pressed merge);
+#                     an exemptPaths entry the change adds or widens needs the label "@@guards.loosenLabel@@"
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "@@guards.loosenLabel@@" from someone other
@@ -34,7 +35,7 @@ on:
         type: string
         default: @@guards.changelog@@
       label:
-        description: The label that lets a loosened schema through.
+        description: The label that lets a loosened schema, or a denylist exemption added or widened, through.
         type: string
         default: @@guards.loosenLabel@@
       size-limit:
@@ -99,6 +100,12 @@ jobs:
           HEAD: ${{ steps.range.outputs.head }}
           LIST: ${{ inputs.denylist }}
           EVENT: ${{ github.event_name }}
+          LABEL: ${{ inputs.label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           #@include denylist-scan.sh
@@ -116,19 +123,53 @@ jobs:
             exit
           fi
           # The list comes from the base commit, so a change cannot edit the list it is checked against.
-          # Only when the base has none and the change adds it is the change's own list used.
-          DENY=""
-          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then
-            DENY="$(git cat-file blob "$BASE:$LIST")"
-          elif git cat-file -e "$HEAD:$LIST" 2>/dev/null; then
-            echo "$LIST is new in this change; it is checked with that list."
-            DENY="$(git cat-file blob "$HEAD:$LIST")"
+          # Only when the base has none and the change adds it is the change's own list used, without
+          # its exemptions: an exemption never applies to the change that adds it.
+          DENY=""; BASE_LIST=""; HEAD_LIST=""
+          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$BASE:$LIST")"; fi
+          if git cat-file -e "$HEAD:$LIST" 2>/dev/null; then HEAD_LIST="$(git cat-file blob "$HEAD:$LIST")"; fi
+          if [ -n "$BASE_LIST" ]; then
+            DENY="$BASE_LIST"
+          elif [ -n "$HEAD_LIST" ]; then
+            echo "$LIST is new in this change; it is checked with that list, without its exemptions."
+            DENY="$(jq -c 'if type == "object" then del(.exemptPaths) else . end' <<<"$HEAD_LIST" 2>/dev/null)" \
+              || { echo "::error file=$LIST::$LIST is not JSON"; exit 1; }
           fi
           unset TEXT_FILE
           export DENY MB HEAD EVENT
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
+          # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
+          #@include denylist-exempt.sh
+          # Widening is judged against the base as it is now, since that is what the merge lands on: an entry
+          # the base dropped after the change branched would come back with it.
+          export BASE_LIST HEAD_LIST
+          widened="$(main)"
+          echo "$widened"
+          case "$widened" in
+            ok*) exit 0 ;;
+            widened*) ;;
+            *) echo "::error file=$LIST::$widened"; exit 1 ;;
+          esac
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
+          #@include label-approval.sh
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
+            missing*)
+              MB_LIST=""
+              if git cat-file -e "$MB:$LIST" 2>/dev/null; then MB_LIST="$(git cat-file blob "$MB:$LIST")"; fi
+              if [ "$MB_LIST" != "$BASE_LIST" ]; then
+                echo "$LIST changed on the base after this change branched; if the change does not mean to add an exemption, merge the base in."
+              fi
+              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac
 
       - name: removed-paths
         if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'

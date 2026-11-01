@@ -1,0 +1,1 @@
+vendors/a/b/x.json:1	Zebracorn

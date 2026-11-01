@@ -1,0 +1,27 @@
+[
+  {
+    "name": "new-entries-unseen",
+    "find": "| select(($old | index([$e])) == null)",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "base-ignored",
+    "find": "entries($b) as $old",
+    "replace": "[] as $old"
+  },
+  {
+    "name": "not-list-accepted",
+    "find": "else error(\"exemptPaths is not a list\") end",
+    "replace": "else [] end"
+  },
+  {
+    "name": "unreadable-accepted",
+    "find": "echo \"invalid a denylist file is not JSON, or its exemptPaths is not a list\"; return 0",
+    "replace": "echo \"ok unreadable\"; return 0"
+  },
+  {
+    "name": "head-ignored",
+    "find": "entries($h)[]",
+    "replace": "[][]"
+  }
+]
