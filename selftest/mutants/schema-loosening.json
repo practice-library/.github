@@ -193,5 +193,20 @@
     "name": "other-change-ignored",
     "find": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select($o[$k] != $n[$k])",
     "replace": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select(false)"
+  },
+  {
+    "name": "contains-monotonic",
+    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\", \"contains\") then",
+    "replace": "elif $k | IN(\"not\", \"if\", \"oneOf\") then"
+  },
+  {
+    "name": "prefix-beside-false-ignored",
+    "find": "| select($o.items == false or $o.unevaluatedItems == false)",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "unevaluated-subschemas-ignored",
+    "find": "\"dependentSchemas\")) and $o.unevaluatedProperties == false",
+    "replace": "\"dependentSchemas\")) and false"
   }
 ]

@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"contains\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-contains-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-contains-tighter.json"
+  }
+}

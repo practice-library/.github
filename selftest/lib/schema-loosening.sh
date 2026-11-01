@@ -21,8 +21,9 @@ main() {
 #   made anything else; a key added under properties or patternProperties beside an additionalProperties
 #   or unevaluatedProperties that was false (the new key accepts what the false refused);
 #   const, pattern or format changed or removed; and, since a change the guard cannot show safe needs the
-#   label: a type set that gains a type or loses its type, any change under not, if or oneOf (they do
-#   not count the normal way), a $ref, $dynamicRef or $recursiveRef added, removed or changed, an allOf,
+#   label: a type set that gains a type or loses its type, any change under not, if, oneOf or contains
+#   (they do not count the normal way), prefixItems added beside a false items or unevaluatedItems, an
+#   allOf, anyOf, then, else or dependentSchemas changed beside unevaluatedProperties: false, a $ref, $dynamicRef or $recursiveRef added, removed or changed, an allOf,
 #   anyOf, prefixItems or list items that changes length, any constraint keyword removed, a subschema
 #   made true or a false one opened, and any other keyword changed (multipleOf, uniqueItems, ...).
 #   Annotations (title, description, default, examples, $comment, ...) and $defs entries are not judged.
@@ -111,13 +112,17 @@ compare() {
                         elif $k == "type" then
                           # A type set that gained a type.
                           ($o.type | if type == "array" then . else [.] end) as $ot
-                          | ($n.type | if type == "array" then . else [.] end) as $nt
+                          | ($n.type | if type == "array" then . elif type == "string" then [.] else [] end) as $nt
                           | select(any($nt[]; . as $x | $ot | index([$x]) | not)) | where($s + [$k])
                         elif $k | IN($handled[]) then empty
                         elif $k | IN($refs[]) then empty
-                        elif $k | IN("not", "if", "oneOf") then
-                          # Not monotonic: any change may accept more.
+                        elif $k | IN("not", "if", "oneOf", "contains") then
+                          # Not monotonic (contains with maxContains counts matches): any change may accept more.
                           select($o[$k] != $n[$k]) | where($s + [$k])
+                        elif ($k | IN("allOf", "anyOf", "then", "else", "dependentSchemas")) and $o.unevaluatedProperties == false
+                             and $o[$k] != $n[$k] then
+                          # Beside unevaluatedProperties: false, a subschema that evaluates more properties opens the object.
+                          where($s + [$k])
                         elif $k | IN("allOf", "anyOf", "prefixItems") then
                           # A list of subschemas that changed length cannot be compared item by item.
                           select(($o[$k] | type) == "array" and (($n[$k] | type) != "array" or ($n[$k] | length) != ($o[$k] | length)))
@@ -137,6 +142,12 @@ compare() {
                           select($o[$k] != $n[$k]) | where($s + [$k])
                         end )
                   end ),
+              # Items added beside a false items or unevaluatedItems: the new positions accept what the false refused.
+              ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
+                | select(($o | type) == "object" and ($n | type) == "object")
+                | select($o.items == false or $o.unevaluatedItems == false)
+                | select(($n.prefixItems | if type == "array" then length else 0 end) > ($o.prefixItems | if type == "array" then length else 0 end))
+                | where($s + ["prefixItems"]) ),
               # A reference added, removed or changed: the guard cannot follow it.
               ( ($places + $newplaces | unique)[] as $s
                 | $refs[] as $r
