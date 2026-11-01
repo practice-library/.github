@@ -4,6 +4,14 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+Additive. All three changes widen a schema and were reviewed as loosenings (label on #48). `schema-loosening` reports the new `rel` and `format` values but not the new `attrs.status` property, since it does not yet see a property added under `additionalProperties: false` (#35).
+
+- spec/node/schema.json: `attrs.status`, optional, one of `in-force`, `notified-not-in-force`, `draft` or `superseded`, for a fact that is a rule with a legal or published state (#47). Any other value fails, and so does any other unknown attribute. A domain schema may narrow the list or forbid `status`.
+- spec/node/schema.json: six edge relations for legal texts (#49): `issuedBy` (an instrument to the authority that issued it), `partOf` (a provision to its instrument), `madeUnder` (rules or directions to the enabling provision), `imposes` (a provision to the obligation, timeline, penalty or exemption it creates), `amends` (an instrument to the instrument it amends) and `commencedBy` (a provision to the notification that brought it into force). Any other relation still fails; a domain schema may restrict `rel` to the values it uses.
+- spec/sources/schema.json: `format` may be `pdf` (#46). The quote is matched in the text extracted from the document, with whitespace collapsed; any other unknown format still fails. A reader of the sources list that does not support `pdf` should refuse such a host with a clear message.
+
+## v2.3.0
+
 Additive.
 
 - gate.yml: the pin check reads each workflow as YAML, with yq 4.44.3 fetched and pinned by sha256, instead of line by line. A `uses:` written as a quoted key, a flow mapping, a block scalar, an anchor or alias (including `jobs:` itself as an alias), or through a merge key that names an alias, is judged like any other. A workflow that does not parse fails the gate. Only `jobs.<id>.uses` and `jobs.<id>.steps[].uses` are judged; a `uses` key anywhere else is not.

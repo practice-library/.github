@@ -13,6 +13,37 @@
     {
       "pointer": "/$defs/host/properties/maxBytes/maximum",
       "set": 9999999
+    },
+    {
+      "pointer": "/$defs/host/properties/format/enum",
+      "set": [
+        "markdown",
+        "text",
+        "html",
+        "json"
+      ]
+    },
+    {
+      "pointer": "/$defs/host/properties/format/enum",
+      "set": [
+        "markdown",
+        "text",
+        "html",
+        "json",
+        "pdf",
+        "PDF"
+      ]
+    },
+    {
+      "pointer": "/$defs/host/properties/format/enum",
+      "set": [
+        "markdown",
+        "text",
+        "html",
+        "json",
+        "pdf",
+        "docx"
+      ]
     }
   ]
 }

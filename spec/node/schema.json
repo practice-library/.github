@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/practice-library/.github/spec/node/schema.json",
   "title": "Fact node",
-  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote, and an optional basis) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
+  "description": "The envelope every fact node shares: id, type, name, source URL, measuredAt, attrs (verdict, fetched_at, quote, and an optional basis and status) and edges. A domain schema references this one and declares only its type values. That every edge target exists is checked by the graph checker, not by this schema.",
   "type": "object",
   "required": [
     "id",
@@ -99,6 +99,15 @@
           "minLength": 1,
           "maxLength": 300,
           "description": "Prose that does not fit value, unit, scope or window."
+        },
+        "status": {
+          "enum": [
+            "in-force",
+            "notified-not-in-force",
+            "draft",
+            "superseded"
+          ],
+          "description": "Optional, for a fact that is a rule with a legal or published state: in-force (it applies now), notified-not-in-force (published, with a later start), draft (proposed, not adopted) or superseded (replaced by a later rule). Absent means the domain does not track it. A domain schema may narrow the list or forbid status, never add a value."
         }
       },
       "if": {
@@ -139,8 +148,15 @@
               "hasRelease",
               "introducedIn",
               "removedIn",
-              "observes"
-            ]
+              "observes",
+              "issuedBy",
+              "partOf",
+              "madeUnder",
+              "imposes",
+              "amends",
+              "commencedBy"
+            ],
+            "description": "The first eleven relate product facts. The last six relate legal texts: issuedBy: an instrument to the authority that issued it. partOf: a provision to its instrument. madeUnder: rules or directions to the enabling provision. imposes: a provision to the obligation, timeline, penalty or exemption it creates. amends: an instrument to the instrument it amends. commencedBy: a provision to the notification that brought it into force. A domain schema may restrict rel to the values it uses."
           },
           "to": {
             "type": "string",
