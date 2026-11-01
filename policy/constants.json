@@ -209,7 +209,9 @@
   },
   "spec": {
     "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
-    "nodeSchemaPath": "spec/node/schema.json"
+    "nodeSchemaPath": "spec/node/schema.json",
+    "sourcesSchemaPath": "spec/sources/schema.json",
+    "termsNoteMaxLength": 300
   },
   "tagRuleset": {
     "name": "release-tags",
@@ -262,6 +264,48 @@
         "why": "v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"
       }
     ]
+  },
+  "pluginGateway": {
+    "workflow": "plugin-matrix.yml",
+    "protocol": "0",
+    "operations": {
+      "describe": "describe",
+      "plan": "plan",
+      "runUnit": "run-unit",
+      "merge": "merge"
+    },
+    "maxParallel": 3,
+    "retry": {
+      "exitCode": 75,
+      "attempts": 3,
+      "waitSeconds": 60
+    },
+    "caps": {
+      "timeSeconds": 300,
+      "outputBytes": 10000000
+    },
+    "unitIdPattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    "files": {
+      "plan": "plan.json",
+      "partialsDir": "partials",
+      "report": "report.json"
+    },
+    "artifacts": {
+      "plan": "gateway-plan",
+      "partialPrefix": "gateway-partial-",
+      "report": "gateway-report",
+      "retentionDays": 7
+    },
+    "module": "tooling.practice_ci.plugin_gateway"
+  },
+  "helpers": {
+    "yq": {
+      "version": "4.44.3",
+      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
+      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
+      "archive": "tar.gz",
+      "bin": "yq_linux_amd64"
+    }
   },
   "protocol": {
     "api": {
@@ -356,15 +400,6 @@
       "specVersion": "1.0",
       "messageType": "org.practice-library.protocol.v0.request",
       "protocolVersion": "0"
-    }
-  },
-  "helpers": {
-    "yq": {
-      "version": "4.44.3",
-      "url": "https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz",
-      "sha256": "a347ccde5e32c607670e15526e295c58a555a68cbb36d15cf18d24fd7af0e2fd",
-      "archive": "tar.gz",
-      "bin": "yq_linux_amd64"
     }
   },
   "git": {

@@ -23,8 +23,9 @@
     "tagRuleset",
     "release",
     "guards",
-    "protocol",
+    "pluginGateway",
     "helpers",
+    "protocol",
     "git",
     "approvals"
   ],
@@ -634,7 +635,9 @@
       "additionalProperties": false,
       "required": [
         "nodeSchemaId",
-        "nodeSchemaPath"
+        "nodeSchemaPath",
+        "sourcesSchemaPath",
+        "termsNoteMaxLength"
       ],
       "properties": {
         "nodeSchemaId": {
@@ -643,6 +646,14 @@
         },
         "nodeSchemaPath": {
           "$ref": "#/$defs/path"
+        },
+        "sourcesSchemaPath": {
+          "$ref": "#/$defs/path"
+        },
+        "termsNoteMaxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The longest spec/sources terms.note; a test holds the schema's maxLength to this value, since a schema file cannot read policy."
         }
       }
     },
@@ -802,6 +813,180 @@
             }
           }
         }
+      }
+    },
+    "pluginGateway": {
+      "description": "The reusable matrix gateway that runs a contract v0 plugin (templates/.github/workflows/plugin-matrix.yml, tooling/practice_ci/plugin_gateway.py): defaults and caps for its inputs, the plugin's operations, and the file and artifact names its jobs share.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow",
+        "protocol",
+        "operations",
+        "maxParallel",
+        "retry",
+        "caps",
+        "unitIdPattern",
+        "files",
+        "artifacts",
+        "module"
+      ],
+      "properties": {
+        "workflow": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+\\.yml$"
+        },
+        "protocol": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The protocol version a plugin's describe must answer."
+        },
+        "operations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "describe",
+            "plan",
+            "runUnit",
+            "merge"
+          ],
+          "properties": {
+            "describe": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "plan": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "runUnit": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "merge": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        },
+        "maxParallel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The default of the max-parallel input and the most it may ever be; a plan may ask for fewer."
+        },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exitCode",
+            "attempts",
+            "waitSeconds"
+          ],
+          "properties": {
+            "exitCode": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 125,
+              "description": "The plugin exit code that means a temporary failure the caller may retry."
+            },
+            "attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of retry-attempts: calls of one unit in all, the first included."
+            },
+            "waitSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "The default of retry-wait-seconds."
+            }
+          }
+        },
+        "caps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "timeSeconds",
+            "outputBytes"
+          ],
+          "properties": {
+            "timeSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of time-seconds: the most one plugin call may run, and the most one unit may spend across its retries and waits."
+            },
+            "outputBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of output-bytes: the most one plugin call may write to stdout."
+            }
+          }
+        },
+        "unitIdPattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What a unit id must match; it names a file and an artifact."
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan",
+            "partialsDir",
+            "report"
+          ],
+          "properties": {
+            "plan": {
+              "$ref": "#/$defs/path"
+            },
+            "partialsDir": {
+              "$ref": "#/$defs/path"
+            },
+            "report": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan",
+            "partialPrefix",
+            "report",
+            "retentionDays"
+          ],
+          "properties": {
+            "plan": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partialPrefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "report": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retentionDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          }
+        },
+        "module": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)+$",
+          "description": "The Python module the workflow runs with -m, from a checkout of this repository."
+        }
+      }
+    },
+    "helpers": {
+      "description": "Programs a workflow runs to do its job, not checks: fetched by URL and pinned by sha256 like tools (#@fetch), with no finding exit code or expect input.",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/helper"
       }
     },
     "protocol": {
@@ -1015,13 +1200,6 @@
             }
           }
         }
-      }
-    },
-    "helpers": {
-      "description": "Programs a workflow runs to do its job, not checks: fetched by URL and pinned by sha256 like tools (#@fetch), with no finding exit code or expect input.",
-      "type": "object",
-      "additionalProperties": {
-        "$ref": "#/$defs/helper"
       }
     },
     "git": {
