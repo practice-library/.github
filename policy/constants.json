@@ -12,7 +12,8 @@
   },
   "runner": {
     "image": "ubuntu-24.04",
-    "timeoutMinutes": 10
+    "timeoutMinutes": 10,
+    "unitTimeoutMinutes": 20
   },
   "actions": {
     "checkout": {
@@ -24,7 +25,28 @@
       "repo": "re-actors/alls-green",
       "version": "v1.3.0",
       "sha": "b5b5b37504aa4183270bd3d855c52a67f212be35"
+    },
+    "setupPython": {
+      "repo": "actions/setup-python",
+      "version": "v7.1.0",
+      "sha": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
     }
+  },
+  "tooling": {
+    "pythonVersion": "3.12.16",
+    "launcher": "tooling/practice-ci",
+    "package": "tooling/practice_ci",
+    "checkoutPath": "practice-ci",
+    "callerPath": "caller",
+    "mutantsDir": "selftest/mutants",
+    "integrationDir": "selftest/integration"
+  },
+  "fetch": {
+    "retries": 3
+  },
+  "protocol": {
+    "kindLabelPrefix": "kind:",
+    "invalidLabel": "state:invalid"
   },
   "tools": {
     "gitleaks": {
@@ -86,8 +108,7 @@
       "name": "selftest",
       "email": "selftest@example.invalid"
     },
-    "unitDir": "selftest/unit",
-    "libDir": "selftest/lib"
+    "unitDir": "selftest/unit"
   },
   "self": {
     "discoverJob": "discover",

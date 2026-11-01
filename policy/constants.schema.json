@@ -8,6 +8,9 @@
     "org",
     "runner",
     "actions",
+    "tooling",
+    "fetch",
+    "protocol",
     "tools",
     "leakScan",
     "checks",
@@ -190,7 +193,8 @@
       "additionalProperties": false,
       "required": [
         "image",
-        "timeoutMinutes"
+        "timeoutMinutes",
+        "unitTimeoutMinutes"
       ],
       "properties": {
         "image": {
@@ -201,13 +205,96 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 360
+        },
+        "unitTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
         }
       }
     },
     "actions": {
       "type": "object",
+      "required": [
+        "checkout",
+        "setupPython"
+      ],
       "additionalProperties": {
         "$ref": "#/$defs/action"
+      }
+    },
+    "tooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "pythonVersion",
+        "launcher",
+        "package",
+        "checkoutPath",
+        "callerPath",
+        "mutantsDir",
+        "integrationDir"
+      ],
+      "properties": {
+        "pythonVersion": {
+          "description": "The exact interpreter setup-python installs for the tooling; the package keeps to the 3.12 language.",
+          "type": "string",
+          "pattern": "^3\\.12\\.(0|[1-9][0-9]*)$"
+        },
+        "launcher": {
+          "$ref": "#/$defs/path"
+        },
+        "package": {
+          "$ref": "#/$defs/path"
+        },
+        "checkoutPath": {
+          "description": "Where a reusable workflow checks out its own commit, a sibling of callerPath under the workspace.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "callerPath": {
+          "description": "Where a reusable workflow checks out the calling repository, a sibling of checkoutPath.",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "mutantsDir": {
+          "$ref": "#/$defs/path"
+        },
+        "integrationDir": {
+          "$ref": "#/$defs/path"
+        }
+      }
+    },
+    "fetch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retries"
+      ],
+      "properties": {
+        "retries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kindLabelPrefix",
+        "invalidLabel"
+      ],
+      "properties": {
+        "kindLabelPrefix": {
+          "type": "string",
+          "pattern": "^[a-z]+:$"
+        },
+        "invalidLabel": {
+          "type": "string",
+          "pattern": "^[a-z]+:[a-z-]+$"
+        }
       }
     },
     "tools": {
@@ -297,8 +384,7 @@
         "caseFile",
         "builder",
         "author",
-        "unitDir",
-        "libDir"
+        "unitDir"
       ],
       "properties": {
         "fixturesDir": {
@@ -330,9 +416,6 @@
           }
         },
         "unitDir": {
-          "$ref": "#/$defs/path"
-        },
-        "libDir": {
           "$ref": "#/$defs/path"
         }
       }
