@@ -88,5 +88,10 @@
     "name": "git-paths-rewritten",
     "find": "if $plain then . else newpath end",
     "replace": "newpath"
+  },
+  {
+    "name": "rename-paths-swapped",
+    "find": "IFS= read -r -d '' old; IFS= read -r -d '' path",
+    "replace": "IFS= read -r -d '' path; IFS= read -r -d '' old"
   }
 ]
