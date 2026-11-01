@@ -59,7 +59,7 @@ failed=0
 # NUMBER (a pull request number; empty means not a pull request), LABELS (JSON, default []) and
 # GH_EVENTS (the label events, "<login><TAB><type>" lines). MOVE_FROM puts the line in that file on the
 # base and has the head commit move it to FILE (git mv) instead of adding the line. BASE_AFTER_LIST writes
-# that list on the base line after the head branched, so BASE moves on while MB stays where it branched.
+# that list on the base line after the head branched (DELETE_LIST=1 has the head commit delete the list), so BASE moves on while MB stays where it branched.
 scenario() {
   local name="$1" want="$2" event="$3" list="$4" author="$5" message="$6" line="$7" merger="$8" repo got out
   repo="$(mktemp -d "$work/r.XXXXXX")"
@@ -75,6 +75,7 @@ scenario() {
   if [ -n "${MOVE_FROM:-}" ]; then git -C "$repo" mv "$MOVE_FROM" "${FILE:-notes.md}"
   else printf '%s\n' "$line" > "$repo/${FILE:-notes.md}"; fi
   if [ -n "${HEAD_LIST:-}" ]; then printf '%s\n' "$HEAD_LIST" > "$repo/$LIST"; fi
+  if [ -n "${DELETE_LIST:-}" ]; then git -C "$repo" rm -q "$LIST"; fi
   git -C "$repo" add -A
   git -C "$repo" -c user.name="$author" -c user.email=a@example.invalid -c commit.gpgsign=false commit -q -m "$message"
   local head; head="$(git -C "$repo" rev-parse HEAD)"
@@ -160,6 +161,23 @@ moved="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"v
 left="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"docs/a.md\"}]}"
 HEAD_LIST="$moved" BASE_AFTER_LIST="$left" NUMBER=1 scenario exempt-moved-then-dropped-on-base 1 pull_request "$two" "Contributor" "Reorder" "Clean." ""
 HEAD_LIST="{" scenario exempt-head-list-unreadable-push 1 push "$tree" "Contributor" "Break the list" "Clean." ""
+
+# The list a change writes is the one the next change is judged with: it must be digests only and not empty.
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"bogus\"]}" scenario head-list-not-digests 1 pull_request "$plain" "Contributor" "Edit the list" "Clean." ""
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[]}" scenario head-list-emptied 1 pull_request "$plain" "Contributor" "Empty the list" "Clean." ""
+DELETE_LIST=1 scenario head-list-deleted 1 pull_request "$plain" "Contributor" "Delete the list" "Clean." ""
+DELETE_LIST=1 BASE_AFTER_LIST="$tree" scenario head-list-deleted-base-moved 1 pull_request "$plain" "Contributor" "Delete the list" "Clean." ""
+BASE_AFTER_LIST="$plain" scenario base-gained-list-after-branch 0 pull_request "" "Contributor" "Add notes" "Clean." ""
+HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"$(hash quokka)\"]}" scenario head-list-grows 0 pull_request "$plain" "Contributor" "Add an entry" "Clean." ""
+# The hash tool refuses a list that is not digests, so its output is never appended to a broken list.
+# A digest with a final newline is one too: jq's $ matches before it, so the tool anchors with \z.
+for bad in "not-a-digest|\"sha256\":[\"bogus\"]" "digest-newline|\"sha256\":[\"$term\\n\"]" \
+           "name-newline|\"sha256\":[],\"allowAuthorNames\":[\"$term\\n\"]" "name-null|\"sha256\":[],\"allowAuthorNames\":null"; do
+  printf '%s\n' "{\"salt\":\"$salt\",${bad#*|}}" > "$work/bad.json"
+  if printf 'zebracorn\n' | bash "$root/scripts/denylist-hash.sh" "$work/bad.json" > /dev/null 2>&1; then
+    echo "FAIL denylist-hash.sh accepted a list that is not digests: ${bad%%|*}"; failed=$((failed + 1))
+  else echo "ok   denylist-hash.sh refuses a list that is not digests: ${bad%%|*}"; fi
+done
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).
