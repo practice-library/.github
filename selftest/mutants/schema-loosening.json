@@ -258,5 +258,25 @@
     "name": "shape-change-ignored",
     "find": "is not compared.\n                    where($s)",
     "replace": "is not compared.\n                    empty"
+  },
+  {
+    "name": "refrev-tightening-ignored",
+    "find": "( select($refrev)\n",
+    "replace": "( select(false)\n"
+  },
+  {
+    "name": "refrev-shape-ignored",
+    "find": "elif $k | IN($submap[]) or IN($subarr[]) then ($o[$k] | shape) != ($n[$k] | shape)",
+    "replace": "elif $k | IN($submap[]) or IN($subarr[]) then false"
+  },
+  {
+    "name": "refrev-boolean-ignored",
+    "find": "select($o != $n and $n != null) | where($s)",
+    "replace": "empty"
+  },
+  {
+    "name": "refrev-annotations-judged",
+    "find": "                    | select($k | IN($annot[]) | not)\n                    | select(\n",
+    "replace": "                    | select(\n"
   }
 ]

@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"$defs/x/properties\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-refrev-def-key-added-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-refrev-def-key-added-new.json"
+  }
+}

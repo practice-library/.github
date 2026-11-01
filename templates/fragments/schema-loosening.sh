@@ -32,8 +32,10 @@ main() {
 #   keyword removed; a subschema made true, a false one opened, or one replaced by another shape (a list
 #   items for a schema items); a $schema, $id, $anchor, $dynamicAnchor or $vocabulary added, removed or
 #   changed (they move what a reference reaches or which keywords count); and any other keyword changed
-#   (multipleOf, uniqueItems, ...).
-#   Annotations (title, description, default, examples, $comment, ...) and $defs entries are not judged.
+#   (multipleOf, uniqueItems, ...). In a file with a reference under not, if, oneOf or contains, any
+#   constraint change at any place is loose, a tightening included: the reference may reach it there.
+#   Annotations (title, description, default, examples, $comment, ...) are not judged; a $defs entry is
+#   judged like any other place, but adding or removing a whole entry is not.
 # A pattern changed to another string is not loose when the pair is listed in TIGHTEN (unset means no
 # list): a JSON array of {"sha256": <64 lower-case hex>, "why": <text>}, each the SHA-256 of the pair
 # written as compact JSON, ["<old pattern>","<new pattern>"], with no newline. A list entry is a reviewed
@@ -182,6 +184,22 @@ compare() {
               ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
                 | select(($o | type) == "object" and ($n | type) == "object")
                 | $ident[] as $k | select(($o | has($k) | not) and ($n | has($k))) | where($s + [$k]) ),
+              # With a reference under not, if, oneOf or contains, any place may be reached there, where a
+              # tighter rule accepts more: every constraint change is loose, tightenings too.
+              ( select($refrev)
+                | $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
+                | if ($o | type) != "object" or ($n | type) != "object" then
+                    select($o != $n and $n != null) | where($s)
+                  else
+                    def shape: if type == "object" then keys elif type == "array" then length else . end;
+                    ($o + $n | keys[]) as $k
+                    | select($k | IN($annot[]) | not)
+                    | select(
+                        if $k | IN($sub[]) then ($o | has($k)) != ($n | has($k))
+                        elif $k | IN($submap[]) or IN($subarr[]) then ($o[$k] | shape) != ($n[$k] | shape)
+                        else $o[$k] != $n[$k] end)
+                    | where($s + [$k])
+                  end ),
               # A reference added, removed or changed: the guard cannot follow it.
               ( ($places + $newplaces | unique)[] as $s
                 | $refs[] as $r
