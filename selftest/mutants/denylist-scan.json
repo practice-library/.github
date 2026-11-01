@@ -118,5 +118,20 @@
     "name": "rows-split-on-cr",
     "find": "encoding=\"utf-8\", errors=\"replace\", newline=\"\\n\") as f:",
     "replace": "encoding=\"utf-8\", errors=\"replace\") as f:"
+  },
+  {
+    "name": "marker-lines-dropped",
+    "find": "      printf 'commit %s\\t%s\\n' \"$sha\" \"$line\"",
+    "replace": "      [[ \"$line\" == ::* ]] || printf 'commit %s\\t%s\\n' \"$sha\" \"$line\""
+  },
+  {
+    "name": "hashes-not-digests",
+    "find": "assert all(isinstance(h, str) and re.fullmatch(r\"[0-9a-f]{64}\", h) for h in terms)",
+    "replace": "assert all(isinstance(h, str) for h in terms)"
+  },
+  {
+    "name": "hashes-any-iterable",
+    "find": "isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)",
+    "replace": "isinstance(salt, str) and salt and isinstance(allow, list)"
   }
 ]
