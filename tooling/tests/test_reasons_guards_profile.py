@@ -3,6 +3,7 @@ import copy
 import glob
 import json
 import os
+import subprocess
 import unittest
 
 from tooling.practice_ci import config, guards, reasons
@@ -73,6 +74,14 @@ class Check(unittest.TestCase):
 
 class Guards(unittest.TestCase):
     DOC = {"properties": {"a": {"minimum": 1}}, "list": [1, 2]}
+
+    def test_local_script_can_execute_the_guards_package(self):
+        result = subprocess.run(
+            ["bash", os.path.join(ROOT, "scripts", "guards.sh"),
+             "unused-validator", "unused-schema", "unused-guards", "--help"],
+            cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--validator", result.stdout)
 
     def test_set_delete_true(self):
         self.assertEqual(guards.apply_mutant(self.DOC, {"pointer": "/properties/a/minimum", "set": 0})["properties"]["a"]["minimum"], 0)

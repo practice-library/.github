@@ -127,6 +127,22 @@
     "keyword": "type",
     "instanceLocation": "/hosts/0/terms"
   },
+  "counter-examples/terms-note-empty.json": {
+    "keyword": "minLength",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-note-not-a-string.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-note-over-cap.json": {
+    "keyword": "maxLength",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-unknown-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/hosts/0/terms"
+  },
   "counter-examples/terms-url-with-space.json": {
     "keyword": "pattern",
     "instanceLocation": "/hosts/0/terms/url"
