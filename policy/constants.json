@@ -211,6 +211,11 @@
     "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
     "nodeSchemaPath": "spec/node/schema.json"
   },
+  "git": {
+    "runnerScript": "tooling/run_practice_ci.py",
+    "runnerEnv": "PRACTICE_CI_RUNNER",
+    "reportLimit": 20
+  },
   "tagRuleset": {
     "name": "release-tags",
     "enforcement": "active",
