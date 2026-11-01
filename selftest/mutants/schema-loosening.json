@@ -135,11 +135,6 @@
     "replace": "if false then"
   },
   {
-    "name": "closed-removal-not-excepted",
-    "find": "select(($k | IN(\"properties\", \"patternProperties\")) and ($o | closed) and ($n | closed) | not)",
-    "replace": "select(true)"
-  },
-  {
     "name": "refs-ignored",
     "find": "| select($or != $nr) | where($s + [$r]) )",
     "replace": "| select(false) | where($s + [$r]) )"
@@ -158,11 +153,6 @@
     "name": "entry-removal-ignored",
     "find": "| select(. as $x | $nk | index([$x]) | not)",
     "replace": "| select(false)"
-  },
-  {
-    "name": "dependent-entry-excepted",
-    "find": "| select($k == \"dependentSchemas\" or",
-    "replace": "| select(false or"
   },
   {
     "name": "made-true-ignored",
@@ -250,11 +240,6 @@
     "replace": "\"contentMediaType\",\"contentEncoding\",\"$defs\",\"definitions\",\"$schema\",\"$id\",\"$anchor\",\"$dynamicAnchor\",\"$vocabulary\"] as $annot"
   },
   {
-    "name": "identity-added-ignored",
-    "find": "| $ident[] as $k | select(($o | has($k) | not) and ($n | has($k)))",
-    "replace": "| $ident[] as $k | select(false)"
-  },
-  {
     "name": "shape-change-ignored",
     "find": "is not compared.\n                    where($s)",
     "replace": "is not compared.\n                    empty"
@@ -293,5 +278,55 @@
     "name": "off-type-wrong-type",
     "find": "if ($mins + $maxs) | index([$k]) then \"number\"",
     "replace": "if ($mins + $maxs) | index([$k]) then \"boolean\""
+  },
+  {
+    "name": "refuses-other-map-ignored",
+    "find": "and ((if $k == \"properties\" then \"patternProperties\" else \"properties\" end) as $other | has($other) | not)",
+    "replace": "and true"
+  },
+  {
+    "name": "refuses-uneval-applicators-ignored",
+    "find": "$x | has($a)) | not)));",
+    "replace": "$x | has($a)) | not or true)));"
+  },
+  {
+    "name": "refuses-uneval-additional-ignored",
+    "find": "(.unevaluatedProperties == false and (has(\"additionalProperties\") | not)",
+    "replace": "(.unevaluatedProperties == false and true"
+  },
+  {
+    "name": "ident-new-places-ignored",
+    "find": "( ($places + $newplaces | unique)[] as $s | at($old; $s) as $o | at($new; $s) as $n\n                | select(($n | type) == \"object\")\n                | $ident",
+    "replace": "( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n\n                | select(($n | type) == \"object\")\n                | $ident"
+  },
+  {
+    "name": "draft4-id-ignored",
+    "find": "\"$id\",\"id\",\"$anchor\"",
+    "replace": "\"$id\",\"$anchor\""
+  },
+  {
+    "name": "recursive-anchor-ignored",
+    "find": "\"$dynamicAnchor\",\"$recursiveAnchor\",\"$vocabulary\"",
+    "replace": "\"$dynamicAnchor\",\"$vocabulary\""
+  },
+  {
+    "name": "closed-removal-not-excepted",
+    "find": "select(($k | IN(\"properties\", \"patternProperties\")) and ($o | refuses($k)) and ($n | refuses($k)) | not)",
+    "replace": "select(true)"
+  },
+  {
+    "name": "closed-entry-not-excepted",
+    "find": "| select((($o | refuses($k)) and ($n | refuses($k))) | not)",
+    "replace": "| ."
+  },
+  {
+    "name": "identity-added-ignored",
+    "find": "| $ident[] as $k | select(($o | type == \"object\" and has($k)) | not) | select($n | has($k))",
+    "replace": "| $ident[] as $k | select(false)"
+  },
+  {
+    "name": "dependent-entry-excepted",
+    "find": "type == \"object\" and ($k | IN(\"properties\", \"patternProperties\"))",
+    "replace": "type == \"object\""
   }
 ]

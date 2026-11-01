@@ -86,7 +86,7 @@ compare() {
              "contentMediaType","contentEncoding","$defs","definitions"] as $annot
           # What a reference resolves to or which dialect applies: removed or changed is judged like any
           # other keyword below; added, it is judged here.
-          | ["$schema","$id","$anchor","$dynamicAnchor","$vocabulary"] as $ident
+          | ["$schema","$id","id","$anchor","$dynamicAnchor","$recursiveAnchor","$vocabulary"] as $ident
           | ["$ref","$dynamicRef","$recursiveRef"] as $refs
           | ($mins + $maxs + ["required","enum","const","pattern","format","type"]) as $handled
           | def isschema: length == 0
@@ -94,7 +94,17 @@ compare() {
               or (length >= 2 and (.[-2] | type) == "string" and (.[-2] | IN($submap[])) and (.[-1] | type) == "string" and (.[:-2] | isschema))
               or (length >= 2 and (.[-2] | type) == "string" and (.[-2] | IN($subarr[])) and (.[-1] | type) == "number" and (.[:-2] | isschema));
             def at($t; $p): $t | try getpath($p) catch null;
-            def closed: type == "object" and (.additionalProperties == false or .unevaluatedProperties == false);
+            # A key that leaves properties or patternProperties ($k) is refused only when nothing else in the
+            # object can still take it: a false additionalProperties with no entry of the other map (a pattern
+            # may match the name), or a false unevaluatedProperties with neither that nor additionalProperties
+            # nor any keyword that evaluates properties (an allOf or a reference may name the key).
+            def refuses($k):
+              type == "object" and ($k | IN("properties", "patternProperties"))
+              and ((if $k == "properties" then "patternProperties" else "properties" end) as $other | has($other) | not)
+              and (.additionalProperties == false
+                   or (.unevaluatedProperties == false and (has("additionalProperties") | not)
+                       and (. as $x | any("allOf", "anyOf", "oneOf", "if", "then", "else", "dependentSchemas",
+                                          "dependencies", "$ref", "$dynamicRef", "$recursiveRef"; . as $a | $x | has($a)) | not)));
             def where($p): if ($p | length) == 0 then "(root)" else $p | map(tostring) | join("/") end;
             ([[]] + [$old | paths | select(isschema)]) as $places
           | ([[]] + [$new | paths | select(isschema)]) as $newplaces
@@ -114,8 +124,8 @@ compare() {
                     ( $o | keys[] as $k
                       | select($k | IN($annot[]) | not)
                       | if ($n | has($k)) | not then
-                          # A constraint removed (a removed properties map under a closed object refuses more).
-                          select(($k | IN("properties", "patternProperties")) and ($o | closed) and ($n | closed) | not)
+                          # A constraint removed (a removed properties map under an object that refuses its keys refuses more).
+                          select(($k | IN("properties", "patternProperties")) and ($o | refuses($k)) and ($n | refuses($k)) | not)
                           | where($s + [$k])
                         elif $k == "type" then
                           # A type set that gained a type.
@@ -141,11 +151,12 @@ compare() {
                         elif $k == "items" and ($o[$k] | type) == "array" then
                           select(($n[$k] | type) != "array" or ($n[$k] | length) != ($o[$k] | length)) | where($s + [$k])
                         elif $k | IN("properties", "patternProperties", "dependentSchemas") then
-                          # An entry removed, unless the object stays closed (then the entry is refused).
+                          # An entry removed, unless the object refuses the key both before and after (never for
+                          # a dependentSchemas entry, which only ever adds rules).
                           ($n[$k] | if type == "object" then keys else [] end) as $nk
                           | ($o[$k] | if type == "object" then keys[] else empty end)
                           | select(. as $x | $nk | index([$x]) | not)
-                          | select($k == "dependentSchemas" or ((($o | closed) and ($n | closed)) | not))
+                          | select((($o | refuses($k)) and ($n | refuses($k))) | not)
                           | where($s + [$k, .])
                         elif $k | IN($sub[]) or IN($submap[]) or IN($subarr[]) then empty
                         else
@@ -189,9 +200,10 @@ compare() {
                 | ["$defs", "definitions"][] as $k | select(at($old; [$k]) != at($new; [$k])) | where([$k]) ),
               # A $schema, $id, $anchor, $dynamicAnchor or $vocabulary added: it can move what a reference reaches
               # or which keywords count.
-              ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
-                | select(($o | type) == "object" and ($n | type) == "object")
-                | $ident[] as $k | select(($o | has($k) | not) and ($n | has($k))) | where($s + [$k]) ),
+              # A new place counts too: a $defs entry added with an $id can capture an existing reference.
+              ( ($places + $newplaces | unique)[] as $s | at($old; $s) as $o | at($new; $s) as $n
+                | select(($n | type) == "object")
+                | $ident[] as $k | select(($o | type == "object" and has($k)) | not) | select($n | has($k)) | where($s + [$k]) ),
               # With a reference under not, if, oneOf or contains, any place may be reached there, where a
               # tighter rule accepts more: every constraint change is loose, tightenings too.
               ( select($refrev)
