@@ -78,6 +78,13 @@ class Unsafe(unittest.TestCase):
             with self.subTest(name):
                 self.assertTrue(protocol.extract(body(block)).startswith("invalid "), name)
 
+    def test_deep_decoded_json_is_scanned_without_recursion(self):
+        for leaf, expected in (("0", "ok "), ('"\\u200b"', "invalid "),
+                               ('{"\\u200b":0}', "invalid ")):
+            with self.subTest(leaf=leaf):
+                block = '{"a":' + '[' * 500 + leaf + ']' * 500 + '}'
+                self.assertTrue(protocol.extract(body(block)).startswith(expected))
+
     def test_paired_surrogates_and_plain_text_are_safe(self):
         self.assertTrue(protocol.extract(body('{"a":"\\ud83d\\ude00 ok é"}')).startswith("ok "))
 
@@ -139,8 +146,8 @@ class Trust(unittest.TestCase):
     def event(self, comments, action, actor, text):
         return protocol.decide(action, actor, self.AUTHOR, protocol.digest(text), protocol.parse_verdict(comments))
 
-    def verdict_comment(self, status, text):
-        return {"user": {"login": config.get("protocol", "verdictAuthor")}, "body": protocol.render_verdict(status, protocol.digest(text))}
+    def verdict_comment(self, status, text, run_id=1):
+        return {"user": {"login": config.get("protocol", "verdictAuthor")}, "body": protocol.render_verdict(status, protocol.digest(text), run_id)}
 
     def test_create_foreign_edit_trusted_relabel_is_invalid(self):
         original, tampered = b"original body", b"tampered body"
@@ -175,6 +182,19 @@ class Trust(unittest.TestCase):
                 self.assertEqual(self.event(comments, "edited", self.AUTHOR, tampered)[0], protocol.JUDGE)
                 comments = []
 
+    def test_delayed_open_cannot_clear_taint_after_body_is_restored(self):
+        original, changed = b"body A", b"body B"
+        self.assertEqual(self.event([], "opened", self.AUTHOR, original)[0], protocol.JUDGE)
+        self.assertEqual(self.event([], "edited", self.AUTHOR, changed)[0], protocol.JUDGE)
+        self.assertEqual(self.event([], "edited", self.OTHER, original)[1], protocol.TAINTED)
+        comments = [self.verdict_comment(protocol.TAINTED, original, 3)]
+        self.assertFalse(protocol.can_record(1, comments))
+        self.assertFalse(protocol.can_record(2, comments))
+        self.assertFalse(protocol.can_record(3, comments))
+        self.assertEqual(self.event(comments, "labeled", self.AUTHOR, original)[0], protocol.KEEP_INVALID)
+        self.assertTrue(protocol.can_record(4, comments))
+        self.assertEqual(self.event(comments, "edited", self.AUTHOR, original)[0], protocol.JUDGE)
+
     def test_author_edit_resubmits(self):
         comments = [self.verdict_comment(protocol.TAINTED, b"tampered")]
         what, _, _ = self.event(comments, "edited", self.AUTHOR, b"fixed by author")
@@ -186,11 +206,11 @@ class Trust(unittest.TestCase):
         self.assertEqual(what, protocol.JUDGE)
 
     def test_forged_verdict_by_another_login_is_ignored(self):
-        forged = {"user": {"login": self.OTHER}, "body": protocol.render_verdict(protocol.ACCEPTED, protocol.digest(b"x"))}
+        forged = {"user": {"login": self.OTHER}, "body": protocol.render_verdict(protocol.ACCEPTED, protocol.digest(b"x"), 1)}
         self.assertIsNone(protocol.parse_verdict([forged]))
 
     def test_latest_verdict_wins(self):
-        comments = [self.verdict_comment(protocol.ACCEPTED, b"a"), self.verdict_comment(protocol.TAINTED, b"b")]
+        comments = [self.verdict_comment(protocol.ACCEPTED, b"a"), self.verdict_comment(protocol.TAINTED, b"b", 2)]
         self.assertEqual(protocol.parse_verdict(comments)["status"], protocol.TAINTED)
 
 
@@ -237,6 +257,31 @@ class WorkflowSequence(unittest.TestCase):
         return subprocess.run([sys.executable, "-I", "-c", code, os.path.join(ROOT, "tooling"), *args],
                               capture_output=True, text=True, check=True).stdout.strip()
 
+    def test_workflow_blocks_delayed_open_after_newer_taint(self):
+        import subprocess
+        import tempfile
+        with open(os.path.join(ROOT, "templates", ".github", "workflows", "message-check.yml")) as f:
+            workflow = f.read()
+        self.assertIn("group: message-check-${{ github.repository }}-${{ github.event.issue.number }}", workflow)
+        self.assertIn("cancel-in-progress: false", workflow)
+        self.assertIn('protocol verdict "$status" "$DIGEST" "$RUN_ID"', workflow)
+        start = workflow.index('          if [ "$(protocol can-record')
+        end = workflow.index('          existing=', start)
+        guard = workflow[start:end]
+        with tempfile.TemporaryDirectory() as tmp:
+            comments = [{"user": {"login": config.get("protocol", "verdictAuthor")},
+                         "body": protocol.render_verdict(protocol.TAINTED, protocol.digest(b"A"), 3)}]
+            with open(os.path.join(tmp, "comments.json"), "w") as f:
+                json.dump(comments, f)
+            code = "import sys; from practice_ci import protocol; sys.exit(protocol.main(sys.argv[1:]))"
+            script = 'protocol() { python3 -c "$PROTOCOL_CODE" "$@"; }\n' + guard + '\necho write-verdict'
+            env = dict(os.environ, RUNNER_TEMP=tmp, PYTHONPATH=os.path.join(ROOT, "tooling"), PROTOCOL_CODE=code)
+            for run_id, allowed in (("1", False), ("3", False), ("4", True)):
+                with self.subTest(run_id=run_id):
+                    done = subprocess.run(["bash", "-eu", "-c", script], env=dict(env, RUN_ID=run_id),
+                                          capture_output=True, text=True, check=True)
+                    self.assertEqual("write-verdict" in done.stdout, allowed)
+
     def test_create_foreign_edit_relabel_is_invalid(self):
         import tempfile
         author, other = "owner-login", "someone-else"
@@ -252,7 +297,7 @@ class WorkflowSequence(unittest.TestCase):
             return json.loads(self.cli("decide", action, actor, author, self.cli("digest", path), comments))
 
         def store(status, path):
-            line = self.cli("verdict", status, self.cli("digest", path))
+            line = self.cli("verdict", status, self.cli("digest", path), "1")
             with open(comments, "w", encoding="utf-8") as f:
                 json.dump([{"id": 7, "user": {"login": config.get("protocol", "verdictAuthor")}, "body": line}], f)
 

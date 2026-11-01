@@ -10,7 +10,8 @@ Command line (used by templates/fragments/message-extract.sh and message-check.y
   extract <body-file>
   digest <body-file>
   decide <action> <actor> <author> <digest> <verdict-comments-json-file>
-  verdict <status> <digest>
+  verdict <status> <digest> <run-id>
+  can-record <run-id> <verdict-comments-json-file>
   verdict-id <verdict-comments-json-file>
 """
 import hashlib
@@ -124,12 +125,18 @@ def _unsafe_string(text):
 
 def has_unsafe(node):
     """True when a key or string anywhere in the decoded value holds an unsafe character."""
-    if isinstance(node, str):
-        return _unsafe_string(node)
-    if isinstance(node, list):
-        return any(has_unsafe(item) for item in node)
-    if isinstance(node, dict):
-        return any(_unsafe_string(key) or has_unsafe(item) for key, item in node.items())
+    pending = [node]
+    while pending:
+        item = pending.pop()
+        if isinstance(item, str):
+            if _unsafe_string(item):
+                return True
+        elif isinstance(item, list):
+            pending.extend(item)
+        elif isinstance(item, dict):
+            if any(_unsafe_string(key) for key in item):
+                return True
+            pending.extend(item.values())
     return False
 
 
@@ -167,11 +174,11 @@ def extract(body):
 # Revision-bound trust. The verdict is a comment by config protocol.verdictAuthor holding
 # <!-- <marker> {"status": ..., "sha256": ...} -->; the digest is the body revision it speaks for.
 
-def render_verdict(status, body_digest):
+def render_verdict(status, body_digest, run_id):
     if status not in STATUSES:
         raise ValueError("unknown verdict status: " + status)
     marker = config.get("protocol", "verdictMarker")
-    return "<!-- %s %s -->" % (marker, json.dumps({"status": status, "sha256": body_digest}, sort_keys=True, separators=(",", ":")))
+    return "<!-- %s %s -->" % (marker, json.dumps({"status": status, "sha256": body_digest, "run_id": int(run_id)}, sort_keys=True, separators=(",", ":")))
 
 
 def parse_verdict(comments):
@@ -195,9 +202,16 @@ def find_verdict(comments):
             verdict = json.loads(m.group(1))
         except ValueError:
             continue
-        if isinstance(verdict, dict) and verdict.get("status") in STATUSES and isinstance(verdict.get("sha256"), str):
-            found = (comment, verdict)
+        if isinstance(verdict, dict) and verdict.get("status") in STATUSES and isinstance(verdict.get("sha256"), str) and type(verdict.get("run_id")) is int:
+            if found is None or verdict["run_id"] > found[1]["run_id"]:
+                found = (comment, verdict)
     return found
+
+
+def can_record(run_id, comments):
+    """Called under the workflow's per-issue lock; reruns cannot replace a newer verdict."""
+    verdict = parse_verdict(comments)
+    return verdict is None or int(run_id) > verdict["run_id"]
 
 
 def decide(action, actor, author, body_digest, verdict):
@@ -258,8 +272,11 @@ def main(argv):
         with open(args[0], encoding="utf-8") as f:
             found = find_verdict(json.load(f))
         print(found[0]["id"] if found else "")
+    elif cmd == "can-record":
+        with open(args[1], encoding="utf-8") as f:
+            print("true" if can_record(args[0], json.load(f)) else "false")
     elif cmd == "verdict":
-        print(render_verdict(args[0], args[1]))
+        print(render_verdict(args[0], args[1], args[2]))
     else:
         print("usage: protocol.py extract|digest|decide|verdict ...", file=sys.stderr)
         return 2
