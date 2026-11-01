@@ -4,6 +4,8 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+- Breaking (v3): `selftest/lib/` and `templates/selftest/lib/` are removed; `scripts/unit.sh` loads `templates/fragments/*.sh` directly (`selftest.libDir` is now `templates/fragments`). `scripts/mutants.sh` counts a mutant as killed only by a behavioural failure (a jq or bash parse error, or a step that does not parse, is an error) and also mutates the shell inside workflow steps (#71).
+- New: `templates/fragments/self-checkout.yml` (the called workflow's own tooling, checked out at `job.workflow_sha` beside the caller), `scripts/practice-ci` with `tooling/practice_ci/` (`lint-literals`, `check-steps`), and `AGENTS.md`. Constants gain `selfCheckout`, `tooling`, `runner.unitTimeoutMinutes`, `runner.fetchRetries`, `selftest.mutantsDir` and `selftest.parseErrorPatterns`.
 ## v3.0.0
 
 Breaking. There is no backward compatibility: a renamed check or input replaces the old one.

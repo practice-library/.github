@@ -61,19 +61,16 @@ jobs:
     permissions:
       contents: read
       pull-requests: read
+    env:
+      @@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@git.runnerScript@@
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: The approval tooling
-        if: inputs.guard == 'denylist' || inputs.guard == 'schema-loosening' || inputs.guard == 'size'
-        uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          repository: @@org.name@@/@@org.repo@@
-          ref: @@release.tag@@
-          path: @@approvals.toolingPath@@
-          persist-credentials: false
+      # The include point for the called workflow's own tooling: it must come after the checkout above,
+      # which cleans the workspace. Checks wire their commands to the tooling it provides.
+      #@include self-checkout.yml
       - name: The change to check
         id: range
         shell: bash
@@ -110,7 +107,7 @@ jobs:
           LIST: ${{ inputs.denylist }}
           EVENT: ${{ github.event_name }}
           LABEL: ${{ inputs.label }}
-          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
+          TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -231,7 +228,7 @@ jobs:
           # Reviewed pattern changes that only tighten, shipped with this workflow at its pin.
           TIGHTEN: '@@json:guards.tighteningPairs@@'
           LABEL: ${{ inputs.label }}
-          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
+          TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -246,7 +243,8 @@ jobs:
             # A deleted schema accepts everything it used to refuse, so it counts as loosened.
             if [ "$status" = D ]; then NEW_FILE=""
             else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
-            export OLD_FILE NEW_FILE
+            FILE_PATH="$new"
+            export OLD_FILE NEW_FILE FILE_PATH
             result="$(main)"
             echo "$new: $result"
             case "$result" in
@@ -277,7 +275,7 @@ jobs:
           LIMIT: ${{ inputs.size-limit }}
           FIXTURES: ${{ inputs.size-fixtures }}
           LABEL: ${{ inputs.size-label }}
-          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
+          TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}

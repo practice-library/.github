@@ -1,6 +1,6 @@
 # Generated from templates/.github/workflows/plugin-matrix.yml and policy/constants.json by scripts/render.sh. Do not edit.
 name: plugin-matrix
-# Runs a contract v0 plugin with bounded parallel units in one job. The logic is in
+# Runs a contract v0 plugin as plan, one job per unit, merge. The logic is in
 # tooling.practice_ci.plugin_gateway (policy: pluginGateway); this file only wires the jobs.
 on:
   workflow_call:
@@ -38,17 +38,19 @@ on:
         type: string
         default: v3.0.0
     outputs:
-      report:
-        description: The merged report as JSON.
-        value: ${{ jobs.run.outputs.report }}
+      report-artifact:
+        description: The name of the artifact that holds the merged report.
+        value: ${{ jobs.merge.outputs.report-artifact }}
 permissions:
   contents: read
 jobs:
-  run:
+  plan:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     outputs:
-      report: ${{ steps.run.outputs.report }}
+      units: ${{ steps.plan.outputs.units }}
+      has-units: ${{ steps.plan.outputs.has-units }}
+      max-parallel: ${{ steps.plan.outputs.max-parallel }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,7 +59,7 @@ jobs:
         with:
           repository: practice-library/.github
           ref: ${{ inputs.tooling-ref }}
-          path: .practice-ci
+          path: .gateway-tooling
           persist-credentials: false
       - name: Prepare the plan input
         shell: bash
@@ -69,22 +71,125 @@ jobs:
           export PLAN_INPUT
           bash -c "$PREPARE"
           [ -f "$PLAN_INPUT" ] || { echo "::error::prepare did not write \$PLAN_INPUT"; exit 1; }
-      - name: Plan, run units and merge
-        id: run
+      - name: describe and plan
+        id: plan
         shell: bash
         env:
-          PYTHONPATH: .practice-ci
+          PYTHONPATH: .gateway-tooling
           PLUGIN: ${{ inputs.plugin }}
           TIME_SECONDS: ${{ inputs.time-seconds }}
           OUTPUT_BYTES: ${{ inputs.output-bytes }}
           MAX_PARALLEL: ${{ inputs.max-parallel }}
+        run: |
+          set -euo pipefail
+          python3 -m tooling.practice_ci.plugin_gateway plan \
+            --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
+            --plan-input "$RUNNER_TEMP/plan-input.json" \
+            --out "$RUNNER_TEMP/plan.json" \
+            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" --max-parallel "$MAX_PARALLEL"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gateway-plan
+          path: ${{ runner.temp }}/plan.json
+          retention-days: 7
+          if-no-files-found: error
+
+  unit:
+    needs: [plan]
+    if: needs.plan.outputs.has-units == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      max-parallel: ${{ fromJSON(needs.plan.outputs.max-parallel) }}
+      matrix:
+        unit: ${{ fromJSON(needs.plan.outputs.units) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: practice-library/.github
+          ref: ${{ inputs.tooling-ref }}
+          path: .gateway-tooling
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gateway-plan
+          path: ${{ runner.temp }}/plan
+      - name: run-unit
+        shell: bash
+        env:
+          PYTHONPATH: .gateway-tooling
+          PLUGIN: ${{ inputs.plugin }}
+          UNIT: ${{ matrix.unit }}
+          TIME_SECONDS: ${{ inputs.time-seconds }}
+          OUTPUT_BYTES: ${{ inputs.output-bytes }}
           RETRY_ATTEMPTS: ${{ inputs.retry-attempts }}
           RETRY_WAIT_SECONDS: ${{ inputs.retry-wait-seconds }}
         run: |
           set -euo pipefail
-          python3 -m tooling.practice_ci.plugin_gateway run \
+          python3 -m tooling.practice_ci.plugin_gateway unit \
             --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
-            --plan-input "$RUNNER_TEMP/plan-input.json" \
-            --out "$RUNNER_TEMP/report.json" \
-            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" --max-parallel "$MAX_PARALLEL" \
+            --plan "$RUNNER_TEMP/plan/plan.json" \
+            --unit "$UNIT" --out-dir "$RUNNER_TEMP/partials" \
+            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" \
             --retry-attempts "$RETRY_ATTEMPTS" --retry-wait-seconds "$RETRY_WAIT_SECONDS"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: gateway-partial-${{ matrix.unit }}
+          path: ${{ runner.temp }}/partials/${{ matrix.unit }}.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+  merge:
+    needs: [plan, unit]
+    # Runs when a unit failed or was skipped; a failed plan has nothing to merge.
+    if: always() && needs.plan.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      report-artifact: ${{ steps.merge.outputs.report-artifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: practice-library/.github
+          ref: ${{ inputs.tooling-ref }}
+          path: .gateway-tooling
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: gateway-plan
+          path: ${{ runner.temp }}/plan
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: gateway-partial-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/partials
+      - name: merge
+        id: merge
+        shell: bash
+        env:
+          PYTHONPATH: .gateway-tooling
+          PLUGIN: ${{ inputs.plugin }}
+          TIME_SECONDS: ${{ inputs.time-seconds }}
+          OUTPUT_BYTES: ${{ inputs.output-bytes }}
+        run: |
+          set -euo pipefail
+          python3 -m tooling.practice_ci.plugin_gateway merge \
+            --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
+            --plan "$RUNNER_TEMP/plan/plan.json" \
+            --partials-dir "$RUNNER_TEMP/partials" \
+            --out "$RUNNER_TEMP/report.json" \
+            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: gateway-report
+          path: ${{ runner.temp }}/report.json
+          retention-days: 7
+          if-no-files-found: error

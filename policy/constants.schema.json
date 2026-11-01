@@ -7,6 +7,8 @@
   "required": [
     "org",
     "runner",
+    "selfCheckout",
+    "tooling",
     "actions",
     "tools",
     "leakScan",
@@ -29,7 +31,10 @@
     "onboarding",
     "pluginGateway",
     "git",
-    "approvals"
+    "approvals",
+    "compatibility",
+    "reasons",
+    "profiles"
   ],
   "$defs": {
     "sha1": {
@@ -196,7 +201,9 @@
       "additionalProperties": false,
       "required": [
         "image",
-        "timeoutMinutes"
+        "timeoutMinutes",
+        "unitTimeoutMinutes",
+        "fetchRetries"
       ],
       "properties": {
         "image": {
@@ -207,8 +214,213 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 360
+        },
+        "unitTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        },
+        "fetchRetries": {
+          "type": "integer",
+          "minimum": 0
         }
       }
+    },
+    "selfCheckout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "callerDir",
+        "callerFetchDepth"
+      ],
+      "properties": {
+        "dir": {
+          "$ref": "#/$defs/path"
+        },
+        "callerDir": {
+          "$ref": "#/$defs/path"
+        },
+        "callerFetchDepth": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "launcher",
+        "exitCodes",
+        "lint",
+        "dir"
+      ],
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/path",
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        },
+        "launcher": {
+          "$ref": "#/$defs/path"
+        },
+        "exitCodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pass",
+            "fail",
+            "error"
+          ],
+          "properties": {
+            "pass": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "fail": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "error": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          }
+        },
+        "lint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pythonRoots",
+            "pythonExcludeDirs",
+            "templateRoots",
+            "templateSuffixes",
+            "allowedNumbers",
+            "policyKeywords",
+            "policyCalls",
+            "policyNames",
+            "urlPattern",
+            "textRules"
+          ],
+          "properties": {
+            "pythonRoots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/path"
+              }
+            },
+            "pythonExcludeDirs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "templateRoots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/path"
+              }
+            },
+            "templateSuffixes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^\\."
+              }
+            },
+            "allowedNumbers": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "policyKeywords": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "policyCalls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "call",
+                  "positions"
+                ],
+                "properties": {
+                  "call": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "positions": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "policyNames": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "urlPattern": {
+              "type": "string",
+              "minLength": 1
+            },
+            "textRules": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "regex",
+                  "why"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "regex": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "why": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "dir": {
+          "$ref": "#/$defs/path"
+        }
+      },
+      "description": "Where the Python CI tooling lives in this repository."
     },
     "actions": {
       "type": "object",
@@ -304,7 +516,9 @@
         "builder",
         "author",
         "unitDir",
-        "libDir"
+        "libDir",
+        "mutantsDir",
+        "parseErrorPatterns"
       ],
       "properties": {
         "fixturesDir": {
@@ -340,6 +554,18 @@
         },
         "libDir": {
           "$ref": "#/$defs/path"
+        },
+        "mutantsDir": {
+          "$ref": "#/$defs/path"
+        },
+        "parseErrorPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
@@ -726,7 +952,8 @@
         "poll",
         "verdict",
         "labels",
-        "canary"
+        "canary",
+        "repositoryBaseUrl"
       ],
       "properties": {
         "maxBodyBytes": {
@@ -961,6 +1188,10 @@
               "minLength": 1
             }
           }
+        },
+        "repositoryBaseUrl": {
+          "type": "string",
+          "format": "uri"
         }
       }
     },
@@ -1504,6 +1735,110 @@
         "sizeKind": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "compatibility": {
+      "description": "What the schema compatibility classifier (tooling/practice_ci/compatibility.py) reads: which files are schemas, which dialects count unevaluated keywords, which file is a check profile.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaUrlPattern",
+        "fullDialectPattern",
+        "tightenHashPattern",
+        "checkFile"
+      ],
+      "properties": {
+        "schemaUrlPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fullDialectPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tightenHashPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checkFile": {
+          "type": "string",
+          "pattern": "^[^/]+\\.json$"
+        }
+      }
+    },
+    "reasons": {
+      "description": "Expected-reason assertions for negative fixtures (tooling/practice_ci/reasons.py): the sidecar file naming each counter-example's keyword and instance location, and the validator flag that prints structured errors.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "validatorFlag"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[^/]+\\.json$"
+        },
+        "validatorFlag": {
+          "type": "string",
+          "pattern": "^--[a-z-]+$"
+        }
+      }
+    },
+    "profiles": {
+      "description": "Check profiles shared by several callers, rendered to each caller's check.json from templates.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "specCheck"
+      ],
+      "properties": {
+        "specCheck": {
+          "description": "The rows every spec directory with examples, counter-examples and guards runs: validate, reject each counter-example, then apply the guard mutants.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema",
+              "instances"
+            ],
+            "properties": {
+              "schema": {
+                "type": "string",
+                "minLength": 1
+              },
+              "instances": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expect": {
+                "enum": [
+                  "pass",
+                  "fail"
+                ]
+              },
+              "each": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "validate",
+                  "metaschema",
+                  "guards"
+                ]
+              },
+              "guards": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
         }
       }
     }

@@ -12,7 +12,119 @@
   },
   "runner": {
     "image": "ubuntu-24.04",
-    "timeoutMinutes": 10
+    "timeoutMinutes": 10,
+    "unitTimeoutMinutes": 20,
+    "fetchRetries": 3
+  },
+  "selfCheckout": {
+    "dir": "_practice_ci",
+    "callerDir": "caller",
+    "callerFetchDepth": 0
+  },
+  "tooling": {
+    "package": "practice_ci",
+    "launcher": "scripts/practice-ci",
+    "exitCodes": {
+      "pass": 0,
+      "fail": 1,
+      "error": 2
+    },
+    "lint": {
+      "pythonRoots": [
+        "tooling"
+      ],
+      "pythonExcludeDirs": [
+        "tests"
+      ],
+      "templateRoots": [
+        "templates/.github/workflows",
+        "templates/fragments"
+      ],
+      "templateSuffixes": [
+        ".yml",
+        ".sh"
+      ],
+      "allowedNumbers": [
+        0,
+        1
+      ],
+      "policyKeywords": [
+        "timeout",
+        "retries",
+        "retry",
+        "max_retries",
+        "label",
+        "labels",
+        "url",
+        "limit",
+        "cap"
+      ],
+      "policyCalls": [
+        {
+          "call": "urlopen",
+          "positions": [
+            0,
+            2
+          ]
+        },
+        {
+          "call": "Request",
+          "positions": [
+            0
+          ]
+        },
+        {
+          "call": "sleep",
+          "positions": [
+            0
+          ]
+        }
+      ],
+      "policyNames": [
+        "timeout",
+        "retries",
+        "limit",
+        "cap",
+        "label",
+        "url",
+        "size",
+        "count"
+      ],
+      "urlPattern": "^https?://",
+      "textRules": [
+        {
+          "id": "timeout",
+          "regex": "(timeout-minutes:[ ]*|--max-time[ =]|--connect-timeout[ =]|\\btimeout[ ]+)[0-9]",
+          "why": "a timeout comes from policy/constants.json"
+        },
+        {
+          "id": "retry",
+          "regex": "--retry(-[a-z-]+)?[ =][0-9]",
+          "why": "a retry count comes from policy/constants.json"
+        },
+        {
+          "id": "label",
+          "regex": "(--label[ =][\"']?|label\\.name[ ]*==[ ]*\\\\?\")[^$@\"'\\\\ ]",
+          "why": "a label name comes from policy/constants.json"
+        },
+        {
+          "id": "url",
+          "regex": "https?://",
+          "why": "a URL comes from policy/constants.json"
+        },
+        {
+          "id": "pin",
+          "regex": "uses:[ ]+[^@ ]+@[^@ ]",
+          "why": "an action pin comes from policy/constants.json"
+        },
+        {
+          "id": "cap",
+          "regex": "(?:--(?:limit|cap|max-count)[ =]|\\b(?:LIMIT|CAP|MAX_COUNT)=)[0-9]+",
+          "why": "a cap comes from policy/constants.json"
+        }
+      ]
+    },
+    "dir": "tooling"
   },
   "actions": {
     "checkout": {
@@ -24,6 +136,16 @@
       "repo": "re-actors/alls-green",
       "version": "v1.3.0",
       "sha": "b5b5b37504aa4183270bd3d855c52a67f212be35"
+    },
+    "uploadArtifact": {
+      "repo": "actions/upload-artifact",
+      "version": "v4.6.2",
+      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"
+    },
+    "downloadArtifact": {
+      "repo": "actions/download-artifact",
+      "version": "v4.3.0",
+      "sha": "d3f86a106a0bac45b974a628896c90dbdf5c8093"
     }
   },
   "tools": {
@@ -87,7 +209,16 @@
       "email": "selftest@example.invalid"
     },
     "unitDir": "selftest/unit",
-    "libDir": "selftest/lib"
+    "libDir": "templates/fragments",
+    "mutantsDir": "selftest/mutants",
+    "parseErrorPatterns": [
+      "compile error",
+      "syntax error",
+      "SyntaxError",
+      "unexpected EOF",
+      "IndentationError",
+      "TabError"
+    ]
   },
   "self": {
     "discoverJob": "discover",
@@ -355,7 +486,8 @@
       "specVersion": "1.0",
       "messageType": "org.practice-library.protocol.v0.request",
       "protocolVersion": "0"
-    }
+    },
+    "repositoryBaseUrl": "https://github.com"
   },
   "guards": {
     "workflow": "guard.yml",
@@ -479,5 +611,35 @@
     "toolingPath": ".practice-ci",
     "schemaLooseningKind": "schema-loosening",
     "sizeKind": "size"
+  },
+  "compatibility": {
+    "schemaUrlPattern": "^https?://json-schema\\.org/",
+    "fullDialectPattern": "^https?://json-schema\\.org/draft/(2019-09|2020-12)/schema#?$",
+    "tightenHashPattern": "^[0-9a-f]{64}$",
+    "checkFile": "check.json"
+  },
+  "reasons": {
+    "file": "reasons.json",
+    "validatorFlag": "--json"
+  },
+  "profiles": {
+    "specCheck": [
+      {
+        "schema": "schema.json",
+        "instances": "examples"
+      },
+      {
+        "schema": "schema.json",
+        "instances": "counter-examples",
+        "expect": "fail",
+        "each": "true"
+      },
+      {
+        "schema": "schema.json",
+        "instances": "examples",
+        "mode": "guards",
+        "guards": "guards.json"
+      }
+    ]
   }
 }

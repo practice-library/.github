@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs every unit case against the rendered shell libraries the workflows embed.
+# Runs every unit case against the shell fragments the workflows embed, loaded straight from the
+# fragments directory (selftest.libDir): there is no second copy of a library.
 # A case is <unitDir>/<lib>/<name>.json = {"env": {...}, "expect": "<first word of main's output>"};
 # it runs <libDir>/<lib>.sh's main with that environment. Each lib needs at least one case.
 # A case may add "output": the whole line main must print, when the first word is not enough.
@@ -20,6 +21,7 @@ lib_dir="$root/$(jq -er '.selftest.libDir' "$constants")"
 cd "$root"
 # A case with a repository runs inside a throwaway directory, so the guards' runner is given by absolute path.
 runner_env="$(jq -er '.git.runnerEnv' "$constants")"
+export TOOLING="$root/tooling"
 export "$runner_env=$root/$(jq -er '.git.runnerScript' "$constants")"
 
 failed=0
@@ -92,7 +94,11 @@ for case_path in "${cases[@]}"; do
       fi
     fi
     # shellcheck disable=SC1090 # the library is chosen by the case directory
-    source "$lib"
+    filled="$(jq -Rrs --slurpfile c "$constants" '
+      gsub("@@(?<key>[A-Za-z0-9_.]+)@@";
+        .key as $key | $c[0] | getpath($key | split(".")) // error("missing constant: " + $key) | tostring)
+      ' "$lib")"
+    source /dev/stdin <<<"$filled"
     main
   )" || got="error $?"
   output="$(jq -r '.output // empty' "$case_path")"

@@ -1,0 +1,182 @@
+{
+  "counter-examples/anonymous-user-agent.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/userAgent"
+  },
+  "counter-examples/checked-at-apr-31.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/hosts/0/robots/checkedAt"
+  },
+  "counter-examples/format-pdf-upper.json": {
+    "keyword": "enum",
+    "instanceLocation": "/hosts/0/format"
+  },
+  "counter-examples/format-unknown.json": {
+    "keyword": "enum",
+    "instanceLocation": "/hosts/0/format"
+  },
+  "counter-examples/host-entry-as-string.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0"
+  },
+  "counter-examples/host-maxBytes-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/maxBytes"
+  },
+  "counter-examples/host-maxBytes-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/hosts/0/maxBytes"
+  },
+  "counter-examples/host-maxRequestsPerRun-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/maxRequestsPerRun"
+  },
+  "counter-examples/host-maxRequestsPerRun-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/hosts/0/maxRequestsPerRun"
+  },
+  "counter-examples/host-minIntervalDays-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/minIntervalDays"
+  },
+  "counter-examples/host-minIntervalDays-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/hosts/0/minIntervalDays"
+  },
+  "counter-examples/host-timeoutSeconds-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/timeoutSeconds"
+  },
+  "counter-examples/host-timeoutSeconds-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/hosts/0/timeoutSeconds"
+  },
+  "counter-examples/host-with-scheme.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/hosts/0/host"
+  },
+  "counter-examples/host-without-terms.json": {
+    "keyword": "required",
+    "instanceLocation": "/hosts/0"
+  },
+  "counter-examples/host-without-vendor.json": {
+    "keyword": "required",
+    "instanceLocation": "/hosts/0"
+  },
+  "counter-examples/hosts-as-object.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts"
+  },
+  "counter-examples/max-bytes-as-float.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0/maxBytes"
+  },
+  "counter-examples/max-bytes-too-high.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/maxBytes"
+  },
+  "counter-examples/max-requests-as-string.json": {
+    "keyword": "type",
+    "instanceLocation": "/maxRequestsPerRun"
+  },
+  "counter-examples/maxRequestsPerRun-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/maxRequestsPerRun"
+  },
+  "counter-examples/maxRequestsPerRun-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/maxRequestsPerRun"
+  },
+  "counter-examples/no-run-cap.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  },
+  "counter-examples/no-user-agent.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  },
+  "counter-examples/retry-after-too-long.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/retryAfterMaxSeconds"
+  },
+  "counter-examples/retryAfterMaxSeconds-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/retryAfterMaxSeconds"
+  },
+  "counter-examples/retryAfterMaxSeconds-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/retryAfterMaxSeconds"
+  },
+  "counter-examples/robots-as-string.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0/robots"
+  },
+  "counter-examples/robots-disallowed.json": {
+    "keyword": "enum",
+    "instanceLocation": "/hosts/0/robots/verdict"
+  },
+  "counter-examples/robots-without-verdict.json": {
+    "keyword": "required",
+    "instanceLocation": "/hosts/0/robots"
+  },
+  "counter-examples/run-cap-too-high.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/maxRequestsPerRun"
+  },
+  "counter-examples/terms-as-array.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0/terms"
+  },
+  "counter-examples/terms-note-empty.json": {
+    "keyword": "minLength",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-note-not-a-string.json": {
+    "keyword": "type",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-note-over-cap.json": {
+    "keyword": "maxLength",
+    "instanceLocation": "/hosts/0/terms/note"
+  },
+  "counter-examples/terms-unknown-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/hosts/0/terms"
+  },
+  "counter-examples/terms-url-with-space.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/hosts/0/terms/url"
+  },
+  "counter-examples/terms-without-quote.json": {
+    "keyword": "required",
+    "instanceLocation": "/hosts/0/terms"
+  },
+  "counter-examples/too-many-requests.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/hosts/0/maxRequestsPerRun"
+  },
+  "counter-examples/unknown-host-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/hosts/0"
+  },
+  "counter-examples/unknown-robots-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/hosts/0/robots"
+  },
+  "counter-examples/unknown-root-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": ""
+  },
+  "counter-examples/unknown-terms-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/hosts/0/terms"
+  },
+  "counter-examples/unreadableRunsBeforeIssue-above-maximum.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/unreadableRunsBeforeIssue"
+  },
+  "counter-examples/unreadableRunsBeforeIssue-below-minimum.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/unreadableRunsBeforeIssue"
+  }
+}

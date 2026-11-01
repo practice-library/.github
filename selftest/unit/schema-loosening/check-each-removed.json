@@ -1,0 +1,9 @@
+{
+  "expect": "loose",
+  "output": "loose [\"1/each\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/check-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/check-each-removed.json",
+    "FILE_PATH": "spec/sources/check.json"
+  }
+}
