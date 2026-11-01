@@ -9,5 +9,7 @@
 #   HEAD     the head this run judges; a pull request that has moved on is refused
 #   GH_TOKEN token that can read pull requests
 main() {
-  PYTHONPATH="$TOOLING" python3 -m practice_ci.approvals --repo "$REPO" --pr "$NUMBER" --kind "$KIND" --head "$HEAD" || true
+  # TOOLING is the trusted checkout, never the PR working directory. Isolated mode
+  # ignores PYTHONPATH and user site/startup hooks; add only the trusted package root.
+  (cd -- "$TOOLING" && python3 -I -c 'import os, runpy, sys; sys.path.insert(0, os.getcwd()); runpy.run_module("practice_ci.approvals", run_name="__main__")' --repo "$REPO" --pr "$NUMBER" --kind "$KIND" --head "$HEAD") || true
 }

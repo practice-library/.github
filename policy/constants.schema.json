@@ -821,7 +821,9 @@
         "publicationLabel",
         "publicationStatement",
         "headPrefix",
-        "toolingPath"
+        "toolingPath",
+        "schemaLooseningKind",
+        "sizeKind"
       ],
       "properties": {
         "apiUrl": {
@@ -909,6 +911,14 @@
         },
         "toolingPath": {
           "$ref": "#/$defs/path"
+        },
+        "schemaLooseningKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sizeKind": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

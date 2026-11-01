@@ -91,7 +91,7 @@ jobs:
             || { echo "::error::unknown guard $GUARD; known: $GUARDS"; exit 1; }
           base=""; head=""
           case "$EVENT" in
-            pull_request|pull_request_target) base="$PR_BASE"; head="$PR_HEAD" ;;
+            pull_request|pull_request_target|pull_request_review) base="$PR_BASE"; head="$PR_HEAD" ;;
             push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi ;;
           esac
           if [ -z "$base" ]; then echo "none=true" >> "$GITHUB_OUTPUT"; echo "No change to compare on $EVENT."; exit 0; fi
@@ -175,7 +175,7 @@ jobs:
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
           unset -f main
           #@include approval-receipt.sh
-          export KIND=schema-loosening
+          export KIND='@@approvals.schemaLooseningKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
@@ -263,7 +263,7 @@ jobs:
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
           unset -f main
           #@include approval-receipt.sh
-          export KIND=schema-loosening
+          export KIND='@@approvals.schemaLooseningKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
@@ -298,7 +298,7 @@ jobs:
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
           unset -f main
           #@include approval-receipt.sh
-          export KIND=size
+          export KIND='@@approvals.sizeKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;

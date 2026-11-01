@@ -289,7 +289,9 @@
     "publicationLabel": "publication",
     "publicationStatement": "I approve this change for publication.",
     "headPrefix": "Head: ",
-    "toolingPath": ".practice-ci"
+    "toolingPath": ".practice-ci",
+    "schemaLooseningKind": "schema-loosening",
+    "sizeKind": "size"
   },
   "helpers": {
     "yq": {

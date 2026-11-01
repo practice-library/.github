@@ -3,6 +3,9 @@ import contextlib
 import io
 import json
 import os
+import subprocess
+import tempfile
+from pathlib import Path
 import unittest
 
 from tooling.practice_ci import approvals, config
@@ -227,6 +230,44 @@ class Templates(unittest.TestCase):
         self.assertNotIn("label-approval.sh", guard)
         self.assertNotIn("issues/$NUMBER/events", guard)
         self.assertEqual(guard.count("#@include approval-receipt.sh"), 3)
+
+    def test_pr_python_package_and_startup_hooks_cannot_authorize(self):
+        with tempfile.TemporaryDirectory() as directory:
+            pr = Path(directory)
+            package = pr / "practice_ci"
+            package.mkdir()
+            (package / "__init__.py").write_text("")
+            (package / "approvals.py").write_text('print("ok attacker package")')
+            (pr / "sitecustomize.py").write_text('print("ok attacker startup")')
+            env = dict(os.environ, TOOLING=os.path.join(ROOT, "tooling"),
+                       REPO=REPO, NUMBER=str(NUMBER), KIND=CFG["sizeKind"],
+                       HEAD=HEAD, PYTHONPATH=directory)
+            env.pop("GH_TOKEN", None)  # Real CLI refuses locally, without a network call.
+            result = subprocess.run(
+                ["bash", "-c", self.read("templates", "fragments", "approval-receipt.sh") + "\nmain"],
+                cwd=directory, env=env, text=True, capture_output=True, check=True)
+            self.assertTrue(result.stdout.startswith("refused "), result)
+            self.assertNotIn("attacker", result.stdout)
+
+    def test_review_event_compares_the_pull_request_range(self):
+        guard = self.read("templates", ".github", "workflows", "guard.yml")
+        script = guard.split('          base=""; head=""', 1)[1].split("\n      - name: denylist", 1)[0]
+        script = 'base=""; head=""' + "\n".join(line[10:] for line in script.splitlines())
+        with tempfile.TemporaryDirectory() as directory:
+            output = os.path.join(directory, "output")
+            env = dict(os.environ, EVENT="pull_request_review", PR_BASE=OLD,
+                       PR_HEAD=HEAD, GITHUB_OUTPUT=output)
+            subprocess.run(["bash", "-ec", 'git() { echo "$2"; }\n' + script],
+                           env=env, text=True, capture_output=True, check=True)
+            self.assertEqual(Path(output).read_text().splitlines(),
+                             ["none=false", "base=" + OLD, "mb=" + OLD, "head=" + HEAD])
+
+    def test_guard_approval_kinds_come_from_policy(self):
+        guard = self.read("templates", ".github", "workflows", "guard.yml")
+        self.assertEqual(guard.count("export KIND='@@approvals.schemaLooseningKind@@'"), 2)
+        self.assertEqual(guard.count("export KIND='@@approvals.sizeKind@@'"), 1)
+        for key in ("schemaLooseningKind", "sizeKind"):
+            self.assertIn(CFG[key], CFG["kinds"])
 
     def test_gate_does_not_use_label_approval(self):
         self.assertNotIn("label-approval.sh", self.read("templates", ".github", "workflows", "gate.yml"))
