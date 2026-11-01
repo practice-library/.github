@@ -128,5 +128,70 @@
     "name": "new-shape-unguarded",
     "find": "($new | try getpath($at + [$kw]) catch null | if type == \"object\" then keys else [] end)[]",
     "replace": "($new | getpath($at + [$kw]) | if type == \"object\" then keys else [] end)[]"
+  },
+  {
+    "name": "type-gain-ignored",
+    "find": "| select(any($nt[]; . as $x | $ot | index([$x]) | not)) | where($s + [$k])",
+    "replace": "| select(false) | where($s + [$k])"
+  },
+  {
+    "name": "nonmonotonic-ignored",
+    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\") then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "removal-ignored",
+    "find": "if ($n | has($k)) | not then",
+    "replace": "if false then"
+  },
+  {
+    "name": "closed-removal-not-excepted",
+    "find": "select(($k | IN(\"properties\", \"patternProperties\")) and ($o | closed) and ($n | closed) | not)",
+    "replace": "select(true)"
+  },
+  {
+    "name": "refs-ignored",
+    "find": "| select($or != $nr) | where($s + [$r]) )",
+    "replace": "| select(false) | where($s + [$r]) )"
+  },
+  {
+    "name": "list-length-ignored",
+    "find": "select(($o[$k] | type) == \"array\" and (($n[$k] | type) != \"array\" or ($n[$k] | length) != ($o[$k] | length)))",
+    "replace": "select(false)"
+  },
+  {
+    "name": "items-list-length-ignored",
+    "find": "select(($n[$k] | type) != \"array\" or ($n[$k] | length) != ($o[$k] | length)) | where($s + [$k])",
+    "replace": "select(false) | where($s + [$k])"
+  },
+  {
+    "name": "entry-removal-ignored",
+    "find": "| select(. as $x | $nk | index([$x]) | not)",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "dependent-entry-excepted",
+    "find": "| select($k == \"dependentSchemas\" or",
+    "replace": "| select(false or"
+  },
+  {
+    "name": "made-true-ignored",
+    "find": "elif $n == true then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "false-opened-ignored",
+    "find": "(select($o == false and ($s | length) > 0 and $n != false and $n != null) | where($s))",
+    "replace": "(select(false) | where($s))"
+  },
+  {
+    "name": "annotations-judged",
+    "find": "| select($k | IN($annot[]) | not)",
+    "replace": "| select(true)"
+  },
+  {
+    "name": "other-change-ignored",
+    "find": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select($o[$k] != $n[$k])",
+    "replace": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select(false)"
   }
 ]

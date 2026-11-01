@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/x/allOf/1/maximum\",\"properties/x/allOf\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-allof-removed.json"
+  }
+}

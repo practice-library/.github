@@ -5,5 +5,5 @@
     "NEW_FILE": "selftest/unit/schema-loosening/data/oneof-v2.1.0.json",
     "TIGHTEN": "[{\"sha256\": \"7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e\", \"why\": \"v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date\"}, {\"sha256\": \"b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983\", \"why\": \"v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z\"}, {\"sha256\": \"ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d\", \"why\": \"v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date\"}]"
   },
-  "output": "loose [\"oneOf/0/pattern\"]"
+  "output": "loose [\"oneOf/0/pattern\",\"oneOf\"]"
 }

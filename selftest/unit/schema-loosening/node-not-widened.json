@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"allOf/1/then/properties/attrs/not\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/node-v2.6.0.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/node-not-widened.json"
+  }
+}

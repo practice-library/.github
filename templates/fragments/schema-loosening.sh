@@ -19,7 +19,12 @@ main() {
 #   a required entry removed; an enum value added; additionalProperties or unevaluatedProperties false
 #   made anything else; a key added under properties or patternProperties beside an additionalProperties
 #   or unevaluatedProperties that was false (the new key accepts what the false refused);
-#   const, pattern or format changed or removed.
+#   const, pattern or format changed or removed; and, since a change the guard cannot show safe needs the
+#   label: a type set that gains a type or loses its type, any change under not, if or oneOf (they do
+#   not count the normal way), a $ref, $dynamicRef or $recursiveRef added, removed or changed, an allOf,
+#   anyOf, prefixItems or list items that changes length, any constraint keyword removed, a subschema
+#   made true or a false one opened, and any other keyword changed (multipleOf, uniqueItems, ...).
+#   Annotations (title, description, default, examples, $comment, ...) and $defs entries are not judged.
 # A pattern changed to another string is not loose when the pair is listed in TIGHTEN (unset means no
 # list): a JSON array of {"sha256": <64 lower-case hex>, "why": <text>}, each the SHA-256 of the pair
 # written as compact JSON, ["<old pattern>","<new pattern>"], with no newline. A list entry is a reviewed
@@ -66,6 +71,78 @@ compare() {
             | ($new | try getpath($at + [$kw]) catch null | if type == "object" then keys else [] end)[]
             | select(. as $x | $ok | index([$x]) | not)
             | {path: ($at + [$kw, .] | map(tostring) | join("/")), pair: null} ]
+        # What the rules above cannot show safe is loose. A schema place is the root, a keyword holding one
+        # subschema, an entry of a keyword holding a map of them, or an item of one holding a list.
+        + ( ["items","additionalItems","unevaluatedItems","contains","propertyNames","additionalProperties",
+             "unevaluatedProperties","not","if","then","else"] as $sub
+          | ["properties","patternProperties","dependentSchemas","$defs","definitions"] as $submap
+          | ["allOf","anyOf","oneOf","prefixItems","items"] as $subarr
+          | ["title","description","default","examples","$comment","deprecated","readOnly","writeOnly",
+             "contentMediaType","contentEncoding","contentSchema","$anchor","$dynamicAnchor","$id","$schema",
+             "$vocabulary","$defs","definitions"] as $annot
+          | ["$ref","$dynamicRef","$recursiveRef"] as $refs
+          | ($mins + $maxs + ["required","enum","const","pattern","format","type"]) as $handled
+          | def isschema: length == 0
+              or ((.[-1] | type) == "string" and (.[-1] | IN($sub[])) and (.[:-1] | isschema))
+              or (length >= 2 and (.[-2] | type) == "string" and (.[-2] | IN($submap[])) and (.[-1] | type) == "string" and (.[:-2] | isschema))
+              or (length >= 2 and (.[-2] | type) == "string" and (.[-2] | IN($subarr[])) and (.[-1] | type) == "number" and (.[:-2] | isschema));
+            def at($t; $p): $t | try getpath($p) catch null;
+            def closed: type == "object" and (.additionalProperties == false or .unevaluatedProperties == false);
+            def where($p): if ($p | length) == 0 then "(root)" else $p | map(tostring) | join("/") end;
+            ([[]] + [$old | paths | select(isschema)]) as $places
+          | ([[]] + [$new | paths | select(isschema)]) as $newplaces
+          | [ ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
+                | if ($o | type) == "boolean" then
+                    # A false subschema opened.
+                    (select($o == false and ($s | length) > 0 and $n != false and $n != null) | where($s))
+                  elif ($o | type) != "object" then empty
+                  elif $n == true then
+                    # A subschema with constraints made true.
+                    (select(any($o | keys[]; IN($annot[]) | not)) | where($s))
+                  elif ($n | type) != "object" then empty
+                  else
+                    ( $o | keys[] as $k
+                      | select($k | IN($annot[]) | not)
+                      | if ($n | has($k)) | not then
+                          # A constraint removed (a removed properties map under a closed object refuses more).
+                          select(($k | IN("properties", "patternProperties")) and ($o | closed) and ($n | closed) | not)
+                          | where($s + [$k])
+                        elif $k == "type" then
+                          # A type set that gained a type.
+                          ($o.type | if type == "array" then . else [.] end) as $ot
+                          | ($n.type | if type == "array" then . else [.] end) as $nt
+                          | select(any($nt[]; . as $x | $ot | index([$x]) | not)) | where($s + [$k])
+                        elif $k | IN($handled[]) then empty
+                        elif $k | IN($refs[]) then empty
+                        elif $k | IN("not", "if", "oneOf") then
+                          # Not monotonic: any change may accept more.
+                          select($o[$k] != $n[$k]) | where($s + [$k])
+                        elif $k | IN("allOf", "anyOf", "prefixItems") then
+                          # A list of subschemas that changed length cannot be compared item by item.
+                          select(($o[$k] | type) == "array" and (($n[$k] | type) != "array" or ($n[$k] | length) != ($o[$k] | length)))
+                          | where($s + [$k])
+                        elif $k == "items" and ($o[$k] | type) == "array" then
+                          select(($n[$k] | type) != "array" or ($n[$k] | length) != ($o[$k] | length)) | where($s + [$k])
+                        elif $k | IN("properties", "patternProperties", "dependentSchemas") then
+                          # An entry removed, unless the object stays closed (then the entry is refused).
+                          ($n[$k] | if type == "object" then keys else [] end) as $nk
+                          | ($o[$k] | if type == "object" then keys[] else empty end)
+                          | select(. as $x | $nk | index([$x]) | not)
+                          | select($k == "dependentSchemas" or ((($o | closed) and ($n | closed)) | not))
+                          | where($s + [$k, .])
+                        elif $k | IN($sub[]) or IN($submap[]) or IN($subarr[]) then empty
+                        else
+                          # Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).
+                          select($o[$k] != $n[$k]) | where($s + [$k])
+                        end )
+                  end ),
+              # A reference added, removed or changed: the guard cannot follow it.
+              ( ($places + $newplaces | unique)[] as $s
+                | $refs[] as $r
+                | (at($old; $s) | if type == "object" then .[$r] else null end) as $or
+                | (at($new; $s) | if type == "object" then .[$r] else null end) as $nr
+                | select($or != $nr) | where($s + [$r]) ) ]
+          | map({path: ., pair: null}) )
         | reduce .[] as $e ([]; if any(.[]; .path == $e.path) then . else . + [$e] end)' 2>/dev/null)"; then
     echo "invalid both files must be JSON"; return 0
   fi

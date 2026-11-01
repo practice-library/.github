@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/i/items\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-items-false-opened.json"
+  }
+}

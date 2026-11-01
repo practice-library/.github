@@ -1,6 +1,6 @@
 {
   "expect": "loose",
-  "output": "loose [\"$defs/x/unevaluatedProperties\"]",
+  "output": "loose [\"$defs/x/unevaluatedProperties\",\"$defs/x\"]",
   "env": {
     "OLD_FILE": "selftest/unit/schema-loosening/data/closed-base.json",
     "NEW_FILE": "selftest/unit/schema-loosening/data/closed-replaced-by-true.json"
