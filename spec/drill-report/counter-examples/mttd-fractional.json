@@ -1,0 +1,17 @@
+{
+  "target": "example-service",
+  "injectedAt": "2026-10-31T12:00:00Z",
+  "detectedAt": "2026-10-31T12:00:07.500Z",
+  "mttdMs": 7500.5,
+  "probeIntervalMs": 1000,
+  "threshold": 3,
+  "productionIntervalMs": 5000,
+  "scaledMttdMs": 37500,
+  "objectiveMs": 60000,
+  "withinObjective": true,
+  "notifiedAt": "2026-10-31T12:00:08Z",
+  "notifiedBy": "example-pager",
+  "notified": true,
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "command": "scripts/drill.sh --target example-service"
+}
