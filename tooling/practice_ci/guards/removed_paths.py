@@ -40,7 +40,7 @@ def _files(root):
 
 
 def _hits(terms, root, history):
-    patterns = [(t, re.compile(rb"(?:^|[^A-Za-z0-9._/-])" + re.escape(os.fsencode(t)) + rb"(?:$|[^A-Za-z0-9_-])"))
+    patterns = [(t, re.compile(rb"(?<![A-Za-z0-9._/-])" + re.escape(os.fsencode(t)) + rb"(?![A-Za-z0-9_-])"))
                 for t in terms if t]
     found = []
     for full in _files(root):
@@ -54,10 +54,10 @@ def _hits(terms, root, history):
             continue
         if b"\0" in data[:_BINARY_PROBE]:
             continue
-        for n, line in enumerate(data.split(b"\n"), 1):
-            for t, rx in patterns:
-                if rx.search(line):
-                    found.append({"path": t, "at": "%s:%d" % (rel, n)})
+        for t, rx in patterns:
+            for match in rx.finditer(data):
+                n = data.count(b"\n", 0, match.start()) + 1
+                found.append({"path": t, "at": "%s:%d" % (rel, n)})
     found.sort(key=lambda h: h["at"])
     unique = {}
     for h in found:

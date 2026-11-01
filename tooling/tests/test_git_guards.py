@@ -78,6 +78,24 @@ class WatchedPrefix61(RepoCase):
             os.chdir(cwd)
         self.assertEqual(out, "ok 3 non-fixture lines (limit 10)")
 
+    def test_removed_paths_finds_literal_newline_name_and_reports_start_lines(self):
+        name = "spec/new\nline.json"
+        mb, _ = self.base_and_head({name: "{}\n", "spec/keep.json": "{}\n"}, {})
+        os.remove(os.path.join(self.repo, name))
+        self.write("README.md", "References:\n%s\nagain %s here\n" % (name, name))
+        head = self.commit("remove")
+        cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            out = removed_paths.run({"MB": mb, "HEAD": head, "ROOT": self.repo, "HISTORY": "[]"})
+        finally:
+            os.chdir(cwd)
+        self.assertTrue(out.startswith("referenced "), out)
+        self.assertEqual(json.loads(out.removeprefix("referenced ")), [
+            {"path": name, "at": "README.md:2"},
+            {"path": name, "at": "README.md:4"},
+        ])
+
 
 class InRepo(RepoCase):
     def run_in_repo(self, fn, env):
