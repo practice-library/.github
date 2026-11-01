@@ -136,7 +136,7 @@
   },
   {
     "name": "nonmonotonic-ignored",
-    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\") then",
+    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\", \"contains\") then",
     "replace": "elif false then"
   },
   {
