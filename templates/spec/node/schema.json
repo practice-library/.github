@@ -148,8 +148,15 @@
               "hasRelease",
               "introducedIn",
               "removedIn",
-              "observes"
-            ]
+              "observes",
+              "issuedBy",
+              "partOf",
+              "madeUnder",
+              "imposes",
+              "amends",
+              "commencedBy"
+            ],
+            "description": "issuedBy: an instrument to the authority that issued it. partOf: a provision to its instrument. madeUnder: rules or directions to the enabling provision. imposes: a provision to the obligation, timeline, penalty or exemption it creates. amends: an instrument to the instrument it amends. commencedBy: a provision to the notification that brought it into force. A domain schema may restrict rel to the values it uses."
           },
           "to": {
             "type": "string",

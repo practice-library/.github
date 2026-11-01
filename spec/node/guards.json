@@ -4,14 +4,16 @@
     "../../selftest/fixtures/schema-node-dates/instances",
     "../../selftest/fixtures/schema-node-absent/instances",
     "../../selftest/fixtures/schema-node-edges/instances",
-    "../../selftest/fixtures/schema-node-status/instances"
+    "../../selftest/fixtures/schema-node-status/instances",
+    "../../selftest/fixtures/schema-node-edges-legal/instances"
   ],
   "counter-examples": [
     "../../selftest/fixtures/schema-node-basis-bad/instances",
     "../../selftest/fixtures/schema-node-dates-bad/instances",
     "../../selftest/fixtures/schema-node-absent-bad/instances",
     "../../selftest/fixtures/schema-node-edge-unknown/instances",
-    "../../selftest/fixtures/schema-node-status-bad/instances"
+    "../../selftest/fixtures/schema-node-status-bad/instances",
+    "../../selftest/fixtures/schema-node-edges-legal-bad/instances"
   ],
   "mutants": [
     {
@@ -226,6 +228,178 @@
         "in-force",
         "notified-not-in-force",
         "draft"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "imposes",
+        "amends",
+        "commencedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "amends",
+        "commencedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "commencedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy",
+        "amendedBy"
+      ]
+    },
+    {
+      "pointer": "/properties/edges/items/properties/rel/enum",
+      "set": [
+        "availableOn",
+        "requires",
+        "grantedBy",
+        "limits",
+        "appliesTo",
+        "prohibitedBy",
+        "supersedes",
+        "hasRelease",
+        "introducedIn",
+        "removedIn",
+        "observes",
+        "issuedBy",
+        "partOf",
+        "madeUnder",
+        "imposes",
+        "amends",
+        "commencedBy",
+        "PartOf"
       ]
     }
   ]
