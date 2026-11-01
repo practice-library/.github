@@ -246,8 +246,8 @@
   },
   {
     "name": "identity-as-annotation",
-    "find": "\"contentMediaType\",\"contentEncoding\",\"contentSchema\",\"$defs\",\"definitions\"] as $annot",
-    "replace": "\"contentMediaType\",\"contentEncoding\",\"contentSchema\",\"$defs\",\"definitions\",\"$schema\",\"$id\",\"$anchor\",\"$dynamicAnchor\",\"$vocabulary\"] as $annot"
+    "find": "\"contentMediaType\",\"contentEncoding\",\"$defs\",\"definitions\"] as $annot",
+    "replace": "\"contentMediaType\",\"contentEncoding\",\"$defs\",\"definitions\",\"$schema\",\"$id\",\"$anchor\",\"$dynamicAnchor\",\"$vocabulary\"] as $annot"
   },
   {
     "name": "identity-added-ignored",
@@ -278,5 +278,20 @@
     "name": "refrev-annotations-judged",
     "find": "                    | select($k | IN($annot[]) | not)\n                    | select(\n",
     "replace": "                    | select(\n"
+  },
+  {
+    "name": "contentschema-not-a-place",
+    "find": "\"else\",\"contentSchema\"] as $sub",
+    "replace": "\"else\"] as $sub"
+  },
+  {
+    "name": "off-type-handled-ignored",
+    "find": "| select(($o[$k] | type) != $t and $o[$k] != $n[$k]) | where($s + [$k])",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "off-type-wrong-type",
+    "find": "if ($mins + $maxs) | index([$k]) then \"number\"",
+    "replace": "if ($mins + $maxs) | index([$k]) then \"boolean\""
   }
 ]

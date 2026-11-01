@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"exclusiveMinimum\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-draft4-exclusive-minimum-off-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-draft4-exclusive-minimum-off-new.json"
+  }
+}

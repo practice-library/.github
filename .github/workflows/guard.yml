@@ -578,11 +578,11 @@ jobs:
                   # What the rules above cannot show safe is loose. A schema place is the root, a keyword holding one
                   # subschema, an entry of a keyword holding a map of them, or an item of one holding a list.
                   + ( ["items","additionalItems","unevaluatedItems","contains","propertyNames","additionalProperties",
-                       "unevaluatedProperties","not","if","then","else"] as $sub
+                       "unevaluatedProperties","not","if","then","else","contentSchema"] as $sub
                     | ["properties","patternProperties","dependentSchemas","$defs","definitions"] as $submap
                     | ["allOf","anyOf","oneOf","prefixItems","items"] as $subarr
                     | ["title","description","default","examples","$comment","deprecated","readOnly","writeOnly",
-                       "contentMediaType","contentEncoding","contentSchema","$defs","definitions"] as $annot
+                       "contentMediaType","contentEncoding","$defs","definitions"] as $annot
                     # What a reference resolves to or which dialect applies: removed or changed is judged like any
                     # other keyword below; added, it is judged here.
                     | ["$schema","$id","$anchor","$dynamicAnchor","$vocabulary"] as $ident
@@ -621,7 +621,14 @@ jobs:
                                     ($o.type | if type == "array" then . else [.] end) as $ot
                                     | ($n.type | if type == "array" then . elif type == "string" then [.] else [] end) as $nt
                                     | select(any($nt[]; . as $x | $ot | index([$x]) | not)) | where($s + [$k])
-                                  elif $k | IN($handled[]) then empty
+                                  elif $k | IN($handled[]) then
+                                    # Judged above only in the type its rule compares; in any other (a draft-04 boolean
+                                    # exclusiveMaximum) any change is loose.
+                                    (if ($mins + $maxs) | index([$k]) then "number"
+                                     elif $k == "required" or $k == "enum" then "array"
+                                     elif $k == "const" then ($o[$k] | type)
+                                     else "string" end) as $t
+                                    | select(($o[$k] | type) != $t and $o[$k] != $n[$k]) | where($s + [$k])
                                   elif $k | IN($refs[]) then empty
                                   elif $k | IN("not", "if", "oneOf", "contains") then
                                     # Not monotonic (contains with maxContains counts matches): any change may accept more.
