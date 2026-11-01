@@ -1,0 +1,8 @@
+{
+  "env": {
+    "TOOLING": "/nonexistent.invalid/tooling",
+    "LAUNCHER": "tooling/practice-ci",
+    "WORKFLOW_SHA": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "expect": "invalid"
+}

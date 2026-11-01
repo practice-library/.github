@@ -1,0 +1,66 @@
+{
+  "suite": "canary",
+  "target": "tooling/practice_ci/denylist.py",
+  "mutants": [
+    {
+      "name": "the list the change writes is not checked (head-list check off)",
+      "find": "if head_list and head_list != base_list:",
+      "replace": "if False:"
+    },
+    {
+      "name": "an unusable head list is let through",
+      "find": "if following.status != PASS:",
+      "replace": "if False:"
+    },
+    {
+      "name": "deleting the list is let through (deletion check off)",
+      "find": "if blob(inp.root, inp.mb, inp.list_path):",
+      "replace": "if False:"
+    },
+    {
+      "name": "a deletion is judged against the base tip, not the merge base",
+      "find": "if blob(inp.root, inp.mb, inp.list_path):",
+      "replace": "if blob(inp.root, inp.base, inp.list_path):"
+    },
+    {
+      "name": "the change's own list judges it",
+      "find": "        deny = base_list\n",
+      "replace": "        deny = head_list or base_list\n"
+    },
+    {
+      "name": "a first list keeps its exemptions",
+      "find": "first.pop(\"exemptPaths\", None)",
+      "replace": "pass"
+    },
+    {
+      "name": "a first list that is not JSON passes",
+      "find": "return Result(FAIL, \"denylist.list-not-json\"",
+      "replace": "return Result(PASS, \"denylist.list-not-json\""
+    },
+    {
+      "name": "a finding in the change is not a failure",
+      "find": "if scanned.status != PASS:",
+      "replace": "if scanned.status == ERROR:"
+    },
+    {
+      "name": "a widened exemption is never judged",
+      "find": "if exempt.reason == \"denylist-exempt.ok\":",
+      "replace": "if exempt.reason != \"denylist-exempt.invalid\":"
+    },
+    {
+      "name": "a widened exemption on a pull request passes as if pushed",
+      "find": "if not inp.number:",
+      "replace": "if True:"
+    },
+    {
+      "name": "a widened exemption passes without approval",
+      "find": "if approved.reason == \"label-approval.ok\":",
+      "replace": "if True:"
+    },
+    {
+      "name": "a refused approval passes",
+      "find": "return Result(FAIL, \"denylist.exemption-refused\"",
+      "replace": "return Result(PASS, \"denylist.exemption-refused\""
+    }
+  ]
+}

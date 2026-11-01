@@ -1,0 +1,8 @@
+{
+  "env": {
+    "WORKFLOW_REPOSITORY": "example/.github",
+    "WORKFLOW_SHA": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "expect": "ok",
+  "output": "ok example/.github@0123456789abcdef0123456789abcdef01234567"
+}

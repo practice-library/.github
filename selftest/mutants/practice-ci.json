@@ -1,0 +1,77 @@
+{
+  "suite": "unittest:test_*.py",
+  "mutants": [
+    {
+      "name": "the launcher drops isolated mode",
+      "target": "tooling/practice-ci",
+      "find": "exec python3 -I ",
+      "replace": "exec python3 "
+    },
+    {
+      "name": "the bootstrap runs without isolation",
+      "target": "tooling/launch.py",
+      "find": "if not sys.flags.isolated:",
+      "replace": "if False:"
+    },
+    {
+      "name": "an error exits like a fail",
+      "target": "tooling/practice_ci/adapter.py",
+      "find": "EXIT = {PASS: 0, FAIL: 1, ERROR: 2}",
+      "replace": "EXIT = {PASS: 0, FAIL: 1, ERROR: 1}"
+    },
+    {
+      "name": "keep-going still fails the step on a fail",
+      "target": "tooling/practice_ci/adapter.py",
+      "find": "        return EXIT[PASS]\n",
+      "replace": "        return EXIT[result.status]\n"
+    },
+    {
+      "name": "a reason is matched only at its start",
+      "target": "tooling/practice_ci/result.py",
+      "find": "_REASON.fullmatch(self.reason)",
+      "replace": "_REASON.match(self.reason)"
+    },
+    {
+      "name": "an undeclared verdict passes",
+      "target": "tooling/practice_ci/fragments.py",
+      "find": "return Result(ERROR, name + \".unknown-verdict\"",
+      "replace": "return Result(PASS, name + \".unknown-verdict\""
+    },
+    {
+      "name": "a fragment that exits non-zero is judged by its output",
+      "target": "tooling/practice_ci/fragments.py",
+      "find": "if proc.returncode != 0:",
+      "replace": "if False:"
+    },
+    {
+      "name": "the mutation runner counts an erroring case as a kill",
+      "target": "tooling/practice_ci/mutants.py",
+      "find": "(errors if m.group(2).startswith(\"error \") else red).append(m.group(1))",
+      "replace": "red.append(m.group(1))"
+    },
+    {
+      "name": "the mutation runner leaves the mutant in place",
+      "target": "tooling/practice_ci/mutants.py",
+      "find": "        target.write_bytes(raw)\n",
+      "replace": "        pass\n"
+    },
+    {
+      "name": "the mutation runner does not check embedded programs",
+      "target": "tooling/practice_ci/mutants.py",
+      "find": "if compiles(*old) and not compiles(kind, body, variables):",
+      "replace": "if False:"
+    },
+    {
+      "name": "the lint misses a retry count",
+      "target": "tooling/practice_ci/lint.py",
+      "find": "if _RETRY.search(line):",
+      "replace": "if False:"
+    },
+    {
+      "name": "the lint reads comments",
+      "target": "tooling/practice_ci/lint.py",
+      "find": "        if line.lstrip().startswith(\"#\"):\n            continue\n",
+      "replace": ""
+    }
+  ]
+}

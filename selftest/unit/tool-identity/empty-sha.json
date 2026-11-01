@@ -1,0 +1,8 @@
+{
+  "env": {
+    "WORKFLOW_REPOSITORY": "example/tooling",
+    "WORKFLOW_SHA": ""
+  },
+  "expect": "invalid",
+  "output": "invalid job.workflow_sha is empty (this needs GitHub.com)"
+}

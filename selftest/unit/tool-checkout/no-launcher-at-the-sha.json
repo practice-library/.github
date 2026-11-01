@@ -1,0 +1,19 @@
+{
+  "env": {
+    "TOOLING": ".",
+    "LAUNCHER": "tooling/practice-ci"
+  },
+  "repo": {
+    "base": {
+      "tooling/practice-ci": "#!/usr/bin/env bash\n"
+    },
+    "head": {
+      "tooling/practice-ci": null,
+      "README.md": "head\n"
+    }
+  },
+  "repoEnv": {
+    "WORKFLOW_SHA": "HEAD"
+  },
+  "expect": "bootstrap"
+}

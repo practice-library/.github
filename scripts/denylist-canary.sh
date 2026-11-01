@@ -1,38 +1,34 @@
 #!/usr/bin/env bash
-# Runs the denylist step of the guard workflow, as callers get it, on throwaway repositories that hold a
-# simulated maintainer merge made in the browser (authored by the maintainer, committed by GitHub) and
-# the cases around it. The step's own script is taken from the workflow file, so a change to its glue
-# (events, the base-commit list, which rows are judged, the exemption) is caught here before it can turn
-# main red. The rendered file is what callers run; with no argument the canary first runs
-# scripts/render.sh --check, so the copy it exercises is exactly the render of
-# templates/.github/workflows/guard.yml and the fragments it includes.
+# Runs the denylist guard (tooling/practice_ci/denylist.py, through the launcher, exactly as the guard
+# workflow's denylist step runs it) on throwaway repositories that hold a simulated maintainer merge made
+# in the browser (authored by the maintainer, committed by GitHub) and the cases around it, so a change
+# to the guard's orchestration (the base-commit list, the list the change leaves behind, the exemption
+# and its approval) is caught here, and scripts/mutants.sh proves each check has a scenario that kills it.
+# Each scenario names the exit it wants: 0 (pass) or 1 (fail). Any other exit is an ERROR line, never a
+# match: a guard that crashes has not refused anything.
 # One scenario uses this repository's own list and the author of the merge commit that first turned
-# main red (MAINTAINER_MERGE), read from history; the name is never printed.
-# The canary term is made up and salted afresh; no output names a term or a name.
-# Usage: scripts/denylist-canary.sh [guard.yml]   (a file argument skips the render check)
+# main red (MAINTAINER_MERGE), read from history (CANARY_HISTORY, default this checkout); the name is
+# never printed. The canary term is made up and salted afresh; no output names a term or a name.
+# Usage: scripts/denylist-canary.sh
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-LIST=.github/denylist.json
+constants="$root/policy/constants.json"
+LIST="$(jq -er '.guards.denylistFile' "$constants")"
+launcher="$root/$(jq -er '.tooling.launcher' "$constants")"
+label="$(jq -er '.guards.loosenLabel' "$constants")"
+history="${CANARY_HISTORY:-$root}"
+# Historical evidence, not policy: the merge commit that first turned main red.
 MAINTAINER_MERGE=3267684c2fbf40a655a64942437e806423cce9fb
-if [ $# -eq 0 ]; then
-  bash "$root/scripts/render.sh" --check > /dev/null \
-    || { echo "FAIL the rendered workflows are not the render of templates/ (scripts/render.sh --check)"; exit 1; }
-fi
-workflow="${1:-$root/.github/workflows/guard.yml}"
 
-# The run block of the step named denylist, without its indentation.
-step="$(awk '
-  /^      - name: / { in_step = ($0 == "      - name: denylist"); next }
-  in_step && /^        run: \|$/ { in_run = 1; next }
-  in_run && $0 != "" && match($0, /^ */) && RLENGTH < 10 { exit }
-  in_run { sub(/^          /, ""); print }' "$workflow")"
-[ -n "$step" ] || { echo "FAIL no denylist step in $workflow"; exit 1; }
-# The step must get the event from GitHub; the scenarios below set EVENT themselves.
+# The adapter: the rendered workflow's denylist step must run this same command in the caller's tree and
+# take the event from GitHub; the scenarios below set EVENT themselves.
+workflow="$root/.github/workflows/$(jq -er '.guards.workflow' "$constants")"
 awk '
   /^      - name: / { in_step = ($0 == "      - name: denylist"); next }
-  in_step && /^        run: / { exit 1 }
-  in_step && $0 == "          EVENT: ${{ github.event_name }}" { found = 1; exit 0 }
-  END { exit !found }' "$workflow" || { echo "FAIL the denylist step does not set EVENT from github.event_name"; exit 1; }
+  in_step && $0 == "          EVENT: ${{ github.event_name }}" { event = 1 }
+  in_step && $0 == "          \"$PRACTICE_CI\" guard denylist --root \"$CALLER_ROOT\"" { run = 1 }
+  END { exit !(event && run) }' "$workflow" \
+  || { echo "FAIL the denylist step in $workflow does not run the guard with EVENT from github.event_name"; exit 1; }
 
 salt="canary-$RANDOM-$RANDOM-$$"
 hash() { printf '%s' "$salt:$1" | python3 -I -c 'import hashlib, sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'; }
@@ -97,13 +93,18 @@ scenario() {
   fi
   got=0
   out="$(cd "$repo" && NONE=false BASE="$tip" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
-    LABEL=schema-loosening-approved LABELS="${LABELS:-[]}" AUTHOR=contributor NUMBER="${NUMBER:-}" \
-    REPO=example/repo GH_TOKEN=unused GH_EVENTS="${GH_EVENTS:-}" PATH="$work/bin:$PATH" bash -c "$step" 2>&1)" || got=$?
-  [ "$got" -eq 0 ] || got=1
-  if [ "$got" = "$want" ]; then
-    echo "ok   $name: ${out##*$'\n'}"
+    LABEL="$label" LABELS="${LABELS:-[]}" AUTHOR=contributor NUMBER="${NUMBER:-}" \
+    REPO=example/repo GH_TOKEN=unused GH_EVENTS="${GH_EVENTS:-}" PATH="$work/bin:$PATH" \
+    "$launcher" guard denylist --root "$repo" 2>&1)" || got=$?
+  # The last line that is not an annotation is the verdict.
+  local said; said="$(grep -v '^::' <<<"$out" | tail -n 1)" || true
+  if [ "$got" != 0 ] && [ "$got" != 1 ]; then
+    echo "ERROR $name: exit $got: $said"
+    failed=$((failed + 1))
+  elif [ "$got" = "$want" ]; then
+    echo "ok   $name: $said"
   else
-    echo "FAIL $name: want exit $want, got $got: ${out##*$'\n'}"
+    echo "FAIL $name: want exit $want, got $got: $said"
     failed=$((failed + 1))
   fi
 }
@@ -127,6 +128,7 @@ HEAD_LIST="$exempt" scenario head-adds-own-exemption-push 1 push "$plain" "$main
 # With no list on the base, the change that adds the first list is checked with it.
 HEAD_LIST="$plain" scenario first-list-clean 0 pull_request "" "Contributor" "Add notes" "Clean notes." ""
 HEAD_LIST="$plain" scenario first-list-term-in-line 1 pull_request "" "Contributor" "Add notes" "Zebracorn" ""
+HEAD_LIST="{" scenario first-list-not-json 1 pull_request "" "Contributor" "Add a broken list" "Clean." ""
 # A file whose name looks like a name row is still content.
 FILE="author 0123456789abcdef0123456789abcdef01234567" scenario file-named-like-author-row 1 pull_request "$exempt" "$maintainer" "Add notes" "$maintainer" ""
 FILE="committer 0123456789abcdef0123456789abcdef01234567" scenario file-named-like-committer-row 1 pull_request "$exempt" "$maintainer" "Add notes" "$maintainer" ""
@@ -147,9 +149,9 @@ HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-added-by-
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-in-first-list 1 pull_request "" "Contributor" "Add a node" "Zebracorn quoted." ""
 # Adding or widening an exemption needs the label from someone other than the author and not a bot.
 HEAD_LIST="$tree" NUMBER=1 scenario exempt-widened-no-label 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="maintainer	User" scenario exempt-widened-labelled 0 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="contributor	User" scenario exempt-widened-self-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
-HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="helper[bot]	Bot" scenario exempt-widened-bot-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS="[\"$label\"]" GH_EVENTS="maintainer	User" scenario exempt-widened-labelled 0 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS="[\"$label\"]" GH_EVENTS="contributor	User" scenario exempt-widened-self-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS="[\"$label\"]" GH_EVENTS="helper[bot]	Bot" scenario exempt-widened-bot-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$tree" scenario exempt-widened-push 0 push "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$plain" NUMBER=1 scenario exempt-removed 0 pull_request "$tree" "Contributor" "Drop the exemption" "Clean." ""
 HEAD_LIST="{" NUMBER=1 scenario exempt-head-list-unreadable 1 pull_request "$tree" "Contributor" "Break the list" "Clean." ""
@@ -181,7 +183,7 @@ done
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).
-real="$(git -C "$root" log -1 --format=%an "$MAINTAINER_MERGE" 2> /dev/null)" \
+real="$(git -C "$history" log -1 --format=%an "$MAINTAINER_MERGE" 2> /dev/null)" \
   || { echo "FAIL cannot read $MAINTAINER_MERGE from history (the checkout needs fetch-depth 0)"; exit 1; }
 own="$(jq -c . "$root/$LIST")" || { echo "FAIL cannot read $LIST"; exit 1; }
 jq -e '.allowAuthorNames | length > 0' <<< "$own" > /dev/null || { echo "FAIL $LIST has no allowAuthorNames"; failed=$((failed + 1)); }

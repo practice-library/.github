@@ -11,7 +11,7 @@ constants="$root/policy/constants.json"
 fixtures_dir="$(jq -er '.selftest.fixturesDir' "$constants")"
 case_file="$(jq -er '.selftest.caseFile' "$constants")"
 cd "$root"
-lib="$root/$(jq -er '.selftest.libDir' "$constants")/discover-targets.sh"
+lib="$root/$(jq -er '.render.fragmentsDir' "$constants")/discover-targets.sh"
 
 cases="$(
   for d in "$fixtures_dir"/*/; do

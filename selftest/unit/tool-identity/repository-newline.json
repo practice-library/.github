@@ -1,0 +1,8 @@
+{
+  "env": {
+    "WORKFLOW_REPOSITORY": "example/tooling\n",
+    "WORKFLOW_SHA": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "expect": "invalid",
+  "output": "invalid job.workflow_repository is not owner/name"
+}

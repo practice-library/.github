@@ -1,0 +1,17 @@
+{
+  "env": {
+    "TOOLING": ".",
+    "LAUNCHER": "tooling/practice-ci",
+    "WORKFLOW_SHA": ""
+  },
+  "repo": {
+    "base": {
+      "tooling/practice-ci": "#!/usr/bin/env bash\n",
+      "README.md": "base\n"
+    },
+    "head": {
+      "README.md": "head\n"
+    }
+  },
+  "expect": "mismatch"
+}

@@ -1,0 +1,8 @@
+{
+  "env": {
+    "WORKFLOW_REPOSITORY": "example/tooling",
+    "WORKFLOW_SHA": "main"
+  },
+  "expect": "invalid",
+  "output": "invalid job.workflow_sha is not 40 lower-case hex characters"
+}

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Runs every unit case against the rendered shell libraries the workflows embed.
+# Runs every unit case against the production source: the fragments the tooling runs (render.fragmentsDir),
+# not a copy of them.
 # A case is <unitDir>/<lib>/<name>.json = {"env": {...}, "expect": "<first word of main's output>"};
-# it runs <libDir>/<lib>.sh's main with that environment. Each lib needs at least one case.
+# it runs <fragmentsDir>/<lib>.sh's main with that environment. Each lib needs at least one case.
 # A case may add "output": the whole line main must print, when the first word is not enough.
 # A case may add "repo": {"base": {path: text}, "head": {path: text or null}, "message": text}: main then
 # runs inside a throwaway git repository whose first commit holds base and whose second applies head
@@ -12,11 +13,13 @@
 # "merge": {"committer": name} gives the merge commit another committer.
 # "committer" names the head commit's committer (default: the author). "failGit": text makes every git
 # call whose arguments contain that text fail once the repository is built, to test a failed read.
+# "repoEnv": {"<VAR>": "MB" | "HEAD"} sets VAR to that commit once the repository is built, for a value
+# no case can know in advance.
 set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
 unit_dir="$root/$(jq -er '.selftest.unitDir' "$constants")"
-lib_dir="$root/$(jq -er '.selftest.libDir' "$constants")"
+lib_dir="$root/$(jq -er '.render.fragmentsDir' "$constants")"
 cd "$root"
 
 failed=0
@@ -77,6 +80,11 @@ for case_path in "${cases[@]}"; do
         HEAD="$(git -C "$repo" rev-parse HEAD)"
       fi
       export MB HEAD
+      while IFS= read -r -d '' kv; do
+        ref="${kv#*=}"
+        if [ "$ref" != MB ] && [ "$ref" != HEAD ]; then echo "repoEnv names MB or HEAD, not $ref" >&2; exit 1; fi
+        export "${kv%%=*}=${!ref}"
+      done < <(jq -j '.repoEnv // {} | to_entries[] | "\(.key)=\(.value)\u0000"' "$case_path")
       cd "$repo"
       if jq -e '.repo | has("failGit")' "$case_path" > /dev/null; then
         mkdir "$repo.bin"

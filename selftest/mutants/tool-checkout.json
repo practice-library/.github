@@ -1,0 +1,17 @@
+[
+  {
+    "name": "a checkout at another commit is accepted",
+    "find": "if [ \"$head\" != \"${WORKFLOW_SHA:-}\" ]; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "a missing launcher is not noticed",
+    "find": "[ ! -f \"$TOOLING/$LAUNCHER\" ]",
+    "replace": "false"
+  },
+  {
+    "name": "a directory that is no repository is not noticed",
+    "find": "echo \"invalid ${TOOLING:-(unset)} is not a checked-out repository\"; return 0",
+    "replace": "head=\"\""
+  }
+]

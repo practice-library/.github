@@ -1,0 +1,7 @@
+{
+  "env": {
+    "WORKFLOW_SHA": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "expect": "invalid",
+  "output": "invalid job.workflow_repository is empty (this needs GitHub.com)"
+}

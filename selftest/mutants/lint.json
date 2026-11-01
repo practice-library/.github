@@ -1,0 +1,71 @@
+{
+  "suite": "lint",
+  "mutants": [
+    {
+      "name": "a hard-coded job timeout",
+      "target": "templates/.github/workflows/discover.yml",
+      "find": "timeout-minutes: @@runner.timeoutMinutes@@",
+      "replace": "timeout-minutes: 10"
+    },
+    {
+      "name": "a hard-coded runner image",
+      "target": "templates/.github/workflows/discover.yml",
+      "find": "runs-on: @@runner.image@@",
+      "replace": "runs-on: ubuntu-24.04"
+    },
+    {
+      "name": "a hard-coded protocol label",
+      "target": "templates/.github/workflows/message-check.yml",
+      "find": "INVALID: '@@protocol.invalidLabel@@'",
+      "replace": "INVALID: 'state:invalid'"
+    },
+    {
+      "name": "a hard-coded approval label",
+      "target": "templates/.github/workflows/guard.yml",
+      "find": "default: @@guards.loosenLabel@@",
+      "replace": "default: schema-loosening-approved"
+    },
+    {
+      "name": "a hard-coded retry count",
+      "target": "templates/fragments/fetch.yml",
+      "find": "--retry @@fetch.retries@@",
+      "replace": "--retry 3"
+    },
+    {
+      "name": "a hard-coded tool URL",
+      "target": "templates/fragments/fetch.yml",
+      "find": "TOOL_URL: @@tool.url@@",
+      "replace": "TOOL_URL: https://github.com/mikefarah/yq/releases/download/v4.44.3/yq_linux_amd64.tar.gz"
+    },
+    {
+      "name": "a hard-coded action pin",
+      "target": "templates/fragments/self-checkout.yml",
+      "find": "@@actions.setupPython.sha@@",
+      "replace": "6d4fd22b20465ccc0f7354476588e8df7c9ca0e0"
+    },
+    {
+      "name": "a hard-coded interpreter version",
+      "target": "templates/fragments/self-checkout.yml",
+      "find": "python-version: @@tooling.pythonVersion@@",
+      "replace": "python-version: 3.12.16"
+    },
+    {
+      "name": "a literal timeout in a package call",
+      "target": "tooling/practice_ci/fragments.py",
+      "find": "        check=False,\n    )\n    output",
+      "replace": "        check=False,\n        timeout=60,\n    )\n    output"
+    },
+    {
+      "name": "a second reader of the constants file",
+      "target": "tooling/practice_ci/denylist.py",
+      "find": "_OWN = (",
+      "replace": "_CONSTANTS = \"policy/constants.json\"\n_OWN = ("
+    },
+    {
+      "name": "a default beside the policy accessor",
+      "target": "tooling/practice_ci/cli.py",
+      "find": "policy.value(\"tooling.pythonVersion\")",
+      "replace": "policy.value(\"tooling.pythonVersion\", \"3.12.16\")"
+    }
+  ]
+}

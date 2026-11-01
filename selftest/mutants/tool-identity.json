@@ -1,0 +1,47 @@
+[
+  {
+    "name": "an empty repository is not refused first",
+    "find": "if [ -z \"$repo\" ]; then echo",
+    "replace": "if false; then echo"
+  },
+  {
+    "name": "the repository is not checked",
+    "find": "if ! [[ \"$repo\" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] ||",
+    "replace": "if false ||"
+  },
+  {
+    "name": "the repository pattern is unanchored at the end",
+    "find": "[A-Za-z0-9._-]+$ ]]",
+    "replace": "[A-Za-z0-9._-]+ ]]"
+  },
+  {
+    "name": "a repository named .. is let through",
+    "find": "|| [[ \"$repo\" == */.. ]]",
+    "replace": ""
+  },
+  {
+    "name": "an empty sha is not refused",
+    "find": "if [ -z \"$sha\" ]; then echo",
+    "replace": "if false; then echo"
+  },
+  {
+    "name": "the sha is not checked",
+    "find": "if ! [[ \"$sha\" =~ ^[0-9a-f]{40}$ ]]; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "an upper-case sha is let through",
+    "find": "^[0-9a-f]{40}$",
+    "replace": "^[0-9a-fA-F]{40}$"
+  },
+  {
+    "name": "a short sha is let through",
+    "find": "^[0-9a-f]{40}$",
+    "replace": "^[0-9a-f]{7,40}$"
+  },
+  {
+    "name": "the sha pattern is unanchored at the end",
+    "find": "^[0-9a-f]{40}$",
+    "replace": "^[0-9a-f]{40}"
+  }
+]
