@@ -153,6 +153,28 @@ class Polling(unittest.TestCase):
         with self.assertRaises(protocol_ops.ApiError):
             protocol_ops.poll(protocol_ops.Client("", transport=fake, settings_=cfg), REPO, ME)
 
+    def test_failed_poll_retries_pagination_and_verification(self):
+        for failure in ("pages", "verification"):
+            with self.subTest(failure=failure):
+                fake = FakeGitHub()
+                fake.page_size = 1
+                cfg = json.loads(json.dumps(CFG))
+                cfg["api"]["maxPages"] = 1
+                self.issue(fake, 1, BODY)
+                if failure == "pages":
+                    self.issue(fake, 2, BODY)
+                else:
+                    fake.comments[1].append(verdict(BODY))
+                c = protocol_ops.Client("", transport=fake, settings_=cfg)
+                for _ in range(2):
+                    with self.assertRaises(protocol_ops.ApiError):
+                        protocol_ops.poll(c, REPO, ME)
+                    self.assertEqual(c.etags, {})
+                cfg["api"]["maxPages"] = 3
+                found = protocol_ops.poll(c, REPO, ME)
+                self.assertEqual(len(found), len(fake.issues))
+                self.assertIsNone(protocol_ops.poll(c, REPO, ME))
+
     def test_edited_message_is_rejected(self):
         fake = FakeGitHub()
         self.issue(fake, 7, BODY + "edited after acceptance\n", accepted=BODY)

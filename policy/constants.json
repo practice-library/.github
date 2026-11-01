@@ -352,7 +352,10 @@
       "titlePrefix": "protocol-canary",
       "timeoutMinutes": 10,
       "waitSeconds": 180,
-      "pollSeconds": 10
+      "pollSeconds": 10,
+      "specVersion": "1.0",
+      "messageType": "org.practice-library.protocol.v0.request",
+      "protocolVersion": "0"
     }
   },
   "helpers": {

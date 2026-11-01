@@ -88,6 +88,7 @@ class Client:
         url = self.url(path, dict(params or {}, per_page=api["perPage"]))
         key = url
         items = []
+        etag = None
         for number in range(api["maxPages"]):
             extra = None
             if conditional and number == 0 and key in self.etags:
@@ -98,10 +99,15 @@ class Client:
             if status != 200:
                 raise ApiError("GET %s -> HTTP %d" % (url, status))
             if conditional and number == 0 and header(headers, "ETag"):
-                self.etags[key] = header(headers, "ETag")
+                etag = header(headers, "ETag")
             items.extend(json.loads(data))
             url = next_link(headers)
             if not url:
+                if conditional:
+                    if etag:
+                        self.etags[key] = etag
+                    else:
+                        self.etags.pop(key, None)
                 return items
         raise ApiError("more than %d pages of %s" % (api["maxPages"], path))
 
@@ -191,8 +197,13 @@ def poll(client, repo, me, app_login=None, since=None):
     }
     if since:
         params["since"] = since
-    issues = client.get_all("/repos/%s/issues" % repo, params, conditional=True)
-    if issues is None:
-        return None
-    return [i for i in issues
-            if "pull_request" not in i and me in route(i, cfg) and verify(client, repo, i, app_login)]
+    previous_etags = client.etags.copy()
+    try:
+        issues = client.get_all("/repos/%s/issues" % repo, params, conditional=True)
+        if issues is None:
+            return None
+        return [i for i in issues
+                if "pull_request" not in i and me in route(i, cfg) and verify(client, repo, i, app_login)]
+    except Exception:
+        client.etags = previous_etags
+        raise

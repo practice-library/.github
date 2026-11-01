@@ -24,11 +24,11 @@ jobs:
           PREFIX: @@protocol.canary.titlePrefix@@
           WAIT_SECONDS: @@protocol.canary.waitSeconds@@
           POLL_SECONDS: @@protocol.canary.pollSeconds@@
-          KIND_LABEL: @@protocol.prefixes.kind@@request
+          KIND_LABEL: @@protocol.prefixes.kind@@@@protocol.poll.kind@@
           INVALID_LABEL: @@protocol.prefixes.state@@@@protocol.verdict.invalidState@@
-          SPEC_VERSION: '1.0'
-          TYPE: org.practice-library.protocol.v0.request
-          PROTOCOL: '0'
+          SPEC_VERSION: '@@protocol.canary.specVersion@@'
+          TYPE: '@@protocol.canary.messageType@@'
+          PROTOCOL: '@@protocol.canary.protocolVersion@@'
         run: |
           set -euo pipefail
           [ -n "$GH_TOKEN" ] || { echo "::error::the canary token secret is not set"; exit 1; }
@@ -47,19 +47,19 @@ jobs:
           invalid_body="Canary message, invalid: it has a kind label and no message block."
           open() {
             gh api -X POST "repos/$REPO/issues" -f "title=$PREFIX $RUN $1" -f "body=$2" \
-              -f "labels[]=$KIND_LABEL" --jq .number
+              -f "labels[]=$KIND_LABEL" "${@:3}" --jq .number
           }
-          valid="$(open valid "$valid_body")"
+          valid="$(open valid "$valid_body" -f "labels[]=$INVALID_LABEL")"
           invalid="$(open invalid "$invalid_body")"
           has_label() {
             gh api "repos/$REPO/issues/$1" --jq '[.labels[].name] | index(env.INVALID_LABEL) != null'
           }
           deadline=$(( $(date +%s) + WAIT_SECONDS ))
-          until [ "$(has_label "$invalid")" = true ]; do
-            [ "$(date +%s)" -lt "$deadline" ] || { echo "::error::invalid message #$invalid never got $INVALID_LABEL"; exit 1; }
+          until [ "$(has_label "$invalid")" = true ] && [ "$(has_label "$valid")" = false ]; do
+            [ "$(date +%s)" -lt "$deadline" ] || { echo "::error::both canary verdicts were not observed"; exit 1; }
             sleep "$POLL_SECONDS"
           done
           echo "invalid message #$invalid is labelled $INVALID_LABEL"
-          # message-check has run on the invalid one; the valid one was opened first, so it has been judged too.
+          # The valid issue started with the invalid label; its removal proves it was judged.
           [ "$(has_label "$valid")" = false ] || { echo "::error::valid message #$valid was labelled $INVALID_LABEL"; exit 1; }
           echo "valid message #$valid carries no $INVALID_LABEL"

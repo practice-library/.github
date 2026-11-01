@@ -972,7 +972,10 @@
             "titlePrefix",
             "timeoutMinutes",
             "waitSeconds",
-            "pollSeconds"
+            "pollSeconds",
+            "specVersion",
+            "messageType",
+            "protocolVersion"
           ],
           "properties": {
             "tokenSecret": {
@@ -995,6 +998,18 @@
             "pollSeconds": {
               "type": "integer",
               "minimum": 1
+            },
+            "specVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "messageType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "protocolVersion": {
+              "type": "string",
+              "minLength": 1
             }
           }
         }
