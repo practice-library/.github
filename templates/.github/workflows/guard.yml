@@ -3,14 +3,15 @@ name: guard
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
 #                     on push, a merge commit's author name is not judged (whoever pressed merge);
-#                     an exemptPaths entry the change adds or widens needs the label "@@guards.loosenLabel@@"
+#                     an exemptPaths entry the change adds or widens needs an approval of the exact head
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "@@guards.noReleaseMarker@@"
-#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "@@guards.loosenLabel@@" from someone other
-#                     than the author and not a bot; the caller's pull_request types include labeled
+#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs an approval of the exact head
 #   size              (optional, the gate does not require it) the lines added or changed outside
-#                     fixtures are at most size-limit, or the label "@@guards.sizeLabel@@" from someone
-#                     other than the author and not a bot lets more through
+#                     fixtures are at most size-limit, or an approval of the exact head lets more through
+# An approval is a review in state APPROVED on the current head commit, by a maintainer or admin who is not
+# the author and not a bot (tooling/practice_ci/approvals.py). A new push needs a new approval. The labels
+# "@@guards.loosenLabel@@" and "@@guards.sizeLabel@@" only re-run the check; they authorize nothing.
 on:
   workflow_call:
     inputs:
@@ -35,7 +36,7 @@ on:
         type: string
         default: @@guards.changelog@@
       label:
-        description: The label that lets a loosened schema, or a denylist exemption added or widened, through.
+        description: The label a maintainer adds to re-run the check after approving a loosened schema, or a denylist exemption added or widened. Only a review approving the head authorizes.
         type: string
         default: @@guards.loosenLabel@@
       size-limit:
@@ -47,7 +48,7 @@ on:
         type: string
         default: '@@json:guards.sizeFixtures@@'
       size-label:
-        description: size only. The label that lets a larger pull request through.
+        description: size only. The label a maintainer adds to re-run the check after approving a larger pull request. Only a review approving the head authorizes.
         type: string
         default: @@guards.sizeLabel@@
 permissions:
@@ -64,6 +65,14 @@ jobs:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
           fetch-depth: 0
+          persist-credentials: false
+      - name: The approval tooling
+        if: inputs.guard == 'denylist' || inputs.guard == 'schema-loosening' || inputs.guard == 'size'
+        uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        with:
+          repository: @@org.name@@/@@org.repo@@
+          ref: @@release.tag@@
+          path: @@approvals.toolingPath@@
           persist-credentials: false
       - name: The change to check
         id: range
@@ -82,7 +91,7 @@ jobs:
             || { echo "::error::unknown guard $GUARD; known: $GUARDS"; exit 1; }
           base=""; head=""
           case "$EVENT" in
-            pull_request|pull_request_target) base="$PR_BASE"; head="$PR_HEAD" ;;
+            pull_request|pull_request_target|pull_request_review) base="$PR_BASE"; head="$PR_HEAD" ;;
             push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi ;;
           esac
           if [ -z "$base" ]; then echo "none=true" >> "$GITHUB_OUTPUT"; echo "No change to compare on $EVENT."; exit 0; fi
@@ -101,8 +110,7 @@ jobs:
           LIST: ${{ inputs.denylist }}
           EVENT: ${{ github.event_name }}
           LABEL: ${{ inputs.label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -165,11 +173,9 @@ jobs:
             *) echo "::error file=$LIST::$widened"; exit 1 ;;
           esac
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          unset -f main
+          #@include approval-receipt.sh
+          export KIND='@@approvals.schemaLooseningKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
@@ -179,7 +185,7 @@ jobs:
               if [ "$MB_LIST" != "$BASE_LIST" ]; then
                 echo "$LIST changed on the base after this change branched; if the change does not mean to add an exemption, merge the base in."
               fi
-              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
 
@@ -193,9 +199,8 @@ jobs:
         run: |
           set -euo pipefail
           #@include removed-refs.sh
-          DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           ROOT="$GITHUB_WORKSPACE"
-          export DELETED ROOT HISTORY
+          export ROOT HISTORY
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -212,9 +217,7 @@ jobs:
         run: |
           set -euo pipefail
           #@include release-note.sh
-          CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
-          MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES MB HEAD
+          export WATCH CHANGELOG MARKER MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -228,8 +231,7 @@ jobs:
           # Reviewed pattern changes that only tighten, shipped with this workflow at its pin.
           TIGHTEN: '@@json:guards.tighteningPairs@@'
           LABEL: ${{ inputs.label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -256,15 +258,13 @@ jobs:
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          unset -f main
+          #@include approval-receipt.sh
+          export KIND='@@approvals.schemaLooseningKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            missing*) echo "::error::a schema is loosened; a maintainer reviews it and approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
 
@@ -277,8 +277,7 @@ jobs:
           LIMIT: ${{ inputs.size-limit }}
           FIXTURES: ${{ inputs.size-fixtures }}
           LABEL: ${{ inputs.size-label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/@@approvals.toolingPath@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -295,14 +294,11 @@ jobs:
           esac
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
           unset -f main
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          #@include approval-receipt.sh
+          export KIND='@@approvals.sizeKind@@'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::${result#over }; or a maintainer adds the label $LABEL"; exit 1 ;;
+            missing*) echo "::error::${result#over }; or a maintainer approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
