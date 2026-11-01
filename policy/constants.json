@@ -265,6 +265,39 @@
       }
     ]
   },
+  "pluginGateway": {
+    "workflow": "plugin-matrix.yml",
+    "protocol": "0",
+    "operations": {
+      "describe": "describe",
+      "plan": "plan",
+      "runUnit": "run-unit",
+      "merge": "merge"
+    },
+    "maxParallel": 3,
+    "retry": {
+      "exitCode": 75,
+      "attempts": 3,
+      "waitSeconds": 60
+    },
+    "caps": {
+      "timeSeconds": 300,
+      "outputBytes": 10000000
+    },
+    "unitIdPattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    "files": {
+      "plan": "plan.json",
+      "partialsDir": "partials",
+      "report": "report.json"
+    },
+    "artifacts": {
+      "plan": "gateway-plan",
+      "partialPrefix": "gateway-partial-",
+      "report": "gateway-report",
+      "retentionDays": 7
+    },
+    "module": "tooling.practice_ci.plugin_gateway"
+  },
   "helpers": {
     "yq": {
       "version": "4.44.3",
