@@ -78,6 +78,12 @@ class SelfCheckoutFragmentTest(unittest.TestCase):
         self.assertGreater(include, guard.index("persist-credentials: false"))
         self.assertLess(include, guard.index("- name: " + NAME_RANGE))
 
+    def test_guard_uses_the_workflow_checkout_for_approvals_and_git_guards(self):
+        guard = read(GUARD)
+        self.assertEqual(guard.count("TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling"), 3)
+        self.assertIn("@@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@git.runnerScript@@", guard)
+        self.assertNotIn("ref: @@release.tag@@", guard)
+
     def test_every_step_shell_parses(self):
         self.assertEqual(check_steps.parse_errors(self.text, "fragment"), [])
         self.assertEqual(check_steps.parse_errors(read(GUARD), "guard"), [])

@@ -19,6 +19,10 @@ constants="$root/policy/constants.json"
 unit_dir="$root/$(jq -er '.selftest.unitDir' "$constants")"
 lib_dir="$root/$(jq -er '.selftest.libDir' "$constants")"
 cd "$root"
+# A case with a repository runs inside a throwaway directory, so the guards' runner is given by absolute path.
+runner_env="$(jq -er '.git.runnerEnv' "$constants")"
+export TOOLING="$root/tooling"
+export "$runner_env=$root/$(jq -er '.git.runnerScript' "$constants")"
 
 failed=0
 total=0
@@ -90,7 +94,11 @@ for case_path in "${cases[@]}"; do
       fi
     fi
     # shellcheck disable=SC1090 # the library is chosen by the case directory
-    source "$lib"
+    filled="$(jq -Rrs --slurpfile c "$constants" '
+      gsub("@@(?<key>[A-Za-z0-9_.]+)@@";
+        .key as $key | $c[0] | getpath($key | split(".")) // error("missing constant: " + $key) | tostring)
+      ' "$lib")"
+    source /dev/stdin <<<"$filled"
     main
   )" || got="error $?"
   output="$(jq -r '.output // empty' "$case_path")"

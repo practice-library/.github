@@ -51,6 +51,14 @@ class MutantsRunnerTest(unittest.TestCase):
         constants["selftest"].update({"unitDir": "unit", "libDir": "lib", "mutantsDir": "selftest/mutants"})
         write(self.box, "policy/constants.json", constants)
 
+    def test_unit_runner_fills_policy_placeholders_before_sourcing_fragments(self):
+        write(self.box, "lib/demo.sh", 'main() { echo "ok @@release.tag@@"; }\n')
+        write(self.box, "unit/demo/a.json", {"env": {}, "expect": "ok",
+                                               "output": "ok " + config.get("release", "tag")})
+        done = subprocess.run(["bash", "scripts/unit.sh"], cwd=self.box,
+                              capture_output=True, text=True, check=False)
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+
     def run_runner(self, *names):
         done = subprocess.run(["bash", "scripts/mutants.sh", *names], cwd=self.box, capture_output=True, text=True, check=False)
         return done.returncode, done.stdout + done.stderr

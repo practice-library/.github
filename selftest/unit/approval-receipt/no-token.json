@@ -1,0 +1,10 @@
+{
+  "env": {
+    "GH_TOKEN": "",
+    "REPO": "example/repo",
+    "NUMBER": "1",
+    "KIND": "size",
+    "HEAD": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "expect": "refused"
+}

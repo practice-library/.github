@@ -6,6 +6,16 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 - Breaking (v3): `selftest/lib/` and `templates/selftest/lib/` are removed; `scripts/unit.sh` loads `templates/fragments/*.sh` directly (`selftest.libDir` is now `templates/fragments`). `scripts/mutants.sh` counts a mutant as killed only by a behavioural failure (a jq or bash parse error, or a step that does not parse, is an error) and also mutates the shell inside workflow steps (#71).
 - New: `templates/fragments/self-checkout.yml` (the called workflow's own tooling, checked out at `job.workflow_sha` beside the caller), `scripts/practice-ci` with `tooling/practice_ci/` (`lint-literals`, `check-steps`), and `AGENTS.md`. Constants gain `selfCheckout`, `tooling`, `runner.unitTimeoutMinutes`, `runner.fetchRetries`, `selftest.mutantsDir` and `selftest.parseErrorPatterns`.
+## v3.0.0
+
+Breaking. There is no backward compatibility: a renamed check or input replaces the old one.
+
+- Releases (#52, #66): `release.tag` in `policy/constants.json` is now the release being cut (it stayed at v2.0.0 through v2.6.0). `python3 -m practice_ci.release <tag>` fails unless the intended tag, the top version heading of this changelog and `release.tag` are the same. ADOPTING.md is rewritten: a minor release may enforce more strictly, and every release lists its API changes, enforcement changes, permissions and downloads, and consumer steps.
+- Onboarding (#38, #62): `scripts/onboard.sh` wraps `tooling/practice_ci/onboarding.py`, which reads, renders and validates every file before it makes any API write; a render failure makes none. The `schema-loosening-approved` label colour and description come from `onboarding.label` in the policy.
+- gate.yml pin check (#44): a local `uses: ./path` is followed (a composite action's `action.yml` or `action.yaml`, a local reusable workflow), up to `pinCheck.maxLocalDepth` levels; a `uses:` that is not a string, a local path that leaves the repository or names nothing, and a file that does not parse are refused. The step now says it downloaded yq, from where, and with which sha256.
+- README: shortened to purpose, adoption example, supported platform (GitHub.com only), required check and links.
+- Consumer steps: pin to the v3.0.0 commit (ADOPTING.md); a local composite action that calls a practice-library action by a branch or tag must be pinned.
+- Permissions and downloads: the gate downloads yq (a pinned release, verified by sha256) to read the workflows; nothing else is new.
 
 ## v2.6.0
 
@@ -27,6 +37,8 @@ Additive in the surface; several guards refuse more than before (part 1 of #35).
 - scripts/mutants.sh: a mutant that leaves its library with a bash syntax error is an error, not a caught mutant. A mutant that breaks a jq or Python program inside a library is not detected this way.
 
 ## v2.4.0
+
+Historical note, recorded with v3.0.0 (#52): `release.tag` in the policy was not moved to match this tag, or any later v2 tag, so it disagreed with the changelog from here on. No tag was moved or deleted to repair that; tags are immutable (`rulesets/tags.json`). From v3.0.0 `practice_ci.release` checks that they agree.
 
 Additive. All three changes widen a schema and were reviewed as loosenings (label on #48). `schema-loosening` reports the new `rel` and `format` values but not the new `attrs.status` property, since it does not yet see a property added under `additionalProperties: false` (#35).
 
