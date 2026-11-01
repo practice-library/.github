@@ -4,6 +4,8 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+## v2.5.0
+
 Additive in the surface; several guards refuse more than before (part 1 of #35).
 
 - guard.yml `schema-loosening`: a key added under a sibling `properties` or `patternProperties` of an `additionalProperties` or `unevaluatedProperties` that was `false` is reported as a loosening (a property added under `allOf`, `then` or `dependentSchemas` beside an `unevaluatedProperties: false` is not yet seen, #35), as is `unevaluatedProperties: false` made anything else. v2.4.0's `attrs.status` and v2.1.0's `attrs.basis` are the cases this would have reported.
