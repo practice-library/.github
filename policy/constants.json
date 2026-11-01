@@ -160,6 +160,11 @@
     "fragmentsDir": "templates/fragments",
     "renderedOnly": [
       ".github/workflows"
+    ],
+    "bootstrapIncludes": [
+      "self-checkout.yml",
+      "tool-identity.sh",
+      "tool-checkout.sh"
     ]
   },
   "gate": {

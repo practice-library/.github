@@ -28,6 +28,7 @@
     TOOLING: ${{ github.workspace }}/@@tooling.checkoutPath@@
     WORKFLOW_SHA: ${{ job.workflow_sha }}
     LAUNCHER: @@tooling.launcher@@
+    PACKAGE: @@tooling.package@@
   run: |
     set -euo pipefail
     #@include tool-checkout.sh
@@ -45,5 +46,6 @@
     LAUNCHER: @@tooling.launcher@@
   run: |
     set -euo pipefail
-    "$TOOLING/$LAUNCHER" version
+    # Prints the interpreter and the checkout, and stops unless the interpreter is the policy's exact one.
+    "$TOOLING/$LAUNCHER" version --require-policy-python
     { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"

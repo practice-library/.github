@@ -15,6 +15,9 @@ def _bootstrap() -> int:
         sys.stderr.write("practice-ci: run through the launcher, which starts Python with -I\n")
         return 2
     here = os.path.dirname(os.path.realpath(__file__))
+    if not os.path.isfile(os.path.join(here, "practice_ci", "__init__.py")):
+        sys.stderr.write("practice-ci: bootstrap: %s has no practice_ci package; pin a release that ships it\n" % here)
+        return 2
     sys.path.insert(0, here)
     import practice_ci
 

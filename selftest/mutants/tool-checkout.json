@@ -10,6 +10,11 @@
     "replace": "false"
   },
   {
+    "name": "a missing package is not noticed",
+    "find": "[ ! -f \"$TOOLING/$PACKAGE/__init__.py\" ]",
+    "replace": "false"
+  },
+  {
     "name": "a directory that is no repository is not noticed",
     "find": "echo \"invalid ${TOOLING:-(unset)} is not a checked-out repository\"; return 0",
     "replace": "head=\"\""

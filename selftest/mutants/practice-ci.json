@@ -14,6 +14,12 @@
       "replace": "if False:"
     },
     {
+      "name": "the bootstrap does not check for its package",
+      "target": "tooling/launch.py",
+      "find": "if not os.path.isfile(os.path.join(here, \"practice_ci\", \"__init__.py\")):",
+      "replace": "if False:"
+    },
+    {
       "name": "an error exits like a fail",
       "target": "tooling/practice_ci/adapter.py",
       "find": "EXIT = {PASS: 0, FAIL: 1, ERROR: 2}",
@@ -54,6 +60,12 @@
       "target": "tooling/practice_ci/mutants.py",
       "find": "        target.write_bytes(raw)\n",
       "replace": "        pass\n"
+    },
+    {
+      "name": "the mutation runner keeps a mutant's cached bytecode",
+      "target": "tooling/practice_ci/mutants.py",
+      "find": "    purge_bytecode(copy)\n    env = dict(os.environ)",
+      "replace": "    env = dict(os.environ)"
     },
     {
       "name": "the mutation runner does not check embedded programs",

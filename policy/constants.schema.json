@@ -491,7 +491,8 @@
         "script",
         "templatesDir",
         "fragmentsDir",
-        "renderedOnly"
+        "renderedOnly",
+        "bootstrapIncludes"
       ],
       "properties": {
         "script": {
@@ -508,6 +509,16 @@
           "minItems": 1,
           "items": {
             "$ref": "#/$defs/path"
+          }
+        },
+        "bootstrapIncludes": {
+          "description": "The only fragments a workflow template may inline (#@include): what runs before the tooling is checked out. Everything else runs from that checkout.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*\\.(yml|sh)$"
           }
         }
       }

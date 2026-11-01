@@ -3,7 +3,8 @@ consumer refers to it. It checks ownership in three narrow places, not every lit
 
 1. Workflow templates (templates/**/*.yml, outside comments): the runner image, job timeouts, the
    interpreter version and action pins must be policy placeholders; no download URL, retry count or
-   40-hex commit may be written out; no value of a label the policy owns may appear.
+   40-hex commit may be written out; no value of a label the policy owns may appear. A #@include names
+   only a bootstrap fragment (render.bootstrapIncludes): executable code is never inlined otherwise.
 2. The package (tooling/practice_ci): only policy.py names the constants file; a call to policy.value
    takes the key alone (no default to drift from the policy); and the designated policy-bearing keyword
    arguments (DESIGNATED) are never given a literal.
@@ -31,6 +32,7 @@ _KEY_LINE = re.compile(r"^\s*(?:-\s+)?([A-Za-z0-9_-]+):\s*(.*?)\s*$")
 _URL = re.compile(r"https?://")
 _RETRY = re.compile(r"--retry(?:-[a-z-]+)?[ =]+[0-9]")
 _SHA1 = re.compile(r"(?<![0-9a-f])[0-9a-f]{40}(?![0-9a-f])")
+_INCLUDE = re.compile(r"^\s*#@include\s+(\S+)")
 
 
 def _owned_value(value: str) -> bool:
@@ -43,12 +45,16 @@ def _uses_ok(value: str) -> bool:
     return value.startswith("./") or "@@" in value
 
 
-def lint_template(path: Path, rel: str, labels: list[str]) -> list[tuple[str, Evidence, str]]:
+def lint_template(path: Path, rel: str, labels: list[str], includes: list[str]) -> list[tuple[str, Evidence, str]]:
     found = []
     for n, line in enumerate(path.read_text(encoding="utf-8").split("\n"), 1):
+        at = Evidence(rel, n)
+        inc = _INCLUDE.match(line)
+        if inc and inc.group(1) not in includes:
+            found.append(("include", at, "only the bootstrap (render.bootstrapIncludes) is inlined; %s runs from "
+                                         "the tooling checkout" % inc.group(1)))
         if line.lstrip().startswith("#"):
             continue
-        at = Evidence(rel, n)
         m = _KEY_LINE.match(line)
         if m and m.group(1) in OWNED_KEYS and m.group(2) and not _owned_value(m.group(2)):
             found.append(("owned-key", at, "%s must be a policy placeholder" % m.group(1)))
@@ -97,13 +103,14 @@ def lint_python(path: Path, rel: str, constants_name: str) -> list[tuple[str, Ev
 
 def run(root: Path) -> Result:
     labels = [policy.value(k) for k in LABEL_KEYS]
+    includes = policy.value("render.bootstrapIncludes")
     templates = policy.path("render.templatesDir")
     package = policy.path("tooling.package")
     found = []
     files = 0
     for path in sorted(templates.rglob("*.yml")):
         files += 1
-        found += lint_template(path, str(path.relative_to(root)), labels)
+        found += lint_template(path, str(path.relative_to(root)), labels, includes)
     for path in sorted(package.rglob("*.py")):
         files += 1
         found += lint_python(path, str(path.relative_to(root)), policy.CONSTANTS.name)

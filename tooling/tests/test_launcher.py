@@ -55,6 +55,19 @@ class Launcher(unittest.TestCase):
         self.assertIn("-I", proc.stderr)
         self.assertFalse(self.marker.exists())
 
+    def test_a_checkout_without_the_package_is_a_bootstrap_error(self):
+        # A launcher whose package is missing stops with a clear message, and never falls back to a
+        # practice_ci found anywhere else (here: the caller's tree on PYTHONPATH).
+        bare = self.scratch / "bare"
+        bare.mkdir()
+        shutil.copy2(LAUNCHER, bare / LAUNCHER.name)
+        shutil.copy2(LAUNCH_PY, bare / LAUNCH_PY.name)
+        proc = self.run_launcher(command=[str(bare / LAUNCHER.name), "version"])
+        self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
+        self.assertIn("bootstrap", proc.stderr)
+        self.assertNotIn("Traceback", proc.stderr)
+        self.assertFalse(self.marker.exists())
+
     def test_policy_python_is_enforced_when_asked(self):
         proc = self.run_launcher("version", "--require-policy-python")
         wanted = policy.value("tooling.pythonVersion")

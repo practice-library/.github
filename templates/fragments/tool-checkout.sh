@@ -1,10 +1,12 @@
 # main: judges the tooling checkout before anything in it runs. Prints "ok <sha>" when the repository in
-# TOOLING is at exactly WORKFLOW_SHA and holds the launcher; "mismatch ..." when HEAD is another commit;
-# "bootstrap ..." when that commit has no launcher (a commit from before the tooling existed: pin a
-# release that ships it, nothing is fetched from elsewhere); "invalid ..." when TOOLING is no repository.
+# TOOLING is at exactly WORKFLOW_SHA and holds the launcher and the package; "mismatch ..." when HEAD is
+# another commit; "bootstrap ..." when that commit has no launcher or no package (a commit from before
+# the tooling existed, or a broken one: pin a release that ships it, nothing is fetched from elsewhere);
+# "invalid ..." when TOOLING is no repository.
 #   TOOLING       the directory the workflow's own commit was checked out into
 #   WORKFLOW_SHA  job.workflow_sha
 #   LAUNCHER      the launcher's path inside TOOLING
+#   PACKAGE       the package directory inside TOOLING
 main() {
   local head
   if ! head="$(git -C "${TOOLING:-}" rev-parse --verify --quiet HEAD^{commit} 2>/dev/null)"; then
@@ -15,6 +17,9 @@ main() {
   fi
   if [ -z "${LAUNCHER:-}" ] || [ ! -f "$TOOLING/$LAUNCHER" ]; then
     echo "bootstrap $head has no ${LAUNCHER:-launcher}: this commit predates the tooling, so pin a release that ships it"; return 0
+  fi
+  if [ -z "${PACKAGE:-}" ] || [ ! -f "$TOOLING/$PACKAGE/__init__.py" ]; then
+    echo "bootstrap $head has no ${PACKAGE:-package}: the tooling at this commit is incomplete, so pin a release that ships it"; return 0
   fi
   echo "ok $head"
 }

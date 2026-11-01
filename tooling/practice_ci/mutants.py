@@ -69,12 +69,20 @@ def _command(suite: str, copy: Path) -> list[str]:
         return [str(copy / policy.value("tooling.launcher")), "lint"]
     if kind == "unittest" and arg:
         tooling = Path(policy.value("tooling.package")).parent
-        return [sys.executable, "-I", "-m", "unittest", "discover", "-s", str(copy / tooling / "tests"),
+        return [sys.executable, "-I", "-B", "-m", "unittest", "discover", "-s", str(copy / tooling / "tests"),
                 "-t", str(copy / tooling), "-p", arg]
     raise ValueError("unknown suite: " + suite)
 
 
+def purge_bytecode(copy: Path) -> None:
+    """Drops every compiled module in the copy. A restored source can have the size and the whole-second
+    mtime of the mutant it replaces, and Python would then load the mutant's cached bytecode for it."""
+    for cache in sorted(copy.rglob("__pycache__")):
+        shutil.rmtree(cache, ignore_errors=True)
+
+
 def run_suite(suite: str, copy: Path, original: Path) -> tuple[int, str]:
+    purge_bytecode(copy)
     env = dict(os.environ)
     # The canary reads one past merge commit's author from history; the copy has no .git.
     env["CANARY_HISTORY"] = str(original)

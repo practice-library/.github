@@ -1,6 +1,7 @@
 """The mutation runner: a kill needs a wrong verdict; parse failures and errors are invalid mutants."""
 
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -78,6 +79,20 @@ class Isolation(unittest.TestCase):
             self.assertTrue(caught, line)
             self.assertEqual(seen, ["x = 2\n"])
             self.assertEqual((copy / "t.py").read_text(), "x = 1\n")
+        finally:
+            shutil.rmtree(copy)
+
+    def test_every_suite_run_starts_without_cached_bytecode(self):
+        # A restored module can match its mutant's size and mtime second; its cached bytecode must go.
+        copy = Path(tempfile.mkdtemp())
+        try:
+            cache = copy / "pkg" / "__pycache__"
+            cache.mkdir(parents=True)
+            (cache / "m.cpython-312.pyc").write_bytes(b"stale")
+            with mock.patch.object(mutants, "_command", lambda s, c: [sys.executable, "-c", ""]):
+                rc, _ = mutants.run_suite("canary", copy, copy)
+            self.assertEqual(rc, 0)
+            self.assertFalse(cache.exists(), "a mutant's cached bytecode survived into the next run")
         finally:
             shutil.rmtree(copy)
 
