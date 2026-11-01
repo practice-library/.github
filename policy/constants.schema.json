@@ -23,6 +23,10 @@
     "tagRuleset",
     "release",
     "guards",
+    "tooling",
+    "compatibility",
+    "reasons",
+    "profiles",
     "helpers"
   ],
   "$defs": {
@@ -796,6 +800,64 @@
                 "pattern": "^[^'$]+$",
                 "description": "Plain text: no ' or $, since it is rendered into a single-quoted YAML scalar that Actions also reads for expressions."
               }
+            }
+          }
+        }
+      }
+    },
+    "tooling": {
+      "description": "Where the Python CI tooling lives in this repository.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dir", "package"],
+      "properties": {
+        "dir": {"$ref": "#/$defs/path"},
+        "package": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}
+      }
+    },
+    "compatibility": {
+      "description": "What the schema compatibility classifier (tooling/practice_ci/compatibility.py) reads: which files are schemas, which dialects count unevaluated keywords, which file is a check profile.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaUrlPattern", "fullDialectPattern", "tightenHashPattern", "checkFile"],
+      "properties": {
+        "schemaUrlPattern": {"type": "string", "minLength": 1},
+        "fullDialectPattern": {"type": "string", "minLength": 1},
+        "tightenHashPattern": {"type": "string", "minLength": 1},
+        "checkFile": {"type": "string", "pattern": "^[^/]+\\.json$"}
+      }
+    },
+    "reasons": {
+      "description": "Expected-reason assertions for negative fixtures (tooling/practice_ci/reasons.py): the sidecar file naming each counter-example's keyword and instance location, and the validator flag that prints structured errors.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "validatorFlag"],
+      "properties": {
+        "file": {"type": "string", "pattern": "^[^/]+\\.json$"},
+        "validatorFlag": {"type": "string", "pattern": "^--[a-z-]+$"}
+      }
+    },
+    "profiles": {
+      "description": "Check profiles shared by several callers, rendered to each caller's check.json from templates.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["specCheck"],
+      "properties": {
+        "specCheck": {
+          "description": "The rows every spec directory with examples, counter-examples and guards runs: validate, reject each counter-example, then apply the guard mutants.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["schema", "instances"],
+            "properties": {
+              "schema": {"type": "string", "minLength": 1},
+              "instances": {"type": "string", "minLength": 1},
+              "expect": {"enum": ["pass", "fail"]},
+              "each": {"enum": ["true", "false"]},
+              "mode": {"enum": ["validate", "metaschema", "guards"]},
+              "guards": {"type": "string", "minLength": 1}
             }
           }
         }
