@@ -3,7 +3,8 @@ name: guard
 # Mechanical review checks, one per call: guard is one of denylist, removed-paths, release-note, schema-loosening, size.
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
-#                     on push, a merge commit's author name is not judged (whoever pressed merge)
+#                     on push, a merge commit's author name is not judged (whoever pressed merge);
+#                     an exemptPaths entry the change adds or widens needs the label "schema-loosening-approved"
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "Release: none"
 #   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "schema-loosening-approved" from someone other
@@ -35,7 +36,7 @@ on:
         type: string
         default: CHANGELOG.md
       label:
-        description: The label that lets a loosened schema through.
+        description: The label that lets a loosened schema, or a denylist exemption added or widened, through.
         type: string
         default: schema-loosening-approved
       size-limit:
@@ -100,6 +101,12 @@ jobs:
           HEAD: ${{ steps.range.outputs.head }}
           LIST: ${{ inputs.denylist }}
           EVENT: ${{ github.event_name }}
+          LABEL: ${{ inputs.label }}
+          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           # collect: prints "<where><TAB><text>" for every added line, added path, and commit message, author name
@@ -150,6 +157,13 @@ jobs:
           #              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
           #              64 lower-case hex characters each; an author or committer name that is one of them is
           #              not judged. Messages, added lines and added paths are judged whatever the name.
+          #              The optional exemptPaths is a list of {"glob": <path glob>, "terms": [<hex>, ...]}: an added
+          #              line of a file whose path matches a glob is not found for the sha256 entries in terms, or for
+          #              any entry when terms is absent. It applies to added lines only; added paths, messages and
+          #              names are judged as before. A glob is relative to the root: * and ? stay inside one path
+          #              segment, a segment that is exactly ** spans any number of segments, and the first segment
+          #              holds no wildcard, so no glob covers the whole repository. Each line an exemption lets
+          #              through is printed with its glob.
           #   EVENT      the GitHub event; push leaves merge commits out (see collect)
           #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
           # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
@@ -175,6 +189,36 @@ jobs:
           except Exception:
               print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...], \"allowAuthorNames\": [hex, ...]}")
               sys.exit(0)
+          def glob_re(g):
+              segs = g.split("/")
+              out = ""
+              for i, seg in enumerate(segs):
+                  last = i == len(segs) - 1
+                  if seg == "**":
+                      out += ".+" if last else "(?:[^/]+/)*"
+                      continue
+                  out += "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in seg)
+                  if not last:
+                      out += "/"
+              return re.compile(out)
+          exempt = []
+          try:
+              rules = deny.get("exemptPaths", [])
+              assert isinstance(rules, list)
+              for r in rules:
+                  assert isinstance(r, dict) and set(r) <= {"glob", "terms"}
+                  g = r["glob"]
+                  assert isinstance(g, str) and re.fullmatch(r"[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*", g)
+                  segs = g.split("/")
+                  assert not re.search(r"[*?]", segs[0]) and ".." not in segs and "." not in segs
+                  assert all(s == "**" or "**" not in s for s in segs)
+                  t = r.get("terms")
+                  assert t is None or (isinstance(t, list) and t and all(isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in t))
+                  exempt.append((g, glob_re(g), None if t is None else set(t)))
+          except Exception:
+              print("invalid exemptPaths must be [{\"glob\": path glob whose first segment has no wildcard, \"terms\": [hex, ...]}]")
+              sys.exit(0)
+          line_row = re.compile(r"(.+):([0-9]+)")
           if not hashes:
               print("unguarded the denylist has no entries")
               sys.exit(0)
@@ -184,6 +228,7 @@ jobs:
           # never is, since its where carries ":<line>" or starts with "added path".
           name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
           found = []
+          let_through = []
           with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
               for line in f:
                   where, _, text = line.rstrip("\n").partition("\t")
@@ -194,13 +239,27 @@ jobs:
                   for a, b in zip(words, words[1:]):
                       terms.add(a + " " + b)
                       terms.add(a + b)
-                  if any(h(t) in hashes for t in terms):
+                  hit = {h(t) for t in terms} & hashes
+                  if not hit:
+                      continue
+                  m = line_row.fullmatch(where) if exempt else None
+                  if m:
+                      for g, rx, t in exempt:
+                          if rx.fullmatch(m.group(1)) and (t is None or hit <= t):
+                              let_through.append("%s (%s)" % (where, g))
+                              break
+                      else:
+                          found.append(where)
+                  else:
                       found.append(where)
+          note = ""
+          if let_through:
+              note = "; exempt %d: %s" % (len(let_through), ", ".join(let_through[:20]))
           if found:
               seen = list(dict.fromkeys(found))
-              print("found %d %s" % (len(found), ", ".join(seen[:20])))
+              print("found %d %s%s" % (len(found), ", ".join(seen[:20]), note))
           else:
-              print("ok no denied term in the change")
+              print("ok no denied term in the change" + note)
           '
           }
           if [ "$NONE" = true ]; then
@@ -217,19 +276,86 @@ jobs:
             exit
           fi
           # The list comes from the base commit, so a change cannot edit the list it is checked against.
-          # Only when the base has none and the change adds it is the change's own list used.
-          DENY=""
-          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then
-            DENY="$(git cat-file blob "$BASE:$LIST")"
-          elif git cat-file -e "$HEAD:$LIST" 2>/dev/null; then
-            echo "$LIST is new in this change; it is checked with that list."
-            DENY="$(git cat-file blob "$HEAD:$LIST")"
+          # Only when the base has none and the change adds it is the change's own list used, without
+          # its exemptions: an exemption never applies to the change that adds it.
+          DENY=""; BASE_LIST=""; HEAD_LIST=""
+          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$BASE:$LIST")"; fi
+          if git cat-file -e "$HEAD:$LIST" 2>/dev/null; then HEAD_LIST="$(git cat-file blob "$HEAD:$LIST")"; fi
+          if [ -n "$BASE_LIST" ]; then
+            DENY="$BASE_LIST"
+          elif [ -n "$HEAD_LIST" ]; then
+            echo "$LIST is new in this change; it is checked with that list, without its exemptions."
+            DENY="$(jq -c 'if type == "object" then del(.exemptPaths) else . end' <<<"$HEAD_LIST" 2>/dev/null)" || DENY="$HEAD_LIST"
           fi
           unset TEXT_FILE
           export DENY MB HEAD EVENT
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
+          # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
+          # main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file on
+          # the base commit and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
+          # "ok ..." when every exemptPaths entry of the head list is also, exactly, an entry of the base list (an
+          # entry removed is fine), "widened [<glob>, ...]" naming each head entry that is new or changed, or
+          # "invalid ..." when a list that is there cannot be read. Widening is a loosening: it needs the approval
+          # label, and it never applies to the change that makes it, since the scan reads the base list.
+          main() {
+            local out
+            if ! out="$(jq -cn --arg b "${BASE_LIST:-}" --arg h "${HEAD_LIST:-}" '
+                def entries($s): if $s == "" then [] else ($s | fromjson | .exemptPaths // [])
+                  | if type == "array" then . else error("exemptPaths is not a list") end end;
+                entries($b) as $old
+                | [entries($h)[] | . as $e | select(($old | index([$e])) == null)
+                   | if type == "object" then (.glob // "(no glob)" | tostring) else tojson end]' 2>/dev/null)"; then
+              echo "invalid a denylist file is not JSON, or its exemptPaths is not a list"; return 0
+            fi
+            if [ "$out" = "[]" ]; then echo "ok no exemption added or widened"; else echo "widened $out"; fi
+          }
+          export BASE_LIST HEAD_LIST
+          widened="$(main)"
+          echo "$widened"
+          case "$widened" in
+            ok*) exit 0 ;;
+            widened*) ;;
+            *) echo "::error file=$LIST::$widened"; exit 1 ;;
+          esac
+          if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
+          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
+          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
+          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
+          # so removing it and adding it again changes the verdict.
+          #   LABEL   the approval label
+          #   LABELS  JSON array of the labels on the pull request now
+          #   AUTHOR  the pull request author's login
+          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          main() {
+            local last login type
+            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
+              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
+                echo "missing the label $LABEL is not on the pull request"; return 0
+              fi
+              echo "refused LABELS must be a JSON array"; return 0
+            fi
+            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
+            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
+              echo "refused no event shows who added $LABEL"; return 0
+            fi
+            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
+            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
+              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
+            fi
+            echo "ok approved by $login"
+          }
+          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
+                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
+            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
+          export LABEL LABELS AUTHOR EVENTS
+          verdict="$(main)"
+          case "$verdict" in
+            ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
+            missing*) echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          esac
 
       - name: removed-paths
         if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'

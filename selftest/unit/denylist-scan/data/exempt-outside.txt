@@ -1,0 +1,2 @@
+vendors/acme/graph/nodes/a.json:3	  "quote": "Zebracorn rules the plan."
+README.md:5	Zebracorn here

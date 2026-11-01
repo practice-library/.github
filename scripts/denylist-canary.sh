@@ -41,6 +41,10 @@ plain="{\"salt\":\"$salt\",\"sha256\":[\"$term\"]}"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# A stand-in for gh: it prints the label events the scenario sets in GH_EVENTS, as the step's --jq would.
+mkdir -p "$work/bin"
+printf '#!/bin/sh\nprintf "%%s\\n" "${GH_EVENTS:-}"\n' > "$work/bin/gh"
+chmod +x "$work/bin/gh"
 # The maintainer's name is three words holding the term; its exemption comes from the hash tool itself.
 maintainer="Zebracorn Account Name"
 printf '%s\n' "$plain" > "$work/list.json"
@@ -51,7 +55,9 @@ failed=0
 
 # scenario <name> <want 0|1> <event> <list or "" for none on base> <author> <message> <added line> <merge author or "">
 # Optional, set for one call: HEAD_LIST (the list the head commit writes), FILE (the file the head commit
-# adds, default notes.md), MERGE_COMMITTER (default GitHub), MERGE_MESSAGE.
+# adds, default notes.md), MERGE_COMMITTER (default GitHub), MERGE_MESSAGE, and for the exemption label
+# NUMBER (a pull request number; empty means not a pull request), LABELS (JSON, default []) and
+# GH_EVENTS (the label events, "<login><TAB><type>" lines).
 scenario() {
   local name="$1" want="$2" event="$3" list="$4" author="$5" message="$6" line="$7" merger="$8" repo got out
   repo="$(mktemp -d "$work/r.XXXXXX")"
@@ -62,6 +68,7 @@ scenario() {
   git -C "$repo" add -A
   git -C "$repo" -c user.name=base -c user.email=base@example.invalid -c commit.gpgsign=false commit -q -m base
   local base; base="$(git -C "$repo" rev-parse HEAD)"
+  mkdir -p "$(dirname "$repo/${FILE:-notes.md}")"
   printf '%s\n' "$line" > "$repo/${FILE:-notes.md}"
   if [ -n "${HEAD_LIST:-}" ]; then printf '%s\n' "$HEAD_LIST" > "$repo/$LIST"; fi
   git -C "$repo" add -A
@@ -76,7 +83,9 @@ scenario() {
     head="$(git -C "$repo" rev-parse HEAD)"
   fi
   got=0
-  out="$(cd "$repo" && NONE=false BASE="$base" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" bash -c "$step" 2>&1)" || got=$?
+  out="$(cd "$repo" && NONE=false BASE="$base" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
+    LABEL=schema-loosening-approved LABELS="${LABELS:-[]}" AUTHOR=contributor NUMBER="${NUMBER:-}" \
+    REPO=example/repo GH_TOKEN=unused GH_EVENTS="${GH_EVENTS:-}" PATH="$work/bin:$PATH" bash -c "$step" 2>&1)" || got=$?
   [ "$got" -eq 0 ] || got=1
   if [ "$got" = "$want" ]; then
     echo "ok   $name: ${out##*$'\n'}"
@@ -108,6 +117,24 @@ HEAD_LIST="$plain" scenario first-list-term-in-line 1 pull_request "" "Contribut
 # A file whose name looks like a name row is still content.
 FILE="author 0123456789abcdef0123456789abcdef01234567" scenario file-named-like-author-row 1 pull_request "$exempt" "$maintainer" "Add notes" "$maintainer" ""
 FILE="committer 0123456789abcdef0123456789abcdef01234567" scenario file-named-like-committer-row 1 pull_request "$exempt" "$maintainer" "Add notes" "$maintainer" ""
+
+# Path exemptions: a listed term in a quoted data tree passes; the same term anywhere else does not.
+tree="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"vendors/*/graph/nodes/**\"}]}"
+FILE=vendors/acme/graph/nodes/a.json scenario exempt-term-in-tree 0 pull_request "$tree" "Contributor" "Add a node" "Zebracorn quoted." ""
+FILE=docs/a.md scenario exempt-term-outside-tree 1 pull_request "$tree" "Contributor" "Add notes" "Zebracorn quoted." ""
+FILE=vendors/zebracorn/graph/nodes/a.json scenario exempt-term-in-path 1 pull_request "$tree" "Contributor" "Add a node" "Clean." ""
+FILE=vendors/acme/graph/nodes/a.json scenario exempt-term-in-message 1 pull_request "$tree" "Contributor" "Quote Zebracorn" "Clean." ""
+# An exemption never applies to the change that adds it: not to a list on the base, nor to a first list.
+HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-added-by-change 1 pull_request "$plain" "Contributor" "Add a node" "Zebracorn quoted." ""
+HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-in-first-list 1 pull_request "" "Contributor" "Add a node" "Zebracorn quoted." ""
+# Adding or widening an exemption needs the label from someone other than the author and not a bot.
+HEAD_LIST="$tree" NUMBER=1 scenario exempt-widened-no-label 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="maintainer	User" scenario exempt-widened-labelled 0 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="contributor	User" scenario exempt-widened-self-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="helper[bot]	Bot" scenario exempt-widened-bot-labelled 1 pull_request "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$tree" scenario exempt-widened-push 0 push "$plain" "Contributor" "Add an exemption" "Clean." ""
+HEAD_LIST="$plain" NUMBER=1 scenario exempt-removed 0 pull_request "$tree" "Contributor" "Drop the exemption" "Clean." ""
+HEAD_LIST="{" NUMBER=1 scenario exempt-head-list-unreadable 1 pull_request "$tree" "Contributor" "Break the list" "Clean." ""
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).

@@ -47,6 +47,13 @@ collect() {
 #              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
 #              64 lower-case hex characters each; an author or committer name that is one of them is
 #              not judged. Messages, added lines and added paths are judged whatever the name.
+#              The optional exemptPaths is a list of {"glob": <path glob>, "terms": [<hex>, ...]}: an added
+#              line of a file whose path matches a glob is not found for the sha256 entries in terms, or for
+#              any entry when terms is absent. It applies to added lines only; added paths, messages and
+#              names are judged as before. A glob is relative to the root: * and ? stay inside one path
+#              segment, a segment that is exactly ** spans any number of segments, and the first segment
+#              holds no wildcard, so no glob covers the whole repository. Each line an exemption lets
+#              through is printed with its glob.
 #   EVENT      the GitHub event; push leaves merge commits out (see collect)
 #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
 # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
@@ -72,6 +79,36 @@ try:
 except Exception:
     print("invalid the denylist must be {\"salt\": text, \"sha256\": [hex, ...], \"allowAuthorNames\": [hex, ...]}")
     sys.exit(0)
+def glob_re(g):
+    segs = g.split("/")
+    out = ""
+    for i, seg in enumerate(segs):
+        last = i == len(segs) - 1
+        if seg == "**":
+            out += ".+" if last else "(?:[^/]+/)*"
+            continue
+        out += "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in seg)
+        if not last:
+            out += "/"
+    return re.compile(out)
+exempt = []
+try:
+    rules = deny.get("exemptPaths", [])
+    assert isinstance(rules, list)
+    for r in rules:
+        assert isinstance(r, dict) and set(r) <= {"glob", "terms"}
+        g = r["glob"]
+        assert isinstance(g, str) and re.fullmatch(r"[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*", g)
+        segs = g.split("/")
+        assert not re.search(r"[*?]", segs[0]) and ".." not in segs and "." not in segs
+        assert all(s == "**" or "**" not in s for s in segs)
+        t = r.get("terms")
+        assert t is None or (isinstance(t, list) and t and all(isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in t))
+        exempt.append((g, glob_re(g), None if t is None else set(t)))
+except Exception:
+    print("invalid exemptPaths must be [{\"glob\": path glob whose first segment has no wildcard, \"terms\": [hex, ...]}]")
+    sys.exit(0)
+line_row = re.compile(r"(.+):([0-9]+)")
 if not hashes:
     print("unguarded the denylist has no entries")
     sys.exit(0)
@@ -81,6 +118,7 @@ def h(term):
 # never is, since its where carries ":<line>" or starts with "added path".
 name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
 found = []
+let_through = []
 with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
     for line in f:
         where, _, text = line.rstrip("\n").partition("\t")
@@ -91,12 +129,26 @@ with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
         for a, b in zip(words, words[1:]):
             terms.add(a + " " + b)
             terms.add(a + b)
-        if any(h(t) in hashes for t in terms):
+        hit = {h(t) for t in terms} & hashes
+        if not hit:
+            continue
+        m = line_row.fullmatch(where) if exempt else None
+        if m:
+            for g, rx, t in exempt:
+                if rx.fullmatch(m.group(1)) and (t is None or hit <= t):
+                    let_through.append("%s (%s)" % (where, g))
+                    break
+            else:
+                found.append(where)
+        else:
             found.append(where)
+note = ""
+if let_through:
+    note = "; exempt %d: %s" % (len(let_through), ", ".join(let_through[:20]))
 if found:
     seen = list(dict.fromkeys(found))
-    print("found %d %s" % (len(found), ", ".join(seen[:20])))
+    print("found %d %s%s" % (len(found), ", ".join(seen[:20]), note))
 else:
-    print("ok no denied term in the change")
+    print("ok no denied term in the change" + note)
 '
 }

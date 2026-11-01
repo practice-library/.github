@@ -1,0 +1,8 @@
+{
+  "expect": "found",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"53b48689254d028ad6d6cf865394ad59ea74ee7d072d8d0c0756ea81d9412fd8\",\"d427bfe3aaeeb39fbac9a49e6250903a6d77d0a9d06ead47d23fc66b489763dc\",\"d728da035591f33dea210032999f3c466a8eeef3ef946d2451f33f7770529fd8\"],\"exemptPaths\":[{\"glob\":\"vendors/*/graph/nodes/**\",\"terms\":[\"d427bfe3aaeeb39fbac9a49e6250903a6d77d0a9d06ead47d23fc66b489763dc\"]}]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/exempt-in-tree.txt"
+  },
+  "output": "found 1 vendors/acme/graph/nodes/a.json:3"
+}

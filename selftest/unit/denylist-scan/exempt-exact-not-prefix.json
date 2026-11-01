@@ -1,0 +1,8 @@
+{
+  "expect": "found",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"53b48689254d028ad6d6cf865394ad59ea74ee7d072d8d0c0756ea81d9412fd8\",\"f39af58a8d2e5d016b94ea0a97cee91195f95ba4b86056424246d9213a89a0f9\"],\"exemptPaths\":[{\"glob\":\"vendors/acm?/graph/nodes/a.json\"}]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/exempt-suffix.txt"
+  },
+  "output": "found 1 vendors/acme/graph/nodes/a.json.bak:3"
+}

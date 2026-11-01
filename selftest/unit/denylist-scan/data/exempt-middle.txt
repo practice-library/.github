@@ -1,0 +1,2 @@
+data/quotes/a.json:1	Zebracorn
+data/a/b/quotes/c.json:2	Zebracorn
