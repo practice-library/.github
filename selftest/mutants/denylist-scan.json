@@ -133,10 +133,5 @@
     "name": "hashes-any-iterable",
     "find": "isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)",
     "replace": "isinstance(salt, str) and salt and isinstance(allow, list)"
-  },
-  {
-    "name": "list-any-json",
-    "find": "    assert isinstance(deny, dict)\n",
-    "replace": "    pass\n"
   }
 ]

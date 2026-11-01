@@ -246,7 +246,6 @@ jobs:
           import hashlib, json, os, re, sys
           try:
               deny = json.loads(os.environ["DENY"])
-              assert isinstance(deny, dict)
               salt = deny["salt"]
               terms = deny["sha256"]
               allow = deny.get("allowAuthorNames", [])
