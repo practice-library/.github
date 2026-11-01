@@ -214,6 +214,51 @@ class Trust(unittest.TestCase):
         self.assertEqual(protocol.parse_verdict(comments)["status"], protocol.TAINTED)
 
 
+class DurableRevision(unittest.TestCase):
+    def issue(self, text="A", revision=None, editor="author"):
+        return dict(body=text, createdAt="created", lastEditedAt="edited" if revision else None,
+                    author=dict(login="author"), userContentEdits=dict(nodes=[
+                        dict(id=revision, editor=dict(login=editor))] if revision else []))
+
+    def test_skipped_foreign_edits_and_reordered_taint_cannot_accept_restored_body(self):
+        accepted = protocol.snapshot_revision(self.issue())
+        # Neither foreign-edit workflow runs. GitHub retains the current edit
+        # identity even when the original bytes are restored before relabeling.
+        protocol.snapshot_revision(self.issue("B", "edit-B", "foreign"))
+        restored = self.issue("A", "edit-restored", "foreign")
+        relabel = protocol.snapshot_revision(restored)
+        self.assertNotEqual(accepted[0], relabel[0])
+        self.assertEqual(relabel[1:3], (protocol.KEEP_INVALID, protocol.TAINTED))
+        comments = [dict(user=dict(login=config.get("protocol", "verdictAuthor")),
+                         body=protocol.render_verdict(relabel[2], relabel[0], 4))]
+        # An older taint run is refused, but the relabel already recorded taint.
+        self.assertFalse(protocol.can_record(2, comments))
+        self.assertEqual(protocol.snapshot_revision(restored)[1], protocol.KEEP_INVALID)
+        # A delayed author opening run reads this same authoritative snapshot.
+        self.assertEqual(protocol.snapshot_revision(restored)[1], protocol.KEEP_INVALID)
+        self.assertEqual(protocol.snapshot_revision(self.issue("A", "author-edit"))[1], protocol.JUDGE)
+
+    def test_missing_or_deleted_edit_provenance_fails_closed(self):
+        issue = self.issue(revision="edit", editor="foreign")
+        issue["userContentEdits"]["nodes"][0]["editor"] = None
+        self.assertEqual(protocol.snapshot_revision(issue)[1], protocol.KEEP_INVALID)
+        issue["userContentEdits"]["nodes"] = []
+        self.assertEqual(protocol.snapshot_revision(issue)[1], protocol.KEEP_INVALID)
+
+    def test_final_guard_detects_restoration_even_by_same_editor(self):
+        before = protocol.snapshot_revision(self.issue(revision="first"))
+        after = protocol.snapshot_revision(self.issue(revision="restored"))
+        self.assertNotEqual(before[0], after[0])
+
+    def test_workflow_reads_snapshot_for_decision_and_final_guard(self):
+        with open(os.path.join(ROOT, "templates", ".github", "workflows", "message-check.yml")) as f:
+            workflow = f.read()
+        self.assertIn('got="$(protocol snapshot "$RUNNER_TEMP/revision.json")"', workflow)
+        self.assertIn('now="$(protocol snapshot "$RUNNER_TEMP/revision-now.json")"', workflow)
+        self.assertIn('userContentEdits(last:1){nodes{id editor{login}}}', workflow)
+        self.assertIn("jq -j '.body'", workflow)
+
+
 class Fragment(unittest.TestCase):
     """templates/fragments/message-extract.sh is a thin caller of the Python reader."""
 
@@ -281,6 +326,21 @@ class WorkflowSequence(unittest.TestCase):
                     done = subprocess.run(["bash", "-eu", "-c", script], env=dict(env, RUN_ID=run_id),
                                           capture_output=True, text=True, check=True)
                     self.assertEqual("write-verdict" in done.stdout, allowed)
+
+    def test_snapshot_cli_rejects_foreign_restoration(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "revision.json")
+            def read(issue):
+                with open(path, "w") as f:
+                    json.dump(issue, f)
+                return json.loads(self.cli("snapshot", path))
+            fixture = DurableRevision()
+            accepted = read(fixture.issue())
+            restored = read(fixture.issue("A", "restored", "foreign"))
+            self.assertEqual(accepted["what"], "judge")
+            self.assertEqual((restored["what"], restored["status"]), ("invalid", "tainted"))
+            self.assertNotEqual(accepted["digest"], restored["digest"])
 
     def test_create_foreign_edit_relabel_is_invalid(self):
         import tempfile

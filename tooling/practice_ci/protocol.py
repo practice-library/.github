@@ -241,6 +241,27 @@ def decide(action, actor, author, body_digest, verdict):
     return JUDGE, None, None
 
 
+def snapshot_revision(issue):
+    """Bind a body to GitHub's durable edit identity, even across A -> B -> A.
+
+    Missing edit provenance fails closed. Do not infer authorship from the actor
+    of a label event or from a workflow run that may never have executed.
+    """
+    edits = issue["userContentEdits"]["nodes"]
+    edit = edits[-1] if edits else None
+    revision = edit["id"] if edit else issue["createdAt"]
+    fingerprint = digest(json.dumps([issue["body"], revision, issue["lastEditedAt"]],
+                                    ensure_ascii=True).encode("utf-8"))
+    author = issue["author"]["login"]
+    if issue["lastEditedAt"] is None:
+        actor = author
+    else:
+        actor = (edit.get("editor") or {}).get("login") if edit else None
+    if actor != author:
+        return fingerprint, KEEP_INVALID, TAINTED, "its current revision has no author edit provenance; the author resubmits by editing it"
+    return fingerprint, JUDGE, None, None
+
+
 def read_body(path):
     """The body bytes in a file, or None when it cannot be read."""
     try:
@@ -259,6 +280,10 @@ def main(argv):
     cmd, args = argv[0], argv[1:]
     if cmd == "extract":
         print(extract_file(args[0]))
+    elif cmd == "snapshot":
+        with open(args[0], encoding="utf-8") as f:
+            fingerprint, what, status, reason = snapshot_revision(json.load(f))
+        print(json.dumps(dict(digest=fingerprint, what=what, status=status, reason=reason)))
     elif cmd == "digest":
         with open(args[0], "rb") as f:
             print(digest(f.read()))
