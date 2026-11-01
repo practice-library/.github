@@ -209,7 +209,7 @@
       "email": "selftest@example.invalid"
     },
     "unitDir": "selftest/unit",
-    "libDir": "selftest/lib",
+    "libDir": "templates/fragments",
     "mutantsDir": "selftest/mutants",
     "parseErrorPatterns": [
       "compile error",
