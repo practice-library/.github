@@ -29,6 +29,8 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # The tooling at this workflow's own commit; the pull request's code is never checked out.
+      #@include self-checkout.yml
       - name: Decide
         id: decide
         shell: bash
@@ -45,7 +47,6 @@ jobs:
           MAX: @@automerge.maxListedFiles@@
         run: |
           set -euo pipefail
-          #@include automerge-decide.sh
           [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
           # The allowlist is read from the base commit, never from the pull request.
           if body="$(gh api "repos/$REPO/contents/$PATHS_FILE?ref=$BASE" --jq '.content' 2> "$RUNNER_TEMP/paths.err")"; then
@@ -57,10 +58,14 @@ jobs:
           fi
           export ALLOW
           FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | {filename, previous_filename}' | jq -sc '.')"
-          export FILES
-          decision="$(main)"
-          echo "$decision"
-          echo "decision=${decision%% *}" >> "$GITHUB_OUTPUT"
+          export FILES AUTHOR TRUSTED CHANGED MAX DRAFT
+          # No caller tree: the decision reads only the API answers above.
+          decided="$RUNNER_TEMP/decision.json"
+          "$PRACTICE_CI" fragment automerge-decide --root "$RUNNER_TEMP" --result "$decided" --keep-going
+          case "$(jq -r '.reason' "$decided")" in
+            automerge-decide.on) echo "decision=on" >> "$GITHUB_OUTPUT" ;;
+            *) echo "decision=off" >> "$GITHUB_OUTPUT" ;;
+          esac
       - name: Apply (off unless the decision was on, also when deciding failed)
         if: always()
         shell: bash

@@ -25,25 +25,43 @@ jobs:
           persist-credentials: false
       - name: Generated files match policy/constants.json
         run: bash @@render.script@@ --check
+      - uses: @@actions.setupPython.repo@@@@@actions.setupPython.sha@@ # @@actions.setupPython.version@@
+        with:
+          python-version: @@tooling.pythonVersion@@
+      - name: Values the policy owns are not written out (policy-literals lint)
+        run: |
+          set -euo pipefail
+          @@tooling.launcher@@ version --require-policy-python
+          @@tooling.launcher@@ lint
 
   unit:
     name: unit
     runs-on: @@runner.image@@
     # Every unit case and every mutant of every library: longer than the other jobs.
-    timeout-minutes: 20
+    timeout-minutes: @@runner.unitTimeoutMinutes@@
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
           # The denylist canary reads the author of a past merge commit from history.
           fetch-depth: 0
           persist-credentials: false
+      - uses: @@actions.setupPython.repo@@@@@actions.setupPython.sha@@ # @@actions.setupPython.version@@
+        with:
+          python-version: @@tooling.pythonVersion@@
       - name: Every script is executable in a fresh clone
+        env:
+          LAUNCHER: @@tooling.launcher@@
         run: |
           set -euo pipefail
-          bad="$(git ls-files -s -- ':(glob)scripts/*.sh' ':(glob)selftest/*.sh' | awk '$1 != "100755" { print $4 }')"
+          bad="$(git ls-files -s -- ':(glob)scripts/*.sh' ':(glob)selftest/*.sh' "$LAUNCHER" | awk '$1 != "100755" { print $4 }')"
           [ -z "$bad" ] || { echo "::error::not executable (chmod +x, then git add): $bad"; exit 1; }
+      - name: The tooling package's own tests
+        run: |
+          set -euo pipefail
+          @@tooling.launcher@@ version --require-policy-python
+          python3 -I -m unittest discover -s @@tooling.package@@/../tests -t @@tooling.package@@/.. -v
       #@fetch yq
-      - name: Unit cases for the logic the workflows embed
+      - name: Unit cases, run against the fragments themselves
         env:
           YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: bash @@self.unitScript@@
@@ -60,7 +78,7 @@ jobs:
           TIGHTEN: '@@json:guards.tighteningPairs@@'
         run: |
           set -euo pipefail
-          source @@selftest.libDir@@/schema-loosening.sh
+          source @@render.fragmentsDir@@/schema-loosening.sh
           data=selftest/unit/schema-loosening/data
           got="$(OLD_FILE="$data/node-v2.0.0.json" NEW_FILE="$data/node-v2.1.0.json" main)"
           want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum","properties/attrs/properties/basis"]'
@@ -75,12 +93,12 @@ jobs:
           shipped="$(jq -r '.[].sha256' <<<"$TIGHTEN" | sort)"
           [ "$fixtures" = "$shipped" ] || { echo "::error::the shipped tightening list and the reviewed fixture pairs differ"; exit 1; }
           echo "shipped tightenings: $(wc -l <<<"$shipped" | tr -d ' '), each a fixture pair"
-      - name: Every library has mutants, and each mutant turns a case red
+      - name: The denylist guard on a simulated maintainer merge
+        run: bash @@self.denylistCanary@@
+      - name: Every mutant, on an isolated copy, turns a test red for a reason
         env:
           YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: bash @@self.mutantsScript@@
-      - name: The denylist step on a simulated maintainer merge
-        run: bash @@self.denylistCanary@@
 
   denylist:
     permissions:

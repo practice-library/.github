@@ -3,7 +3,10 @@
 #   @@json:a.b@@              any constant, as compact JSON
 #   <indent>#@fetch <tool>    fragments/fetch.yml for tools.<tool> (or helpers.<tool>), indented
 #   <indent>#@expect <tool>   fragments/expect.yml for tools.<tool>, indented
-#   <indent>#@include <file>  fragments/<file> as it is, indented
+#   <indent>#@include <file>  fragments/<file>, its own #@ lines expanded the same way, indented. A workflow
+#                             includes only the bootstrap it needs before its tooling is checked out
+#                             (fragments/self-checkout.yml); everything else runs from that checkout.
+#                             A published artifact (spec/ratchet/reconcile.sh) may include its library.
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
 #   #@gen with.<check id>     the with: lines for that checks row, every input and optional input from matrix (consumer kit)
 #   @@gen:needs@@             the gate's needs: static self jobs, then each check and its self-test
@@ -29,7 +32,7 @@ def expand:
   gsub("(?<ind>[ ]*)#@(?<f>[a-z]+) (?<t>[A-Za-z0-9_.-]+)";
     . as $m
     | if $m.f == "gen" then $m.ind + "#@gen " + $m.t
-      elif $m.f == "include" then ($frags[$m.t] // error("missing fragment: " + $m.t)) | indent($m.ind)
+      elif $m.f == "include" then ($frags[$m.t] // error("missing fragment: " + $m.t)) | expand | indent($m.ind)
       else ($frags[$m.f + ".yml"] // error("missing fragment: " + $m.f + ".yml"))
         | gsub("@@toolname@@"; $m.t)
         | (if ($c[0].tools // {} | has($m.t)) then "tools." else "helpers." end) as $kind

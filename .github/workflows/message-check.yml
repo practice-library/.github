@@ -29,6 +29,89 @@ jobs:
       contents: read
       issues: write
     steps:
+      # Checks out this repository's tooling at the commit that defines the running job, beside the caller's
+      # checkout, and makes PRACTICE_CI (the launcher) and CALLER_ROOT available to the later steps.
+      # job.workflow_repository and job.workflow_sha exist on GitHub.com only; both are judged before checkout,
+      # since an empty repository or ref would make checkout pick the caller or its default branch.
+      - name: The workflow's own repository and commit
+        shell: bash
+        env:
+          WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          # main: judges the identity of the workflow that defines the running job, before anything is checked
+          # out with it. Prints "ok <repository>@<sha>" when both are usable, otherwise "invalid <why>". Nothing
+          # is defaulted: actions/checkout reads an empty repository as the caller and an empty ref as the default
+          # branch, so an empty or malformed identity must stop the job here instead of selecting other code.
+          #   WORKFLOW_REPOSITORY  job.workflow_repository: owner/name
+          #   WORKFLOW_SHA         job.workflow_sha: the full commit, 40 lower-case hex characters
+          main() {
+            local repo="${WORKFLOW_REPOSITORY:-}" sha="${WORKFLOW_SHA:-}"
+            if [ -z "$repo" ]; then echo "invalid job.workflow_repository is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$repo" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] || [[ "$repo" == */. ]] || [[ "$repo" == */.. ]]; then
+              echo "invalid job.workflow_repository is not owner/name"; return 0
+            fi
+            if [ -z "$sha" ]; then echo "invalid job.workflow_sha is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then echo "invalid job.workflow_sha is not 40 lower-case hex characters"; return 0; fi
+            echo "ok $repo@$sha"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_REPOSITORY@$WORKFLOW_SHA" ] || { echo "::error::${verdict#* }; nothing is checked out"; exit 1; }
+      - name: Check out the tooling at the workflow's own commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: practice-ci
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: The tooling is exactly that commit
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          # main: judges the tooling checkout before anything in it runs. Prints "ok <sha>" when the repository in
+          # TOOLING is at exactly WORKFLOW_SHA and holds the launcher; "mismatch ..." when HEAD is another commit;
+          # "bootstrap ..." when that commit has no launcher (a commit from before the tooling existed: pin a
+          # release that ships it, nothing is fetched from elsewhere); "invalid ..." when TOOLING is no repository.
+          #   TOOLING       the directory the workflow's own commit was checked out into
+          #   WORKFLOW_SHA  job.workflow_sha
+          #   LAUNCHER      the launcher's path inside TOOLING
+          main() {
+            local head
+            if ! head="$(git -C "${TOOLING:-}" rev-parse --verify --quiet HEAD^{commit} 2>/dev/null)"; then
+              echo "invalid ${TOOLING:-(unset)} is not a checked-out repository"; return 0
+            fi
+            if [ "$head" != "${WORKFLOW_SHA:-}" ]; then
+              echo "mismatch the tooling checkout is at $head, not job.workflow_sha ${WORKFLOW_SHA:-(unset)}"; return 0
+            fi
+            if [ -z "${LAUNCHER:-}" ] || [ ! -f "$TOOLING/$LAUNCHER" ]; then
+              echo "bootstrap $head has no ${LAUNCHER:-launcher}: this commit predates the tooling, so pin a release that ships it"; return 0
+            fi
+            echo "ok $head"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_SHA" ] || { echo "::error::${verdict#* }"; exit 1; }
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
+      - name: The tooling's interpreter
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          CALLER: ${{ github.workspace }}/caller
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          "$TOOLING/$LAUNCHER" version
+          { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"
       - name: Is this issue a message?
         id: who
         shell: bash
@@ -37,18 +120,20 @@ jobs:
           LOGIN: ${{ github.event.issue.user.login }}
           APP: ${{ inputs.app-login }}
           LABELS: ${{ toJSON(github.event.issue.labels.*.name) }}
+          KIND_PREFIX: 'kind:'
         run: |
           set -euo pipefail
-          kind="$(jq -r '[.[] | select(startswith("kind:")) | ltrimstr("kind:")] | if length == 1 then .[0] elif length == 0 then "" else "many" end' <<<"$LABELS")"
+          kind="$(jq -r --arg p "$KIND_PREFIX" '[.[] | select(startswith($p)) | ltrimstr($p)] | if length == 1 then .[0] elif length == 0 then "" else "many" end' <<<"$LABELS")"
           trusted=false
           case "$ASSOCIATION" in OWNER|MEMBER) trusted=true ;; esac
           if [ -n "$APP" ] && [ "$LOGIN" = "$APP" ]; then trusted=true; fi
-          if [ -z "$kind" ]; then echo "not a message: no kind:* label"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ -z "$kind" ]; then echo "not a message: no ${KIND_PREFIX}* label"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           { echo "judge=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.who.outputs.judge == 'true'
         with:
+          path: caller
           persist-credentials: false
       - name: Fetch jsonschema 17.2.1, pinned by sha256
         shell: bash
@@ -71,9 +156,11 @@ jobs:
         if: steps.who.outputs.judge == 'true'
         id: judge
         shell: bash
+        working-directory: caller
         env:
           BODY: ${{ github.event.issue.body }}
           KIND: ${{ steps.who.outputs.kind }}
+          KIND_PREFIX: 'kind:'
           LIST: ${{ inputs.denylist }}
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/jsonschema-17.2.1-linux-x86_64/bin/jsonschema
           MESSAGE_SPEC: '{"$schema":"https://json-schema.org/draft/2020-12/schema","$id":"https://github.com/practice-library/.github/spec/protocol/message.schema.json","title":"Protocol v0 message","description":"The one fenced json block of an issue that is a message between two repositories of the organisation. Top-level names follow CloudEvents 1.0 (specversion, id, source, type, time, datacontenttype, data); protocol is an extension attribute. See docs/protocol.md.","type":"object","required":["specversion","id","source","type","protocol","data"],"additionalProperties":false,"properties":{"specversion":{"const":"1.0","description":"The CloudEvents version the field names follow."},"id":{"type":"string","pattern":"^[a-z0-9][a-z0-9._:-]{2,127}$","description":"The stable idempotency key: the sender looks for an open message with this id before creating one."},"source":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The sending repository."},"type":{"enum":["org.practice-library.protocol.v0.request","org.practice-library.protocol.v0.answer","org.practice-library.protocol.v0.status","org.practice-library.protocol.v0.blocked","org.practice-library.protocol.v0.decision","org.practice-library.protocol.v0.proposal"],"description":"The kind of message."},"protocol":{"const":"0","description":"The protocol version; a reader ignores a message of a version it does not know, with a warning."},"time":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$","description":"When the message was written, UTC."},"datacontenttype":{"const":"application/json"},"data":{"type":"object","required":["to"],"additionalProperties":false,"properties":{"to":{"type":"string","pattern":"^https://github\\.com/practice-library/[A-Za-z0-9._-]+$","description":"The receiving repository."},"refs":{"type":"array","maxItems":20,"uniqueItems":true,"items":{"type":"string","pattern":"^[A-Za-z0-9-]+/[A-Za-z0-9._-]+#[1-9][0-9]{0,6}$"},"description":"Related issues and pull requests, as owner/repo#n."},"needs":{"type":"array","maxItems":10,"items":{"type":"string","minLength":1,"maxLength":200},"description":"What the sender needs, one short line each."},"expires":{"type":"string","pattern":"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"}}}},"allOf":[{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.blocked"}},"required":["type"]},"then":{"properties":{"data":{"required":["needs"],"properties":{"needs":{"minItems":1}}}}}},{"if":{"properties":{"type":{"const":"org.practice-library.protocol.v0.decision"}},"required":["type"]},"then":{"properties":{"data":{"required":["refs"],"properties":{"refs":{"minItems":1}}}}}}]}'
@@ -81,268 +168,32 @@ jobs:
           set -uo pipefail
           verdict() { echo "$1"; printf 'reason=%s\n' "$2" >> "$GITHUB_OUTPUT"; exit 0; }
           printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
-          # main: finds the message block in an issue body (docs/protocol.md). The body is untrusted text, read
-          # only as data. Prints one line:
-          #   ok <compact JSON>   exactly one fenced block opened by a line ```json, holding one JSON object
-          #   none ...            no such block: the issue is not a message
-          #   invalid <why>       more than one block, an unclosed block, a body over 65536 bytes, control or
-          #                       bidirectional-override characters in the block, a block that is not one JSON
-          #                       object, an object with a key given twice, or a json block opened by any fence
-          #                       other than exactly ``` at the start of the line (````json, ~~~json, an indented ```json)
-          # Fences follow CommonMark: any other fence (``` or ~~~, three or more, indented by up to three spaces,
-          # with any info string, which for a backtick fence holds no backtick) opens a block that is skipped until
-          # a closing fence of the same character at least as long, so a ```json quoted inside a longer fence is
-          # an example, not the message. A line like ```x``` is inline code, not a fence.
-          #   BODY_FILE  a file holding the issue body
-          main() {
-            [ -r "${BODY_FILE:-}" ] || { echo "invalid cannot read the body"; return 0; }
-            local size found block
-            size="$(wc -c < "$BODY_FILE" | tr -d ' ')"
-            [ "$size" -le 65536 ] || { echo "invalid the body is $size bytes, more than 65536"; return 0; }
-            found="$(jq -Rsr '
-              gsub("\r\n"; "\n") | split("\n")
-              | reduce .[] as $l ({blocks: [], cur: null, other: null, bad: false};
-                  if .other != null then
-                    (.other as $o | if ($l | test("^ {0,3}" + $o + "[ \t]*$")) then .other = null else . end)
-                  elif .cur != null then
-                    (if ($l | test("^ {0,3}```+[ \t]*$")) then .blocks += [.cur | join("\n")] | .cur = null
-                     else .cur += [$l] end)
-                  elif ($l | test("^```json[ \t]*$")) then .cur = []
-                  elif ($l | test("^ {0,3}(`{3,}[^`]*|~{3,}.*)$")) then
-                    ($l | capture("^ {0,3}(?<f>`{3,}|~{3,})(?<info>.*)$")) as $m
-                    | (if ($m.info | test("^[ \t]*json[ \t]*$")) then .bad = true else . end)
-                    | .other = (($m.f[0:1] | if . == "`" then "`" else "~" end) as $c
-                                | "\($c){\($m.f | length),}")
-                  else . end)
-              | if .bad then "invalid a json block must open with exactly ```json"
-                elif .cur != null then "invalid a ```json block is not closed"
-                elif (.blocks | length) == 0 then "none no ```json block"
-                elif (.blocks | length) > 1 then "invalid \(.blocks | length) ```json blocks; a message has one"
-                elif (.blocks[0] | test("[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]")) then "invalid a control character in the block"
-                elif (.blocks[0] | test("[\u200e\u200f\u202a-\u202e\u2066-\u2069]")) then "invalid a bidirectional-override character in the block"
-                else "block " + (.blocks[0] | @base64) end' "$BODY_FILE")"
-            [ "${found%% *}" = block ] || { echo "$found"; return 0; }
-            block="$(printf '%s' "${found#block }" | jq -Rr '@base64d')"
-            jq -se 'length == 1 and (.[0] | type) == "object"' <<<"$block" > /dev/null 2>&1 \
-              || { echo "invalid the block is not one JSON object"; return 0; }
-            # A key given twice: jq keeps one of the values, so the block is read again by a parser that is handed
-            # every key of every object, at any depth, whatever the values are.
-            local keys
-            keys="$(python3 -I -c '
-          import json, sys
-          class Twice(Exception):
-              pass
-          def pairs(ps):
-              seen = set()
-              for k, _ in ps:
-                  if k in seen:
-                      raise Twice()
-                  seen.add(k)
-              return dict(ps)
-          try:
-              json.loads(sys.stdin.read(), object_pairs_hook=pairs)
-          except Twice:
-              print("twice")
-          except Exception:
-              print("unread")
-          else:
-              print("once")' <<<"$block")" || keys=unread
-            case "$keys" in
-              once) ;;
-              twice) echo "invalid a key is given twice in the block"; return 0 ;;
-              *) echo "invalid the block could not be read for keys given twice"; return 0 ;;
-            esac
-            echo "ok $(jq -c . <<<"$block")"
-          }
           BODY_FILE="$RUNNER_TEMP/body.md"; export BODY_FILE
-          got="$(main)"
-          case "$got" in
-            ok*) printf '%s\n' "${got#ok }" > "$RUNNER_TEMP/message.json" ;;
-            none*) verdict "$got" "it has a kind:* label but no \`\`\`json message block" ;;
-            *) verdict "$got" "its message block is not usable: ${got#invalid }" ;;
+          got="$RUNNER_TEMP/extract.json"
+          "$PRACTICE_CI" fragment message-extract --root "$CALLER_ROOT" --result "$got" --keep-going > /dev/null \
+            || verdict "message-extract could not run" "its message block could not be read"
+          case "$(jq -r '.reason' "$got")" in
+            message-extract.ok) jq -r '.detail' "$got" > "$RUNNER_TEMP/message.json" ;;
+            message-extract.none) verdict "$(jq -r '.message' "$got")" "it has a ${KIND_PREFIX}* label but no \`\`\`json message block" ;;
+            *) verdict "$(jq -r '.message' "$got")" "its message block is not usable: $(jq -r '.detail' "$got")" ;;
           esac
-          [ "$KIND" != many ] || verdict "more than one kind:* label" "it carries more than one kind:* label"
+          [ "$KIND" != many ] || verdict "more than one ${KIND_PREFIX}* label" "it carries more than one ${KIND_PREFIX}* label"
           printf '%s' "$MESSAGE_SPEC" > "$RUNNER_TEMP/message.schema.json"
           rc=0; "$JSONSCHEMA" validate "$RUNNER_TEMP/message.schema.json" "$RUNNER_TEMP/message.json" || rc=$?
           [ "$rc" -eq 0 ] || verdict "schema exit $rc" "its message block does not match spec/protocol/message.schema.json (the run log says where)"
           type="$(jq -r '.type' "$RUNNER_TEMP/message.json")"
-          [ "${type##*.}" = "$KIND" ] || verdict "type ${type##*.} against label kind:$KIND" "its type does not agree with its kind:* label"
-          unset -f main
-          # collect: prints "<where><TAB><text>" for every added line, added path, and commit message, author name
-          # and committer name of the change MB..HEAD in the current repository. A name is printed with the where
-          # "author <sha>" or "committer <sha>" by a git log of its own, so no message line can pose as a name.
-          # Each git read goes to a file first and any failed read makes collect fail, so a change that cannot be
-          # read is never judged clean. The content diff is taken with --no-renames, so a moved file's every line
-          # is read at its new path (a rename out of an exempt tree carries nothing past the guard), and with
-          # --text and --no-textconv, so no
-          # .gitattributes in the change (-diff, binary, a diff driver) can hide a line. Words inside compressed
-          # binary files (images, archives) are not visible as text.
-          # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
-          # added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config;
-          # git ends the header with a tab when the path holds a space, and that tab is dropped.
-          # EVENT is the GitHub event. On push, the author name of a merge commit is not judged: a merge made in
-          # the browser is authored by whoever pressed merge. Its message and committer are judged like any other.
-          # On any other event, or when EVENT is unset, every author name is judged.
-          collect() {
-            local skip=() buf
-            if [ "${EVENT:-}" = push ]; then skip=(--no-merges); fi
-            buf="$(mktemp)" || return 1
-            git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --no-renames --unified=0 "$MB" "$HEAD" > "$buf" \
-              || { rm -f "$buf"; return 1; }
-            awk '
-              /^diff --git / { hdr = 1; next }
-              hdr && /^\+\+\+ / { f = substr($0, 5); sub(/\t$/, "", f); next }
-              /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-              !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }' "$buf"
-            # An added path is reported by its place in the list, since the path may hold the term.
-            git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            awk '{ print "added path " NR "\t" $0 }' "$buf"
-            git log ${skip[@]+"${skip[@]}"} --format='author %H%x09%an' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            cat "$buf"
-            git log --format='committer %H%x09%cn' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            cat "$buf"
-            # Each commit is one NUL-ended record, "<sha>\n<message>", so no line of a message can pose as the
-            # start of the next commit: the whole message is payload.
-            git log -z --format='%H%n%B' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            local rec sha line
-            while IFS= read -r -d '' rec; do
-              sha="${rec%%$'\n'*}"
-              [ "$rec" = "$sha" ] && continue
-              while IFS= read -r line || [ -n "$line" ]; do
-                printf 'commit %s\t%s\n' "$sha" "$line"
-              done <<<"${rec#*$'\n'}"
-            done < "$buf"
-            rm -f "$buf"
-          }
-
-          # main: prints "ok ..." when no line holds a denied term, "found <n> <where>..." when lines do,
-          # "unguarded ..." when there is no list or it is empty, or "invalid ..." when DENY cannot be used.
-          # The term itself is never printed.
-          #   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...], "allowAuthorNames": ["<hex>", ...]}: each
-          #              sha256 entry is 64 lower-case hex characters, sha256(salt + ":" + term), where a term is one word or two adjacent words,
-          #              lower case, words joined by one space; empty when the repository has no list. The optional
-          #              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
-          #              64 lower-case hex characters each; an author or committer name that is one of them is
-          #              not judged. Messages, added lines and added paths are judged whatever the name.
-          #              The optional exemptPaths is a list of {"glob": <path glob>, "terms": [<hex>, ...]}: an added
-          #              line of a file whose path matches a glob is not found for the sha256 entries in terms, or for
-          #              any entry when terms is absent. It applies to added lines only; added paths, messages and
-          #              names are judged as before. A glob is relative to the root: * and ? stay inside one path
-          #              segment, a segment that is exactly ** spans any number of segments, and the first segment
-          #              holds no wildcard, so no glob covers the whole repository. Each line an exemption lets
-          #              through is printed with its glob (the first 20, after the count).
-          #   EVENT      the GitHub event; push leaves merge commits out (see collect)
-          #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
-          # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
-          # together are checked. scripts/denylist-hash.sh lists a two-word term both ways ("ab cd" and "abcd"),
-          # so "Ab Cd", "ab-cd" and "AbCd" all match it.
-          main() {
-            if [ -z "${DENY:-}" ]; then echo "unguarded no denylist: add one (scripts/denylist-hash.sh)"; return 0; fi
-            if [ -z "${TEXT_FILE:-}" ]; then
-              TEXT_FILE="$(mktemp)"
-              collect > "$TEXT_FILE" || { echo "invalid the change could not be read"; return 0; }
-            fi
-            TEXT_FILE="$TEXT_FILE" python3 -I -c '
-          import hashlib, json, os, re, sys
-          try:
-              deny = json.loads(os.environ["DENY"])
-              salt = deny["salt"]
-              terms = deny["sha256"]
-              allow = deny.get("allowAuthorNames", [])
-              assert isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)
-              # Every entry is a digest: an entry no digest can equal would make the list look full and match nothing.
-              assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in terms)
-              assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in allow)
-              hashes = set(terms)
-              allow = set(allow)
-          except Exception:
-              print("invalid the denylist must be {\"salt\": text, \"sha256\": [64 lower-case hex, ...], \"allowAuthorNames\": [64 lower-case hex, ...]}")
-              sys.exit(0)
-          def glob_re(g):
-              segs = g.split("/")
-              out = ""
-              for i, seg in enumerate(segs):
-                  last = i == len(segs) - 1
-                  if seg == "**":
-                      out += ".+" if last else "(?:[^/]+/)*"
-                      continue
-                  out += "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in seg)
-                  if not last:
-                      out += "/"
-              return re.compile(out)
-          exempt = []
-          try:
-              rules = deny.get("exemptPaths", [])
-              assert isinstance(rules, list)
-              for r in rules:
-                  assert isinstance(r, dict) and set(r) <= {"glob", "terms"}
-                  g = r["glob"]
-                  assert isinstance(g, str) and re.fullmatch(r"[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*", g)
-                  segs = g.split("/")
-                  assert not re.search(r"[*?]", segs[0]) and ".." not in segs and "." not in segs
-                  assert all(s == "**" or "**" not in s for s in segs)
-                  t = r.get("terms")
-                  assert t is None or (isinstance(t, list) and t and all(isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in t))
-                  exempt.append((g, glob_re(g), None if t is None else set(t)))
-          except Exception:
-              print("invalid exemptPaths must be [{\"glob\": path glob whose first segment has no wildcard, \"terms\": [hex, ...]}]")
-              sys.exit(0)
-          line_row = re.compile(r"(.+):([0-9]+)")
-          if not hashes:
-              print("unguarded the denylist has no entries")
-              sys.exit(0)
-          def h(term):
-              return hashlib.sha256((salt + ":" + term).encode()).hexdigest()
-          # A name row is exactly "author <id>" or "committer <id>"; a path or a line in a file named "author x"
-          # never is, since its where carries ":<line>" or starts with "added path".
-          name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
-          found = []
-          let_through = []
-          # Rows are split on "\n" only, as collect wrote them: a lone "\r" inside a line or a message must not
-          # start a row whose where the change chose.
-          with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace", newline="\n") as f:
-              for line in f:
-                  where, _, text = line.rstrip("\n").partition("\t")
-                  words = re.findall(r"[a-z0-9]+", text.lower())
-                  if name_row.fullmatch(where) and h(" ".join(words)) in allow:
-                      continue
-                  terms = set(words)
-                  for a, b in zip(words, words[1:]):
-                      terms.add(a + " " + b)
-                      terms.add(a + b)
-                  hit = {h(t) for t in terms} & hashes
-                  if not hit:
-                      continue
-                  m = line_row.fullmatch(where) if exempt else None
-                  if m:
-                      for g, rx, t in exempt:
-                          if rx.fullmatch(m.group(1)) and (t is None or hit <= t):
-                              let_through.append("%s (%s)" % (where, g))
-                              break
-                      else:
-                          found.append(where)
-                  else:
-                      found.append(where)
-          note = ""
-          if let_through:
-              note = "; exempt %d: %s" % (len(let_through), ", ".join(let_through[:20]))
-          if found:
-              seen = list(dict.fromkeys(found))
-              print("found %d %s%s" % (len(found), ", ".join(seen[:20]), note))
-          else:
-              print("ok no denied term in the change" + note)
-          '
-          }
+          [ "${type##*.}" = "$KIND" ] || verdict "type ${type##*.} against label $KIND_PREFIX$KIND" "its type does not agree with its ${KIND_PREFIX}* label"
           DENY=""
           if [ -f "$LIST" ]; then DENY="$(cat "$LIST")"; fi
           awk '{ print "issue body:" NR "\t" $0 }' "$RUNNER_TEMP/body.md" > "$RUNNER_TEMP/text.tsv"
           TEXT_FILE="$RUNNER_TEMP/text.tsv"; export DENY TEXT_FILE
-          scan="$(main)"
-          echo "$scan"
-          case "$scan" in
-            ok*) ;;
-            found*) verdict "$scan" "it holds a denied term (${scan#found })" ;;
-            *) verdict "$scan" "the denylist could not judge it: ${scan%% *}" ;;
+          scan="$RUNNER_TEMP/scan.json"
+          "$PRACTICE_CI" fragment denylist-scan --root "$CALLER_ROOT" --result "$scan" --keep-going \
+            || verdict "denylist-scan could not run" "the denylist could not judge it: error"
+          case "$(jq -r '.reason' "$scan")" in
+            denylist-scan.ok) ;;
+            denylist-scan.found) verdict "$(jq -r '.message' "$scan")" "it holds a denied term ($(jq -r '.detail' "$scan"))" ;;
+            *) verdict "$(jq -r '.message' "$scan")" "the denylist could not judge it: $(jq -r '.reason | ltrimstr("denylist-scan.")' "$scan")" ;;
           esac
           echo "ok a valid protocol v0 message"
       - name: Label and comment
@@ -352,16 +203,17 @@ jobs:
           REASON: ${{ steps.judge.outputs.reason }}
           NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
+          INVALID: 'state:invalid'
           HAS_INVALID: ${{ contains(github.event.issue.labels.*.name, 'state:invalid') }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if [ -z "$REASON" ]; then
-            if [ "$HAS_INVALID" = true ]; then gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/state:invalid" > /dev/null; fi
+            if [ "$HAS_INVALID" = true ]; then gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/$INVALID" > /dev/null; fi
             echo "valid"; exit 0
           fi
           if [ "$HAS_INVALID" != true ]; then
-            gh api -X POST "repos/$REPO/issues/$NUMBER/labels" -f "labels[]=state:invalid" > /dev/null
+            gh api -X POST "repos/$REPO/issues/$NUMBER/labels" -f "labels[]=$INVALID" > /dev/null
             gh api -X POST "repos/$REPO/issues/$NUMBER/comments" -f "body=This issue is not a valid protocol v0 message: $REASON. See docs/protocol.md in practice-library/.github." > /dev/null
           fi
           echo "::error::invalid message: $REASON"; exit 1

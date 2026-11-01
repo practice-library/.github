@@ -30,6 +30,90 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # The tooling at this workflow's own commit; the pull request's code is never checked out.
+      # Checks out this repository's tooling at the commit that defines the running job, beside the caller's
+      # checkout, and makes PRACTICE_CI (the launcher) and CALLER_ROOT available to the later steps.
+      # job.workflow_repository and job.workflow_sha exist on GitHub.com only; both are judged before checkout,
+      # since an empty repository or ref would make checkout pick the caller or its default branch.
+      - name: The workflow's own repository and commit
+        shell: bash
+        env:
+          WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          # main: judges the identity of the workflow that defines the running job, before anything is checked
+          # out with it. Prints "ok <repository>@<sha>" when both are usable, otherwise "invalid <why>". Nothing
+          # is defaulted: actions/checkout reads an empty repository as the caller and an empty ref as the default
+          # branch, so an empty or malformed identity must stop the job here instead of selecting other code.
+          #   WORKFLOW_REPOSITORY  job.workflow_repository: owner/name
+          #   WORKFLOW_SHA         job.workflow_sha: the full commit, 40 lower-case hex characters
+          main() {
+            local repo="${WORKFLOW_REPOSITORY:-}" sha="${WORKFLOW_SHA:-}"
+            if [ -z "$repo" ]; then echo "invalid job.workflow_repository is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$repo" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] || [[ "$repo" == */. ]] || [[ "$repo" == */.. ]]; then
+              echo "invalid job.workflow_repository is not owner/name"; return 0
+            fi
+            if [ -z "$sha" ]; then echo "invalid job.workflow_sha is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then echo "invalid job.workflow_sha is not 40 lower-case hex characters"; return 0; fi
+            echo "ok $repo@$sha"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_REPOSITORY@$WORKFLOW_SHA" ] || { echo "::error::${verdict#* }; nothing is checked out"; exit 1; }
+      - name: Check out the tooling at the workflow's own commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: practice-ci
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: The tooling is exactly that commit
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          # main: judges the tooling checkout before anything in it runs. Prints "ok <sha>" when the repository in
+          # TOOLING is at exactly WORKFLOW_SHA and holds the launcher; "mismatch ..." when HEAD is another commit;
+          # "bootstrap ..." when that commit has no launcher (a commit from before the tooling existed: pin a
+          # release that ships it, nothing is fetched from elsewhere); "invalid ..." when TOOLING is no repository.
+          #   TOOLING       the directory the workflow's own commit was checked out into
+          #   WORKFLOW_SHA  job.workflow_sha
+          #   LAUNCHER      the launcher's path inside TOOLING
+          main() {
+            local head
+            if ! head="$(git -C "${TOOLING:-}" rev-parse --verify --quiet HEAD^{commit} 2>/dev/null)"; then
+              echo "invalid ${TOOLING:-(unset)} is not a checked-out repository"; return 0
+            fi
+            if [ "$head" != "${WORKFLOW_SHA:-}" ]; then
+              echo "mismatch the tooling checkout is at $head, not job.workflow_sha ${WORKFLOW_SHA:-(unset)}"; return 0
+            fi
+            if [ -z "${LAUNCHER:-}" ] || [ ! -f "$TOOLING/$LAUNCHER" ]; then
+              echo "bootstrap $head has no ${LAUNCHER:-launcher}: this commit predates the tooling, so pin a release that ships it"; return 0
+            fi
+            echo "ok $head"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_SHA" ] || { echo "::error::${verdict#* }"; exit 1; }
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
+      - name: The tooling's interpreter
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          CALLER: ${{ github.workspace }}/caller
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          "$TOOLING/$LAUNCHER" version
+          { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"
       - name: Decide
         id: decide
         shell: bash
@@ -46,34 +130,6 @@ jobs:
           MAX: 3000
         run: |
           set -euo pipefail
-          # main: decides whether auto-merge may be on for a pull request. Prints "on ..." or "off <reason>".
-          # It is on only when every condition holds; anything unknown or unexpected keeps it off.
-          #   AUTHOR   the pull request author's login        TRUSTED  JSON array of trusted logins
-          #   ALLOW    JSON array of allowlisted paths; an entry ending in / covers everything under it
-          #   FILES    JSON array of {filename, previous_filename} from the pull request files API
-          #   CHANGED  the pull request's changed_files count  MAX      the most files that API lists
-          #   DRAFT    true when the pull request is a draft
-          main() {
-            local trusted listed outside
-            if [ "${DRAFT:-}" != false ]; then echo "off the pull request is a draft, or its draft state is unknown"; return 0; fi
-            if ! trusted="$(jq -n --arg a "$AUTHOR" --argjson t "$TRUSTED" 'any($t[]; . == $a)' 2>/dev/null)"; then
-              echo "off the trusted list is not a JSON array"; return 0
-            fi
-            if [ "$trusted" != true ]; then echo "off the author is not on the trusted list"; return 0; fi
-            if ! listed="$(jq 'length' <<<"$FILES" 2>/dev/null)"; then echo "off the file list is not readable"; return 0; fi
-            if ! [[ "$CHANGED" =~ ^[0-9]+$ ]] || ! [[ "$MAX" =~ ^[0-9]+$ ]]; then echo "off the changed or maximum file count is not a number"; return 0; fi
-            if [ "$listed" -ge "$MAX" ]; then echo "off the file list may be cut off: $listed listed, the API lists at most $MAX"; return 0; fi
-            if [ "$listed" -lt "$CHANGED" ]; then echo "off only $listed of $CHANGED changed files were listed"; return 0; fi
-            if [ "$listed" -eq 0 ]; then echo "off no changed file was listed"; return 0; fi
-            if ! outside="$(jq -c --argjson allow "$ALLOW" '
-                [.[] | .filename, (.previous_filename // empty)] | unique
-                | map(select(. as $f | any($allow[]; . as $p
-                    | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end) | not))' <<<"$FILES" 2>/dev/null)"; then
-              echo "off the allowlist or file list is not valid JSON"; return 0
-            fi
-            if [ "$outside" != "[]" ]; then echo "off paths outside the allowlist: $outside"; return 0; fi
-            echo "on every changed path, old and new, is on the allowlist"
-          }
           [ -n "$PR" ] || { echo "::error::not a pull request event"; exit 1; }
           # The allowlist is read from the base commit, never from the pull request.
           if body="$(gh api "repos/$REPO/contents/$PATHS_FILE?ref=$BASE" --jq '.content' 2> "$RUNNER_TEMP/paths.err")"; then
@@ -85,10 +141,14 @@ jobs:
           fi
           export ALLOW
           FILES="$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[] | {filename, previous_filename}' | jq -sc '.')"
-          export FILES
-          decision="$(main)"
-          echo "$decision"
-          echo "decision=${decision%% *}" >> "$GITHUB_OUTPUT"
+          export FILES AUTHOR TRUSTED CHANGED MAX DRAFT
+          # No caller tree: the decision reads only the API answers above.
+          decided="$RUNNER_TEMP/decision.json"
+          "$PRACTICE_CI" fragment automerge-decide --root "$RUNNER_TEMP" --result "$decided" --keep-going
+          case "$(jq -r '.reason' "$decided")" in
+            automerge-decide.on) echo "decision=on" >> "$GITHUB_OUTPUT" ;;
+            *) echo "decision=off" >> "$GITHUB_OUTPUT" ;;
+          esac
       - name: Apply (off unless the decision was on, also when deciding failed)
         if: always()
         shell: bash

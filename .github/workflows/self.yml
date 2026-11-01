@@ -26,6 +26,14 @@ jobs:
           persist-credentials: false
       - name: Generated files match policy/constants.json
         run: bash scripts/render.sh --check
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
+      - name: Values the policy owns are not written out (policy-literals lint)
+        run: |
+          set -euo pipefail
+          tooling/practice-ci version --require-policy-python
+          tooling/practice-ci lint
 
   unit:
     name: unit
@@ -38,11 +46,21 @@ jobs:
           # The denylist canary reads the author of a past merge commit from history.
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
       - name: Every script is executable in a fresh clone
+        env:
+          LAUNCHER: tooling/practice-ci
         run: |
           set -euo pipefail
-          bad="$(git ls-files -s -- ':(glob)scripts/*.sh' ':(glob)selftest/*.sh' | awk '$1 != "100755" { print $4 }')"
+          bad="$(git ls-files -s -- ':(glob)scripts/*.sh' ':(glob)selftest/*.sh' "$LAUNCHER" | awk '$1 != "100755" { print $4 }')"
           [ -z "$bad" ] || { echo "::error::not executable (chmod +x, then git add): $bad"; exit 1; }
+      - name: The tooling package's own tests
+        run: |
+          set -euo pipefail
+          tooling/practice-ci version --require-policy-python
+          python3 -I -m unittest discover -s tooling/practice_ci/../tests -t tooling/practice_ci/.. -v
       - name: Fetch yq 4.44.3, pinned by sha256
         shell: bash
         env:
@@ -60,7 +78,7 @@ jobs:
             zip) unzip -q "$dir/archive" -d "$dir" ;;
             *) echo "::error::unknown archive type $TOOL_ARCHIVE"; exit 1 ;;
           esac
-      - name: Unit cases for the logic the workflows embed
+      - name: Unit cases, run against the fragments themselves
         env:
           YQ: ${{ runner.temp }}/tools/yq/yq_linux_amd64
         run: bash scripts/unit.sh
@@ -77,7 +95,7 @@ jobs:
           TIGHTEN: '[{"sha256":"7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e","why":"v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"},{"sha256":"b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983","why":"v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z"},{"sha256":"ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d","why":"v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"}]'
         run: |
           set -euo pipefail
-          source selftest/lib/schema-loosening.sh
+          source templates/fragments/schema-loosening.sh
           data=selftest/unit/schema-loosening/data
           got="$(OLD_FILE="$data/node-v2.0.0.json" NEW_FILE="$data/node-v2.1.0.json" main)"
           want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum","properties/attrs/properties/basis"]'
@@ -92,12 +110,12 @@ jobs:
           shipped="$(jq -r '.[].sha256' <<<"$TIGHTEN" | sort)"
           [ "$fixtures" = "$shipped" ] || { echo "::error::the shipped tightening list and the reviewed fixture pairs differ"; exit 1; }
           echo "shipped tightenings: $(wc -l <<<"$shipped" | tr -d ' '), each a fixture pair"
-      - name: Every library has mutants, and each mutant turns a case red
+      - name: The denylist guard on a simulated maintainer merge
+        run: bash scripts/denylist-canary.sh
+      - name: Every mutant, on an isolated copy, turns a test red for a reason
         env:
           YQ: ${{ runner.temp }}/tools/yq/yq_linux_amd64
         run: bash scripts/mutants.sh
-      - name: The denylist step on a simulated maintainer merge
-        run: bash scripts/denylist-canary.sh
 
   denylist:
     permissions:

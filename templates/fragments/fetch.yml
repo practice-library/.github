@@ -8,7 +8,7 @@
     set -euo pipefail
     dir="$RUNNER_TEMP/tools/@@toolname@@"
     mkdir -p "$dir"
-    curl -fsSL --retry 3 "$TOOL_URL" -o "$dir/archive"
+    curl -fsSL --retry @@fetch.retries@@ "$TOOL_URL" -o "$dir/archive"
     echo "$TOOL_SHA256  $dir/archive" | sha256sum -c -
     case "$TOOL_ARCHIVE" in
       tar.gz) tar -xzf "$dir/archive" -C "$dir" ;;

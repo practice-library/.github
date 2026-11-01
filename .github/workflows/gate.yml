@@ -15,74 +15,116 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      # Checks out this repository's tooling at the commit that defines the running job, beside the caller's
+      # checkout, and makes PRACTICE_CI (the launcher) and CALLER_ROOT available to the later steps.
+      # job.workflow_repository and job.workflow_sha exist on GitHub.com only; both are judged before checkout,
+      # since an empty repository or ref would make checkout pick the caller or its default branch.
+      - name: The workflow's own repository and commit
+        shell: bash
+        env:
+          WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          # main: judges the identity of the workflow that defines the running job, before anything is checked
+          # out with it. Prints "ok <repository>@<sha>" when both are usable, otherwise "invalid <why>". Nothing
+          # is defaulted: actions/checkout reads an empty repository as the caller and an empty ref as the default
+          # branch, so an empty or malformed identity must stop the job here instead of selecting other code.
+          #   WORKFLOW_REPOSITORY  job.workflow_repository: owner/name
+          #   WORKFLOW_SHA         job.workflow_sha: the full commit, 40 lower-case hex characters
+          main() {
+            local repo="${WORKFLOW_REPOSITORY:-}" sha="${WORKFLOW_SHA:-}"
+            if [ -z "$repo" ]; then echo "invalid job.workflow_repository is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$repo" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] || [[ "$repo" == */. ]] || [[ "$repo" == */.. ]]; then
+              echo "invalid job.workflow_repository is not owner/name"; return 0
+            fi
+            if [ -z "$sha" ]; then echo "invalid job.workflow_sha is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then echo "invalid job.workflow_sha is not 40 lower-case hex characters"; return 0; fi
+            echo "ok $repo@$sha"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_REPOSITORY@$WORKFLOW_SHA" ] || { echo "::error::${verdict#* }; nothing is checked out"; exit 1; }
+      - name: Check out the tooling at the workflow's own commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: practice-ci
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: The tooling is exactly that commit
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          # main: judges the tooling checkout before anything in it runs. Prints "ok <sha>" when the repository in
+          # TOOLING is at exactly WORKFLOW_SHA and holds the launcher; "mismatch ..." when HEAD is another commit;
+          # "bootstrap ..." when that commit has no launcher (a commit from before the tooling existed: pin a
+          # release that ships it, nothing is fetched from elsewhere); "invalid ..." when TOOLING is no repository.
+          #   TOOLING       the directory the workflow's own commit was checked out into
+          #   WORKFLOW_SHA  job.workflow_sha
+          #   LAUNCHER      the launcher's path inside TOOLING
+          main() {
+            local head
+            if ! head="$(git -C "${TOOLING:-}" rev-parse --verify --quiet HEAD^{commit} 2>/dev/null)"; then
+              echo "invalid ${TOOLING:-(unset)} is not a checked-out repository"; return 0
+            fi
+            if [ "$head" != "${WORKFLOW_SHA:-}" ]; then
+              echo "mismatch the tooling checkout is at $head, not job.workflow_sha ${WORKFLOW_SHA:-(unset)}"; return 0
+            fi
+            if [ -z "${LAUNCHER:-}" ] || [ ! -f "$TOOLING/$LAUNCHER" ]; then
+              echo "bootstrap $head has no ${LAUNCHER:-launcher}: this commit predates the tooling, so pin a release that ships it"; return 0
+            fi
+            echo "ok $head"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_SHA" ] || { echo "::error::${verdict#* }"; exit 1; }
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
+      - name: The tooling's interpreter
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          CALLER: ${{ github.workspace }}/caller
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          "$TOOLING/$LAUNCHER" version
+          { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          path: caller
           persist-credentials: false
           sparse-checkout: |
             .github
             docs
       - name: The needs are exactly the jobs in .github/required-checks.json
         shell: bash
+        working-directory: caller
         env:
           NEEDS: ${{ inputs.needs }}
           FILE: .github/required-checks.json
           MANDATORY: '["leak-scan","denylist","removed-paths","release-note","schema-loosening"]'
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the job ids in REQUIRED (the jobs array of the repository's required-checks
-          # file) are exactly the keys of NEEDS (the caller's toJSON(needs)) and include every id in MANDATORY;
-          # otherwise "missing ...", "unlisted ..." or "invalid ...". The caller fails unless the first word is ok.
-          main() {
-            local missing unlisted absent
-            if ! jq -en --argjson r "$REQUIRED" '($r | type) == "array" and ($r | length) > 0 and all($r[]; type == "string")' > /dev/null 2>&1; then
-              echo "invalid the required-checks file must list job ids in a non-empty jobs array"; return 0
-            fi
-            if ! jq -en --argjson n "$NEEDS" '($n | type) == "object"' > /dev/null 2>&1; then
-              echo "invalid needs must be the caller's toJSON(needs)"; return 0
-            fi
-            missing="$(jq -cn --argjson n "$NEEDS" --argjson r "$REQUIRED" '$r - ($n | keys)')"
-            unlisted="$(jq -cn --argjson n "$NEEDS" --argjson r "$REQUIRED" '($n | keys) - $r')"
-            absent="$(jq -cn --argjson r "$REQUIRED" --argjson m "$MANDATORY" '$m - $r')"
-            if [ "$absent" != "[]" ]; then echo "missing jobs every repository must run: $absent"; return 0; fi
-            if [ "$missing" != "[]" ]; then echo "missing listed in the required-checks file but not in needs: $missing"; return 0; fi
-            if [ "$unlisted" != "[]" ]; then echo "unlisted in needs but not in the required-checks file: $unlisted"; return 0; fi
-            echo "ok the needs are exactly the required-checks file"
-          }
           [ -f "$FILE" ] || { echo "::error::$FILE is missing"; exit 1; }
           REQUIRED="$(jq -c '.jobs' "$FILE")"
-          export REQUIRED
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ]
+          export REQUIRED NEEDS MANDATORY
+          "$PRACTICE_CI" fragment gate-required --root "$CALLER_ROOT"
       - name: CODEOWNERS owns no path in .github/automerge-paths.json
         shell: bash
+        working-directory: caller
         env:
           PATHS_FILE: .github/automerge-paths.json
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when no auto-merge allowlist path (ALLOW, a JSON array; an entry ending in /
-          # covers everything under it) is owned in the CODEOWNERS text (CODEOWNERS); otherwise "owned [...]",
-          # or "unsupported <pattern>" for a pattern this check cannot judge (only *, /path and /path/ are
-          # understood). The last matching line wins, as in GitHub.
-          main() {
-            jq -nr --arg text "$CODEOWNERS" --argjson allow "$ALLOW" '
-              def norm: ltrimstr("/");
-              [ $text | split("\n")[] | sub("#.*$"; "") | gsub("^\\s+|\\s+$"; "") | select(length > 0)
-                | [splits("\\s+")] | {pattern: .[0], owners: .[1:]} ] as $lines
-              | ([ $lines[] | select((.pattern == "*" or (.pattern | test("^/[^*?\\[\\]!]+$"))) | not) | .pattern ] | first) as $bad
-              | if $bad != null then "unsupported \($bad)"
-                else
-                  [ $allow[] as $a
-                    | ([ $lines | to_entries[]
-                         | .value.pattern as $p | ($p | norm) as $q
-                         | select($p == "*" or $a == $q or ($a | startswith(($q | rtrimstr("/")) + "/"))
-                                  or (($a | endswith("/")) and ($q | startswith($a)))) ]
-                       | last) as $hit
-                    | select($hit != null and ($hit.value.owners | length) > 0)
-                    | $a ]
-                  | if length == 0 then "ok no allowlisted path has an owner" else "owned \(tojson)" end
-                end'
-          }
           ALLOW='[]'
           if [ -f "$PATHS_FILE" ]; then ALLOW="$(jq -c '.paths' "$PATHS_FILE")"; fi
           CODEOWNERS=""
@@ -90,9 +132,7 @@ jobs:
             if [ -f "$f" ]; then CODEOWNERS="$(cat "$f")"; break; fi
           done
           export ALLOW CODEOWNERS
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ]
+          "$PRACTICE_CI" fragment codeowners-allow --root "$CALLER_ROOT"
       - name: Fetch yq 4.44.3, pinned by sha256
         shell: bash
         env:
@@ -112,50 +152,16 @@ jobs:
           esac
       - name: Every practice-library workflow or action is pinned to a commit, not a branch
         shell: bash
+        working-directory: caller
         env:
-          ROOT: .
           ORG: practice-library
           YQ: ${{ runner.temp }}/tools/yq/yq_linux_amd64
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when every uses: in ROOT/.github/workflows/*.yml or *.yaml that names a workflow
-          # or action of ORG is pinned to a full commit (40 lower-case hex characters), otherwise
-          # "unpinned [<file>:<line> <ref>, ...]". A branch or a tag can move, so either is refused; a uses: of
-          # another owner, a local ./ path or a docker:// image is not judged. The owner is compared without case.
-          # Each file is parsed as YAML (yq, with every alias and merge key that names an alias expanded first), so a uses: written as
-          # a quoted key, a flow mapping, a block scalar or an alias is judged like any other. The uses: GitHub reads
-          # are judged: jobs.<id>.uses and jobs.<id>.steps[].uses. A file that does not parse prints "invalid".
-          #   ROOT  the checked-out repository     ORG  the organisation whose references must be pinned
-          #   YQ    the yq (mikefarah, v4) binary, default yq
-          main() {
-            local dir="${ROOT:-.}/.github/workflows" yq="${YQ:-yq}" files=() f found="" uses one
-            [ -n "${ORG:-}" ] || { echo "invalid ORG is empty"; return 0; }
-            [ -d "$dir" ] || { echo "ok no workflows"; return 0; }
-            for f in "$dir"/*.yml "$dir"/*.yaml; do [ -f "$f" ] && files+=("$f"); done
-            [ "${#files[@]}" -gt 0 ] || { echo "ok no workflows"; return 0; }
-            command -v "$yq" > /dev/null 2>&1 || { echo "invalid no yq to read the workflows"; return 0; }
-            for f in "${files[@]}"; do
-              uses="$("$yq" -o=json 'explode(.) | [.jobs // {} | to_entries[]
-                  | ((.value.uses | select(. != null)), (.value.steps // [] | .[] | .uses | select(. != null)))
-                  | {"line": line, "v": .}]' "$f" 2>/dev/null)" \
-                || { echo "invalid ${f#"${ROOT:-.}/"} is not YAML"; return 0; }
-              one="$(jq -sr --arg org "$(printf '%s' "$ORG" | tr '[:upper:]' '[:lower:]')" --arg f "${f#"${ROOT:-.}/"}" '
-                  (add // []) | .[]
-                  | (.v | tostring | gsub("^\\s+|\\s+$"; "")) as $v
-                  | ($v | split("/")[0] | ascii_downcase) as $owner
-                  | select($owner == $org and ($v | contains("/")))
-                  | (if ($v | contains("@")) then ($v | sub("^.*@"; "")) else "(none)" end) as $ref
-                  | select($ref | test("^[0-9a-f]{40}$") | not)
-                  | "\($f):\(.line) \($ref)"' <<<"$uses")" || { echo "invalid ${f#"${ROOT:-.}/"} could not be judged"; return 0; }
-              [ -n "$one" ] && found="$found$one"$'\n'
-            done
-            if [ -z "$found" ]; then echo "ok every $ORG reference is pinned to a commit"; return 0; fi
-            echo "unpinned $(printf '%s' "$found" | jq -Rsc 'split("\n") | map(select(length > 0))')"
-          }
+          ROOT="$CALLER_ROOT"
           export ROOT ORG
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ] || { echo "::error::$result: pin the full commit SHA of a release, with the tag as a comment (ADOPTING.md)"; exit 1; }
+          "$PRACTICE_CI" fragment pin-check --root "$CALLER_ROOT" \
+            || { echo "::error::pin the full commit SHA of a release, with the tag as a comment (ADOPTING.md)"; exit 1; }
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
           jobs: ${{ inputs.needs }}

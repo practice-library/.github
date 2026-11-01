@@ -23,22 +23,23 @@ jobs:
     outputs:
       targets: ${{ steps.list.outputs.targets }}
     steps:
+      #@include self-checkout.yml
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
+          path: @@tooling.callerPath@@
           persist-credentials: false
       - name: Targets
         id: list
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           CHECK: ${{ inputs.check }}
           CHECKS: '@@json:checks@@'
         run: |
           set -euo pipefail
-          #@include discover-targets.sh
           ROW="$(jq -c --arg id "$CHECK" '.[] | select(.id == $id)' <<<"$CHECKS")"
           [ -n "$ROW" ] || { echo "::error::unknown check $CHECK; known: $(jq -c '[.[].id]' <<<"$CHECKS")"; exit 1; }
           export ROW
-          result="$(main)"
-          [ "${result%% *}" = ok ] || { echo "::error::${result#* }"; exit 1; }
-          echo "${result#ok }"
-          echo "targets=${result#ok }" >> "$GITHUB_OUTPUT"
+          found="$RUNNER_TEMP/targets.json"
+          "$PRACTICE_CI" fragment discover-targets --root "$CALLER_ROOT" --result "$found"
+          echo "targets=$(jq -r '.detail' "$found")" >> "$GITHUB_OUTPUT"

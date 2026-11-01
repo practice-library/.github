@@ -61,13 +61,16 @@ jobs:
       contents: read
       pull-requests: read
     steps:
+      #@include self-checkout.yml
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
+          path: @@tooling.callerPath@@
           fetch-depth: 0
           persist-credentials: false
       - name: The change to check
         id: range
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           GUARD: ${{ inputs.guard }}
           GUARDS: '@@gen:guardidsjson@@'
@@ -93,6 +96,7 @@ jobs:
       - name: denylist
         if: inputs.guard == 'denylist'
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           NONE: ${{ steps.range.outputs.none }}
           BASE: ${{ steps.range.outputs.base }}
@@ -108,101 +112,30 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          #@include denylist-scan.sh
-          if [ "$NONE" = true ]; then
-            # Nothing to compare, but a repository whose list is missing, empty or unreadable is still
-            # unguarded: main checks the list against no text at all.
-            echo "Nothing to compare; checking $LIST only."
-            DENY=""
-            if git cat-file -e "HEAD:$LIST" 2>/dev/null; then DENY="$(git cat-file blob "HEAD:$LIST")"; fi
-            TEXT_FILE=/dev/null
-            export DENY TEXT_FILE
-            result="$(main)"
-            echo "$result"
-            [ "${result%% *}" = ok ]
-            exit
-          fi
-          # The list comes from the base commit, so a change cannot edit the list it is checked against.
-          # Only when the base has none and the change adds it is the change's own list used, without
-          # its exemptions: an exemption never applies to the change that adds it.
-          DENY=""; BASE_LIST=""; HEAD_LIST=""
-          if git cat-file -e "$BASE:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$BASE:$LIST")"; fi
-          if git cat-file -e "$HEAD:$LIST" 2>/dev/null; then HEAD_LIST="$(git cat-file blob "$HEAD:$LIST")"; fi
-          if [ -n "$BASE_LIST" ]; then
-            DENY="$BASE_LIST"
-          elif [ -n "$HEAD_LIST" ]; then
-            echo "$LIST is new in this change; it is checked with that list, without its exemptions."
-            DENY="$(jq -c 'if type == "object" then del(.exemptPaths) else . end' <<<"$HEAD_LIST" 2>/dev/null)" \
-              || { echo "::error file=$LIST::$LIST is not JSON"; exit 1; }
-          fi
-          unset TEXT_FILE
-          export DENY MB HEAD EVENT
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ]
-          # The list the change leaves behind is the one the next change is judged with, so it must be
-          # usable and not empty: an entry that is not a digest would match nothing.
-          if [ -n "$HEAD_LIST" ] && [ "$HEAD_LIST" != "$BASE_LIST" ]; then
-            next="$(DENY="$HEAD_LIST" TEXT_FILE=/dev/null main)"
-            [ "${next%% *}" = ok ] || { echo "::error file=$LIST::the list this change writes cannot be used: $next"; exit 1; }
-          elif [ -z "$HEAD_LIST" ]; then
-            # Deleting the list leaves the next change unguarded. Judged against the merge base, so a list
-            # the base gained after the change branched is not counted as deleted by it.
-            MB_HAD=""
-            if git cat-file -e "$MB:$LIST" 2>/dev/null; then MB_HAD="$(git cat-file blob "$MB:$LIST")"; fi
-            [ -z "$MB_HAD" ] || { echo "::error file=$LIST::this change deletes $LIST, so the next change would be unguarded"; exit 1; }
-          fi
-          # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
-          #@include denylist-exempt.sh
-          # Widening is judged against the base as it is now, since that is what the merge lands on: an entry
-          # the base dropped after the change branched would come back with it.
-          export BASE_LIST HEAD_LIST
-          widened="$(main)"
-          echo "$widened"
-          case "$widened" in
-            ok*) exit 0 ;;
-            widened*) ;;
-            *) echo "::error file=$LIST::$widened"; exit 1 ;;
-          esac
-          if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
-          verdict="$(main)"
-          case "$verdict" in
-            ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
-            missing*)
-              MB_LIST=""
-              if git cat-file -e "$MB:$LIST" 2>/dev/null; then MB_LIST="$(git cat-file blob "$MB:$LIST")"; fi
-              if [ "$MB_LIST" != "$BASE_LIST" ]; then
-                echo "$LIST changed on the base after this change branched; if the change does not mean to add an exemption, merge the base in."
-              fi
-              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
-            *) echo "::error::${verdict#refused }"; exit 1 ;;
-          esac
+          # Which list judges the change, the scan, the list the change leaves behind and the approval of
+          # an added or widened exemption: tooling/practice_ci/denylist.py.
+          "$PRACTICE_CI" guard denylist --root "$CALLER_ROOT"
 
       - name: removed-paths
         if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
           HISTORY: ${{ inputs.history }}
         run: |
           set -euo pipefail
-          #@include removed-refs.sh
           DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
-          ROOT="$GITHUB_WORKSPACE"
+          # The caller's tree only: the tooling checkout beside it is never scanned.
+          ROOT="$CALLER_ROOT"
           export DELETED ROOT HISTORY
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ]
+          "$PRACTICE_CI" fragment removed-refs --root "$CALLER_ROOT"
 
       - name: release-note
         if: inputs.guard == 'release-note' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -211,17 +144,15 @@ jobs:
           MARKER: '@@guards.noReleaseMarker@@'
         run: |
           set -euo pipefail
-          #@include release-note.sh
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
           export CHANGED MESSAGES MB HEAD
-          result="$(main)"
-          echo "$result"
-          [ "${result%% *}" = ok ]
+          "$PRACTICE_CI" fragment release-note --root "$CALLER_ROOT"
 
       - name: schema-loosening
         if: inputs.guard == 'schema-loosening' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -235,7 +166,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          #@include schema-loosening.sh
+          one="$RUNNER_TEMP/schema-loosening.json"
           loose="[]"
           while IFS=$'\t' read -r status old new; do
             new="${new:-$old}"
@@ -245,32 +176,30 @@ jobs:
             if [ "$status" = D ]; then NEW_FILE=""
             else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
             export OLD_FILE NEW_FILE
-            result="$(main)"
-            echo "$new: $result"
-            case "$result" in
-              ok*|skip*) ;;
-              loose*) loose="$(jq -c --arg f "$new" --argjson p "${result#loose }" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
-              *) echo "::error file=$new::$result"; exit 1 ;;
+            echo "$new:"
+            "$PRACTICE_CI" fragment schema-loosening --root "$CALLER_ROOT" --result "$one" --keep-going
+            case "$(jq -r '.reason' "$one")" in
+              schema-loosening.ok|schema-loosening.skip) ;;
+              schema-loosening.loose) loose="$(jq -c --arg f "$new" --argjson p "$(jq -r '.detail' "$one")" '. + [$p[] | $f + "#/" + .]' <<<"$loose")" ;;
+              *) echo "::error file=$new::$(jq -r '.message' "$one")"; exit 1 ;;
             esac
           done < <(git diff --name-status -M --diff-filter=MRD --no-ext-diff "$MB" "$HEAD" -- '*.json' | sed -E 's/^R[0-9]*/R/')
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
-          verdict="$(main)"
-          case "$verdict" in
-            ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
-            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          export LABEL LABELS AUTHOR NUMBER REPO
+          verdict="$RUNNER_TEMP/approval.json"
+          "$PRACTICE_CI" approval --root "$CALLER_ROOT" --result "$verdict" --keep-going
+          case "$(jq -r '.reason' "$verdict")" in
+            label-approval.ok) echo "ok loosening accepted: $(jq -r '.detail' "$verdict")" ;;
+            label-approval.missing) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::$(jq -r '.message' "$verdict")"; exit 1 ;;
           esac
 
       - name: size
         if: inputs.guard == 'size' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: @@tooling.callerPath@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -284,25 +213,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          #@include size-count.sh
           export LIMIT FIXTURES MB HEAD
-          result="$(main)"
-          echo "$result"
-          case "$result" in
-            ok*) exit 0 ;;
-            over*) ;;
-            *) echo "::error::$result"; exit 1 ;;
+          counted="$RUNNER_TEMP/size.json"
+          "$PRACTICE_CI" fragment size-count --root "$CALLER_ROOT" --result "$counted" --keep-going
+          case "$(jq -r '.reason' "$counted")" in
+            size-count.ok) exit 0 ;;
+            size-count.over) ;;
+            *) echo "::error::$(jq -r '.message' "$counted")"; exit 1 ;;
           esac
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
-          unset -f main
-          #@include label-approval.sh
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
-          verdict="$(main)"
-          case "$verdict" in
-            ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::${result#over }; or a maintainer adds the label $LABEL"; exit 1 ;;
-            *) echo "::error::${verdict#refused }"; exit 1 ;;
+          export LABEL LABELS AUTHOR NUMBER REPO
+          verdict="$RUNNER_TEMP/approval.json"
+          "$PRACTICE_CI" approval --root "$CALLER_ROOT" --result "$verdict" --keep-going
+          case "$(jq -r '.reason' "$verdict")" in
+            label-approval.ok) echo "ok larger pull request accepted: $(jq -r '.detail' "$verdict")" ;;
+            label-approval.missing) echo "::error::$(jq -r '.detail' "$counted"); or a maintainer adds the label $LABEL"; exit 1 ;;
+            *) echo "::error::$(jq -r '.message' "$verdict")"; exit 1 ;;
           esac

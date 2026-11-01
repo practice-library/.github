@@ -1,0 +1,49 @@
+# Checks out this repository's tooling at the commit that defines the running job, beside the caller's
+# checkout, and makes PRACTICE_CI (the launcher) and CALLER_ROOT available to the later steps.
+# job.workflow_repository and job.workflow_sha exist on GitHub.com only; both are judged before checkout,
+# since an empty repository or ref would make checkout pick the caller or its default branch.
+- name: The workflow's own repository and commit
+  shell: bash
+  env:
+    WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+    WORKFLOW_SHA: ${{ job.workflow_sha }}
+  run: |
+    set -euo pipefail
+    #@include tool-identity.sh
+    verdict="$(main)"
+    echo "$verdict"
+    [ "$verdict" = "ok $WORKFLOW_REPOSITORY@$WORKFLOW_SHA" ] || { echo "::error::${verdict#* }; nothing is checked out"; exit 1; }
+- name: Check out the tooling at the workflow's own commit
+  uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+  with:
+    repository: ${{ job.workflow_repository }}
+    ref: ${{ job.workflow_sha }}
+    path: @@tooling.checkoutPath@@
+    persist-credentials: false
+    submodules: false
+    lfs: false
+- name: The tooling is exactly that commit
+  shell: bash
+  env:
+    TOOLING: ${{ github.workspace }}/@@tooling.checkoutPath@@
+    WORKFLOW_SHA: ${{ job.workflow_sha }}
+    LAUNCHER: @@tooling.launcher@@
+  run: |
+    set -euo pipefail
+    #@include tool-checkout.sh
+    verdict="$(main)"
+    echo "$verdict"
+    [ "$verdict" = "ok $WORKFLOW_SHA" ] || { echo "::error::${verdict#* }"; exit 1; }
+- uses: @@actions.setupPython.repo@@@@@actions.setupPython.sha@@ # @@actions.setupPython.version@@
+  with:
+    python-version: @@tooling.pythonVersion@@
+- name: The tooling's interpreter
+  shell: bash
+  env:
+    TOOLING: ${{ github.workspace }}/@@tooling.checkoutPath@@
+    CALLER: ${{ github.workspace }}/@@tooling.callerPath@@
+    LAUNCHER: @@tooling.launcher@@
+  run: |
+    set -euo pipefail
+    "$TOOLING/$LAUNCHER" version
+    { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"

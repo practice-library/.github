@@ -47,8 +47,92 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
+      # Checks out this repository's tooling at the commit that defines the running job, beside the caller's
+      # checkout, and makes PRACTICE_CI (the launcher) and CALLER_ROOT available to the later steps.
+      # job.workflow_repository and job.workflow_sha exist on GitHub.com only; both are judged before checkout,
+      # since an empty repository or ref would make checkout pick the caller or its default branch.
+      - name: The workflow's own repository and commit
+        shell: bash
+        env:
+          WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          # main: judges the identity of the workflow that defines the running job, before anything is checked
+          # out with it. Prints "ok <repository>@<sha>" when both are usable, otherwise "invalid <why>". Nothing
+          # is defaulted: actions/checkout reads an empty repository as the caller and an empty ref as the default
+          # branch, so an empty or malformed identity must stop the job here instead of selecting other code.
+          #   WORKFLOW_REPOSITORY  job.workflow_repository: owner/name
+          #   WORKFLOW_SHA         job.workflow_sha: the full commit, 40 lower-case hex characters
+          main() {
+            local repo="${WORKFLOW_REPOSITORY:-}" sha="${WORKFLOW_SHA:-}"
+            if [ -z "$repo" ]; then echo "invalid job.workflow_repository is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$repo" =~ ^[A-Za-z0-9-]+/[A-Za-z0-9._-]+$ ]] || [[ "$repo" == */. ]] || [[ "$repo" == */.. ]]; then
+              echo "invalid job.workflow_repository is not owner/name"; return 0
+            fi
+            if [ -z "$sha" ]; then echo "invalid job.workflow_sha is empty (this needs GitHub.com)"; return 0; fi
+            if ! [[ "$sha" =~ ^[0-9a-f]{40}$ ]]; then echo "invalid job.workflow_sha is not 40 lower-case hex characters"; return 0; fi
+            echo "ok $repo@$sha"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_REPOSITORY@$WORKFLOW_SHA" ] || { echo "::error::${verdict#* }; nothing is checked out"; exit 1; }
+      - name: Check out the tooling at the workflow's own commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          path: practice-ci
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: The tooling is exactly that commit
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          # main: judges the tooling checkout before anything in it runs. Prints "ok <sha>" when the repository in
+          # TOOLING is at exactly WORKFLOW_SHA and holds the launcher; "mismatch ..." when HEAD is another commit;
+          # "bootstrap ..." when that commit has no launcher (a commit from before the tooling existed: pin a
+          # release that ships it, nothing is fetched from elsewhere); "invalid ..." when TOOLING is no repository.
+          #   TOOLING       the directory the workflow's own commit was checked out into
+          #   WORKFLOW_SHA  job.workflow_sha
+          #   LAUNCHER      the launcher's path inside TOOLING
+          main() {
+            local head
+            if ! head="$(git -C "${TOOLING:-}" rev-parse --verify --quiet HEAD^{commit} 2>/dev/null)"; then
+              echo "invalid ${TOOLING:-(unset)} is not a checked-out repository"; return 0
+            fi
+            if [ "$head" != "${WORKFLOW_SHA:-}" ]; then
+              echo "mismatch the tooling checkout is at $head, not job.workflow_sha ${WORKFLOW_SHA:-(unset)}"; return 0
+            fi
+            if [ -z "${LAUNCHER:-}" ] || [ ! -f "$TOOLING/$LAUNCHER" ]; then
+              echo "bootstrap $head has no ${LAUNCHER:-launcher}: this commit predates the tooling, so pin a release that ships it"; return 0
+            fi
+            echo "ok $head"
+          }
+          verdict="$(main)"
+          echo "$verdict"
+          [ "$verdict" = "ok $WORKFLOW_SHA" ] || { echo "::error::${verdict#* }"; exit 1; }
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: 3.12.16
+      - name: The tooling's interpreter
+        shell: bash
+        env:
+          TOOLING: ${{ github.workspace }}/practice-ci
+          CALLER: ${{ github.workspace }}/caller
+          LAUNCHER: tooling/practice-ci
+        run: |
+          set -euo pipefail
+          "$TOOLING/$LAUNCHER" version
+          { echo "PRACTICE_CI=$TOOLING/$LAUNCHER"; echo "CALLER_ROOT=$CALLER"; } >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          path: caller
           persist-credentials: false
       - name: Fetch jsonschema 17.2.1, pinned by sha256
         shell: bash
@@ -70,6 +154,7 @@ jobs:
       - name: Validate
         id: run
         shell: bash
+        working-directory: caller
         env:
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/jsonschema-17.2.1-linux-x86_64/bin/jsonschema
           SCHEMA: ${{ inputs.schema }}
@@ -87,22 +172,8 @@ jobs:
         run: |
           set -uo pipefail
           # The default bash shell runs with -e; capture the exit code instead of letting it end the step.
-          # main: combines per-file exit codes into one. RCS is a space-separated list, FINDING the validator's
-          # finding exit code. Prints "pass 0" when every file passed, "finding <FINDING>" when every file was
-          # rejected with a finding, and "mixed 1" otherwise (mixed results, another error, or no files), so an
-          # expectation of pass or fail holds only when it holds for each file. The last word is the exit code.
-          main() {
-            local rc all_pass=true all_finding=true n=0
-            for rc in $RCS; do
-              n=$((n + 1))
-              [ "$rc" = 0 ] || all_pass=false
-              [ "$rc" = "$FINDING" ] || all_finding=false
-            done
-            if [ "$n" -eq 0 ]; then echo "mixed 1"; return 0; fi
-            if [ "$all_pass" = true ]; then echo "pass 0"; elif [ "$all_finding" = true ]; then echo "finding $FINDING"; else echo "mixed 1"; fi
-          }
-          base="$GITHUB_WORKSPACE"
-          if [ -n "$FIXTURE" ]; then base="$GITHUB_WORKSPACE/$FIXTURES_DIR/$FIXTURE"; fi
+          base="$CALLER_ROOT"
+          if [ -n "$FIXTURE" ]; then base="$CALLER_ROOT/$FIXTURES_DIR/$FIXTURE"; fi
           # A setup error (any other exit) ends the step red, except in a self-test fixture that expects it.
           finish() { echo "rc=$1" >> "$GITHUB_OUTPUT"; [ "$1" -eq 0 ] || [ "$1" -eq "$FINDING_RC" ] || { [ -n "$FIXTURE" ] && [ "$EXPECT" = error ]; }; exit; }
           lines() { printf '%s\n' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d'; }
@@ -138,9 +209,11 @@ jobs:
                   RCS="$RCS $one"
                 done < <(find "$base/$INSTANCES" -type f -name '*.json' -print0 | sort -z)
                 FINDING="$FINDING_RC"
-                result="$(main)"
-                echo "$result"
-                finish "${result##* }"
+                export RCS FINDING
+                # The combined exit code is each-result's declared payload.
+                combined="$RUNNER_TEMP/each.json"
+                "$PRACTICE_CI" fragment each-result --root "$CALLER_ROOT" --result "$combined" --keep-going || finish 1
+                finish "$(jq -r '.detail' "$combined")"
               fi
               rc=0
               "$JSONSCHEMA" validate "${resolve[@]}" "$base/$SCHEMA" "$base/$INSTANCES" || rc=$?
@@ -176,48 +249,16 @@ jobs:
               }
               baseline="$(judge "$base/$SCHEMA")"
               [ "$baseline" = green ] || { echo "::error::the unmutated schema already gives $baseline; fix the fixtures first"; finish 1; }
-              unset -f main
-              # main: prints the schema in SCHEMA with one mutant applied, as one line of JSON, or "invalid ..." when
-              # the mutant cannot be applied. A mutant names a place by JSON Pointer (RFC 6901: "/a/b", "~1" for "/"
-              # and "~0" for "~"); the place must exist, so a mutant that names nothing is an error, never a pass.
-              #   SCHEMA  a JSON file
-              #   MUTANT  {"pointer": "/...", "mutation": "delete"} removes the place,
-              #           {"pointer": "/...", "mutation": "true"} replaces it with true (a subschema that accepts all),
-              #           {"pointer": "/...", "set": <value>} replaces it with the value
-              main() {
-                local out
-                if ! out="$(jq -c --argjson m "${MUTANT:-null}" '
-                    def tokens:
-                      if (type == "string") and startswith("/") then
-                        .[1:] | split("/")
-                        | map(if test("~([^01]|$)") then error("~ must be written ~0 or ~1") else gsub("~1"; "/") | gsub("~0"; "~") end)
-                      else error("pointer must start with /") end;
-                    . as $doc
-                    | ($m | if type == "object" and (.pointer | type) == "string" then . else error("mutant must be an object with a pointer") end)
-                    | ($m.pointer | tokens) as $t
-                    | (reduce $t[] as $k ({path: [], ok: true};
-                        if .ok | not then . else
-                          .path as $p | ($doc | getpath($p)) as $here
-                          | if ($here | type) == "object" and ($here | has($k)) then .path += [$k]
-                            elif ($here | type) == "array" and ($k | test("^(0|[1-9][0-9]*)$")) and (($k | tonumber) < ($here | length)) then .path += [$k | tonumber]
-                            else .ok = false end end)) as $r
-                    | if ($r.ok | not) then error("no such place: " + $m.pointer)
-                      elif ($m | has("set")) and ($m | has("mutation")) then error("a mutant has either mutation or set")
-                      elif ($m | has("set")) then $doc | setpath($r.path; $m.set)
-                      elif $m.mutation == "delete" then $doc | delpaths([$r.path])
-                      elif $m.mutation == "true" then $doc | setpath($r.path; true)
-                      else error("mutation must be delete or true, or use set") end' "$SCHEMA" 2>&1)"; then
-                  echo "invalid ${out#jq: error (at *): }"; return 0
-                fi
-                printf '%s\n' "$out"
-              }
               survived=0
               SCHEMA="$base/$SCHEMA"; export SCHEMA
+              applied="$RUNNER_TEMP/mutant-result.json"
               while IFS= read -r MUTANT; do
                 export MUTANT
-                mutated="$(main)"
-                case "$mutated" in invalid*) echo "::error::$MUTANT: ${mutated#invalid }"; finish 1 ;; esac
-                printf '%s\n' "$mutated" > "$RUNNER_TEMP/mutant.json"
+                "$PRACTICE_CI" fragment schema-mutate --root "$CALLER_ROOT" --result "$applied" --keep-going > /dev/null || finish 1
+                case "$(jq -r '.reason' "$applied")" in
+                  schema-mutate.json) jq -r '.detail' "$applied" > "$RUNNER_TEMP/mutant.json" ;;
+                  *) echo "::error::$MUTANT: $(jq -r '.detail' "$applied")"; finish 1 ;;
+                esac
                 verdict="$(judge "$RUNNER_TEMP/mutant.json")"
                 case "$verdict" in
                   red*) echo "caught $MUTANT by ${verdict#red }" ;;
