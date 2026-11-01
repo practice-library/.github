@@ -22,7 +22,7 @@ None of these may appear in a file, a commit (message, author, committer), a bra
 
 - [ ] Credentials of any kind: tokens, keys, passwords, cookies, signed URLs, connection strings, key-store item names that identify a credential.
 - [ ] Names of private repositories, private hosts, private paths or private URLs, and links into them (including issue and pull request numbers of private repositories).
-- [ ] Names of people, accounts, seats, agents, machines or sessions other than this organisation's public automation account and its public maintainers team.
+- [ ] Names of people, accounts, seats, agents, machines or sessions other than this organisation's public automation account, its public maintainers team, and a contributor's own public account as it appears on their own pull request, issue or commit.
 - [ ] Vendor, provider or tooling choices that are not already public in this organisation, and anything about how the work behind these repositories is organised or run.
 - [ ] Customer, tenant or personal data, real or "anonymised", and real identifiers of any record.
 - [ ] Costs, budgets, quotas, usage figures and capacity numbers that are not published by their owner.
@@ -43,7 +43,7 @@ When in doubt, leave it out and ask a maintainer.
 ## 4. Public CI never receives private material
 
 - [ ] A workflow reads only this repository, other public repositories at a pinned commit, and public downloads pinned by checksum.
-- [ ] No secret other than the token GitHub issues to the run is passed to a job, and none is needed by a public check.
+- [ ] No secret other than the token GitHub issues to the run is passed to a job, and none is needed by a public check. The one exception is a reference that exists to prove no secret is readable and must resolve empty, such as the probe in `.github/workflows/canary.yml`.
 - [ ] No step checks out, fetches from or posts to a private repository or host.
 - [ ] Nothing a job prints or uploads (logs, artifacts, caches, job summaries) contains material from section 2. Assume every log is public.
 
@@ -51,7 +51,7 @@ When in doubt, leave it out and ask a maintainer.
 
 1. Treat it as published, whatever happens next. Deleting a comment or force-pushing does not unpublish it.
 2. Revoke and replace any credential at once, before anything else.
-3. Tell the maintainers through a private channel. Do not describe the material in a public issue.
+3. Tell the maintainers privately, through GitHub's private vulnerability reporting ([SECURITY.md](../SECURITY.md)). Do not describe the material in a public issue.
 4. Removing it from history needs a maintainer's decision, because it rewrites published commits.
 5. Add a counter-example or a denylist entry so the guard catches the same kind of material next time, and note the gap in this checklist if the review missed it.
 
