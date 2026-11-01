@@ -22,6 +22,8 @@
     "spec",
     "tagRuleset",
     "release",
+    "pinCheck",
+    "onboarding",
     "guards",
     "helpers"
   ],
@@ -677,12 +679,130 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "tag"
+        "tag",
+        "changelogHeadingPattern"
       ],
       "properties": {
         "tag": {
           "type": "string",
           "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "changelogHeadingPattern": {
+          "description": "Matches a CHANGELOG version heading; group 1 is the tag.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "pinCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxLocalDepth"
+      ],
+      "properties": {
+        "maxLocalDepth": {
+          "description": "How many levels of local composite actions or workflows the pin check follows before it refuses.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 32
+        }
+      }
+    },
+    "onboarding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "label",
+        "repoNamePattern",
+        "refPattern",
+        "pinPattern",
+        "usesPattern",
+        "refPlaceholder",
+        "pinPlaceholder",
+        "refComment",
+        "generatedHeaderPrefix",
+        "consumerDir",
+        "rulesetFile",
+        "codeownersPath",
+        "ghCommand",
+        "maintainerPermissions"
+      ],
+      "properties": {
+        "label": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "color",
+            "description"
+          ],
+          "properties": {
+            "color": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{6}$"
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          }
+        },
+        "repoNamePattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pinPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "usesPattern": {
+          "description": "Finds a uses: of this organisation's workflows in a rendered consumer file; {org} and {repo} are filled in, group 1 is the pinned ref.",
+          "type": "string",
+          "minLength": 1
+        },
+        "refPlaceholder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "pinPlaceholder": {
+          "type": "string",
+          "minLength": 1
+        },
+        "refComment": {
+          "description": "The text, placeholder included, that follows a pin in a consumer template; removed when no label is written.",
+          "type": "string",
+          "minLength": 1
+        },
+        "generatedHeaderPrefix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "consumerDir": {
+          "$ref": "#/$defs/path"
+        },
+        "rulesetFile": {
+          "$ref": "#/$defs/path"
+        },
+        "codeownersPath": {
+          "$ref": "#/$defs/path"
+        },
+        "ghCommand": {
+          "type": "string",
+          "minLength": 1
+        },
+        "maintainerPermissions": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

@@ -219,7 +219,34 @@
     ]
   },
   "release": {
-    "tag": "v2.0.0"
+    "tag": "v3.0.0",
+    "changelogHeadingPattern": "^## (v[0-9]+\\.[0-9]+\\.[0-9]+)\\s*$"
+  },
+  "pinCheck": {
+    "maxLocalDepth": 8
+  },
+  "onboarding": {
+    "label": {
+      "color": "d93f0b",
+      "description": "A maintainer reviewed a loosened JSON schema"
+    },
+    "repoNamePattern": "^[A-Za-z0-9._-]+$",
+    "refPattern": "^[A-Za-z0-9._-]+$",
+    "pinPattern": "^[0-9a-f]{40}$",
+    "usesPattern": "uses:\\s*{org}/{repo}/\\S+@([^\\s#]+)",
+    "refPlaceholder": "__REF__",
+    "pinPlaceholder": "__PIN__",
+    "refComment": " # __REF__",
+    "generatedHeaderPrefix": "# Generated from ",
+    "consumerDir": "consumer",
+    "rulesetFile": "rulesets/main.json",
+    "codeownersPath": ".github/CODEOWNERS",
+    "ghCommand": "gh",
+    "maintainerPermissions": [
+      "push",
+      "maintain",
+      "admin"
+    ]
   },
   "guards": {
     "workflow": "guard.yml",

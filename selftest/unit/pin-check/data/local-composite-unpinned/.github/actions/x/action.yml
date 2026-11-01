@@ -1,0 +1,6 @@
+name: x
+description: a composite action that calls an organisation action by a branch
+runs:
+  using: composite
+  steps:
+    - uses: practice-library/.github/.github/workflows/gate.yml@main
