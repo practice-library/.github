@@ -13,7 +13,7 @@ if [ "${1:-}" = --names ]; then NAMES=1; shift; fi
 # prints are appended to a list the guard can use. \A and \z, since jq's $ also matches before a final newline.
 jq -e 'type == "object" and (.salt | type == "string" and length > 0)
   and (.sha256 | type == "array" and all(.[]; type == "string" and test("\\A[0-9a-f]{64}\\z")))
-  and ((.allowAuthorNames // []) | type == "array" and all(.[]; type == "string" and test("\\A[0-9a-f]{64}\\z")))' "$1" > /dev/null 2>&1 \
+  and ((has("allowAuthorNames") | not) or (.allowAuthorNames | type == "array" and all(.[]; type == "string" and test("\\A[0-9a-f]{64}\\z"))))' "$1" > /dev/null 2>&1 \
   || { echo "denylist-hash.sh: $1 must be {\"salt\": text, \"sha256\": [64 lower-case hex, ...], \"allowAuthorNames\": [64 lower-case hex, ...]}" >&2; exit 2; }
 NAMES="$NAMES" SALT="$(jq -er '.salt' "$1")" python3 -I -c '
 import hashlib, os, re, sys

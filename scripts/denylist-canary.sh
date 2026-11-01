@@ -172,7 +172,7 @@ HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"$(hash quokka)\"]}" scena
 # The hash tool refuses a list that is not digests, so its output is never appended to a broken list.
 # A digest with a final newline is one too: jq's $ matches before it, so the tool anchors with \z.
 for bad in "not-a-digest|\"sha256\":[\"bogus\"]" "digest-newline|\"sha256\":[\"$term\\n\"]" \
-           "name-newline|\"sha256\":[],\"allowAuthorNames\":[\"$term\\n\"]"; do
+           "name-newline|\"sha256\":[],\"allowAuthorNames\":[\"$term\\n\"]" "name-null|\"sha256\":[],\"allowAuthorNames\":null"; do
   printf '%s\n' "{\"salt\":\"$salt\",${bad#*|}}" > "$work/bad.json"
   if printf 'zebracorn\n' | bash "$root/scripts/denylist-hash.sh" "$work/bad.json" > /dev/null 2>&1; then
     echo "FAIL denylist-hash.sh accepted a list that is not digests: ${bad%%|*}"; failed=$((failed + 1))
