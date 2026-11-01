@@ -76,7 +76,12 @@
   },
   {
     "name": "text-flag-dropped",
-    "find": "added=\"$(git diff --text --no-textconv",
-    "replace": "added=\"$(git diff --no-textconv"
+    "find": "added=\"$(git --literal-pathspecs diff --text --no-textconv",
+    "replace": "added=\"$(git --literal-pathspecs diff --no-textconv"
+  },
+  {
+    "name": "pathspec-as-glob",
+    "find": "git --literal-pathspecs diff --text",
+    "replace": "git diff --text"
   }
 ]

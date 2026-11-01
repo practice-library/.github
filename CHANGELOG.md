@@ -6,12 +6,12 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Additive in the surface; several guards refuse more than before (part 1 of #35).
 
-- guard.yml `schema-loosening`: a key added under `properties` or `patternProperties` beside an `additionalProperties` or `unevaluatedProperties` that was `false` is reported as a loosening, as is `unevaluatedProperties: false` made anything else. v2.4.0's `attrs.status` and v2.1.0's `attrs.basis` are the cases this would have reported.
-- message-check.yml: a protocol message whose JSON block gives a key twice is refused. Fences follow CommonMark, so a ```` ```json ```` quoted inside a longer fence is not read as the message, and a block opened with `~~~json` or ```` ````json ```` is refused.
+- guard.yml `schema-loosening`: a key added under a sibling `properties` or `patternProperties` of an `additionalProperties` or `unevaluatedProperties` that was `false` is reported as a loosening (a property added under `allOf`, `then` or `dependentSchemas` beside an `unevaluatedProperties: false` is not yet seen, #35), as is `unevaluatedProperties: false` made anything else. v2.4.0's `attrs.status` and v2.1.0's `attrs.basis` are the cases this would have reported.
+- message-check.yml: a protocol message whose JSON block gives a key twice, at any depth and whatever the values, is refused. Fences are read as CommonMark reads them (three or more backticks or tildes, indented by up to three spaces; a backtick line whose info string holds a backtick is inline code), so a ```` ```json ```` quoted inside another fence is not read as the message, and a json block opened by anything but ```` ```json ```` at the start of a line (`~~~json`, ```` ````json ````, an indented ```` ```json ````) is refused.
 - guard.yml `release-note`: the changelog count is taken inside the guard from the diff. A line moved within the changelog no longer counts, and a content line starting with `++` now does.
 - spec/ratchet/reconcile.sh: `--check <name>` refuses a baseline recorded for another check.
-- guard.yml `size`: a file git treats as binary is recounted from its text diff, so a NUL byte cannot hide lines; a real binary file now counts its newline-separated lines, so a repository adding images may list those folders as fixtures. The fixture entry `"/"` is refused.
-- scripts/mutants.sh: a mutant that leaves its library unparseable is an error, not a caught mutant.
+- guard.yml `size`: a file git treats as binary is recounted from its text diff, whatever its name, so a NUL byte or a `binary` attribute cannot hide lines; a real binary file now counts its newline-separated lines, so a repository adding images may list those folders as fixtures. The fixture entry `"/"` is refused.
+- scripts/mutants.sh: a mutant that leaves its library with a bash syntax error is an error, not a caught mutant. A mutant that breaks a jq or Python program inside a library is not detected this way.
 
 ## v2.4.0
 

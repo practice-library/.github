@@ -1,6 +1,7 @@
 {
-  "expect": "none",
+  "expect": "invalid",
   "env": {
     "BODY_FILE": "selftest/unit/message-extract/data/fence-indented.md"
-  }
+  },
+  "output": "invalid a json block must open with exactly ```json"
 }

@@ -5,10 +5,11 @@
 #   invalid <why>       more than one block, an unclosed block, a body over 65536 bytes, control or
 #                       bidirectional-override characters in the block, a block that is not one JSON
 #                       object, an object with a key given twice, or a json block opened by any fence
-#                       other than exactly ``` (````json, ~~~json)
-# Fences follow CommonMark: any other fence (``` or ~~~, three or more, with any info string) opens a
-# block that is skipped until a closing fence of the same character at least as long, so a ```json
-# quoted inside a longer fence is an example, not the message.
+#                       other than exactly ``` at the start of the line (````json, ~~~json, an indented ```json)
+# Fences follow CommonMark: any other fence (``` or ~~~, three or more, indented by up to three spaces,
+# with any info string, which for a backtick fence holds no backtick) opens a block that is skipped until
+# a closing fence of the same character at least as long, so a ```json quoted inside a longer fence is
+# an example, not the message. A line like ```x``` is inline code, not a fence.
 #   BODY_FILE  a file holding the issue body
 main() {
   [ -r "${BODY_FILE:-}" ] || { echo "invalid cannot read the body"; return 0; }
@@ -19,13 +20,13 @@ main() {
     gsub("\r\n"; "\n") | split("\n")
     | reduce .[] as $l ({blocks: [], cur: null, other: null, bad: false};
         if .other != null then
-          (.other as $o | if ($l | test("^" + $o + "[ \t]*$")) then .other = null else . end)
+          (.other as $o | if ($l | test("^ {0,3}" + $o + "[ \t]*$")) then .other = null else . end)
         elif .cur != null then
-          (if ($l | test("^```+[ \t]*$")) then .blocks += [.cur | join("\n")] | .cur = null
+          (if ($l | test("^ {0,3}```+[ \t]*$")) then .blocks += [.cur | join("\n")] | .cur = null
            else .cur += [$l] end)
         elif ($l | test("^```json[ \t]*$")) then .cur = []
-        elif ($l | test("^(`{3,}|~{3,})")) then
-          ($l | capture("^(?<f>`{3,}|~{3,})(?<info>.*)$")) as $m
+        elif ($l | test("^ {0,3}(`{3,}[^`]*|~{3,}.*)$")) then
+          ($l | capture("^ {0,3}(?<f>`{3,}|~{3,})(?<info>.*)$")) as $m
           | (if ($m.info | test("^[ \t]*json[ \t]*$")) then .bad = true else . end)
           | .other = (($m.f[0:1] | if . == "`" then "`" else "~" end) as $c
                       | "\($c){\($m.f | length),}")
@@ -41,17 +42,32 @@ main() {
   block="$(printf '%s' "${found#block }" | jq -Rr '@base64d')"
   jq -se 'length == 1 and (.[0] | type) == "object"' <<<"$block" > /dev/null 2>&1 \
     || { echo "invalid the block is not one JSON object"; return 0; }
-  # A key given twice: the parsed object keeps only one value, so read the token stream instead. A
-  # repeated leaf path, or any path under an object that has already closed, is a key given twice.
-  jq -en --stream '
-      reduce inputs as $e ({closed: {}, leaves: {}, dup: false};
-        . as $s
-        | if $s.dup then $s
-          elif ($e | length) == 1 then $s | .closed[$e[0][:-1] | tojson] = true
-          else ($e[0]) as $p
-            | if $s.leaves[$p | tojson] or any(range(0; $p | length); $s.closed[$p[:.] | tojson] // false)
-              then $s | .dup = true else $s | .leaves[$p | tojson] = true end
-          end) | .dup | not' <<<"$block" > /dev/null 2>&1 \
-    || { echo "invalid a key is given twice in the block"; return 0; }
+  # A key given twice: jq keeps one of the values, so the block is read again by a parser that is handed
+  # every key of every object, at any depth, whatever the values are.
+  local keys
+  keys="$(python3 -I -c '
+import json, sys
+class Twice(Exception):
+    pass
+def pairs(ps):
+    seen = set()
+    for k, _ in ps:
+        if k in seen:
+            raise Twice()
+        seen.add(k)
+    return dict(ps)
+try:
+    json.loads(sys.stdin.read(), object_pairs_hook=pairs)
+except Twice:
+    print("twice")
+except Exception:
+    print("unread")
+else:
+    print("once")' <<<"$block")" || keys=unread
+  case "$keys" in
+    once) ;;
+    twice) echo "invalid a key is given twice in the block"; return 0 ;;
+    *) echo "invalid the block could not be read for keys given twice"; return 0 ;;
+  esac
   echo "ok $(jq -c . <<<"$block")"
 }

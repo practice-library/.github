@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/inline-code-then-message.md"
+  },
+  "output": "ok {\"a\":1}"
+}

@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/dup-escaped-key.md"
+  },
+  "output": "invalid a key is given twice in the block"
+}

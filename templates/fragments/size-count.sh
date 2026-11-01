@@ -3,9 +3,10 @@
 # they are more, or "invalid ..." when an input cannot be used.
 #   NUMSTAT   output of git diff --numstat -M: "<added><TAB><deleted><TAB><path>", a rename written as
 #             "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>"; a binary file shows "-" and counts 0.
-#             When NUMSTAT is unset, main reads it from git for MB..HEAD and recounts each file git
-#             calls binary from its diff taken with --text (its added newline-separated lines), so
-#             neither a .gitattributes "binary" nor a NUL byte can hide a text file.
+#             When NUMSTAT is unset, main reads it from git for MB..HEAD (with -z, so a path is never
+#             quoted) and recounts each file git calls binary from its diff taken with --text (its added
+#             newline-separated lines), so neither a .gitattributes "binary" nor a NUL byte can hide a
+#             text file, whatever its name.
 #   FIXTURES  JSON array of fixture entries. An entry starting and ending in / is a directory from the
 #             root ("/rulesets/"); any other entry ending in / is a directory anywhere in the path
 #             ("examples/" covers spec/x/examples/a.json); an entry with no / is a file name anywhere
@@ -21,21 +22,25 @@ main() {
   [[ "${LIMIT:-}" =~ ^[0-9]+$ ]] || { echo "invalid LIMIT must be a whole number"; return 0; }
   jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0 and . != "/")' > /dev/null 2>&1 \
     || { echo "invalid FIXTURES must be a JSON array of non-empty strings, not \"/\""; return 0; }
-  local n line path added recount=""
+  local n raw added deleted path old recount=""
   if [ -z "${NUMSTAT+x}" ]; then
-    NUMSTAT="$(git diff --numstat -M --no-ext-diff --no-textconv "$MB" "$HEAD")" \
-      || { echo "invalid the diff could not be read"; return 0; }
-    while IFS= read -r line; do
-      case "$line" in
-        -$'\t'-$'\t'*)
-          path="$(jq -Rr "$SIZE_NEWPATH newpath" <<<"${line#-$'\t'-$'\t'}")"
-          added="$(git diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$path" \
-            | LC_ALL=C awk 'f && /^\+/ { n++ } /^@@/ { f = 1 } END { print n + 0 }')" \
-            || { echo "invalid the diff of $path could not be read"; return 0; }
-          recount="$recount$added"$'\t'0$'\t'"$path"$'\n' ;;
-        *) [ -n "$line" ] && recount="$recount$line"$'\n' ;;
-      esac
-    done <<<"$NUMSTAT"
+    # -z gives every path as it is: without it git quotes a path with non-ASCII bytes, a tab or a quote,
+    # and the quoted name would match no file when the line is recounted.
+    raw="$(mktemp)" || { echo "invalid the diff could not be read"; return 0; }
+    git diff --numstat -z -M --no-ext-diff --no-textconv "$MB" "$HEAD" > "$raw" \
+      || { rm -f "$raw"; echo "invalid the diff could not be read"; return 0; }
+    while IFS=$'\t' read -r -d '' added deleted path; do
+      # A rename is "<added><TAB><deleted><TAB>" followed by the old and the new path.
+      if [ -z "$path" ]; then IFS= read -r -d '' old; IFS= read -r -d '' path; fi
+      if [ "$added" = - ]; then
+        added="$(git --literal-pathspecs diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$path" \
+          | LC_ALL=C awk 'f && /^\+/ { n++ } /^@@/ { f = 1 } END { print n + 0 }')" \
+          || { rm -f "$raw"; echo "invalid the diff of a binary file could not be read"; return 0; }
+        deleted=0
+      fi
+      recount="$recount$added"$'\t'"$deleted"$'\t'"$path"$'\n'
+    done < "$raw"
+    rm -f "$raw"
     NUMSTAT="$recount"
   fi
   if ! n="$(printf '%s\n' "${NUMSTAT:-}" | jq -R --argjson f "$FIXTURES" -n '

@@ -40,29 +40,9 @@
     "replace": "test(\"^```json\")"
   },
   {
-    "name": "dup-keys-allowed",
-    "find": "|| { echo \"invalid a key is given twice in the block\"; return 0; }",
-    "replace": "|| true"
-  },
-  {
-    "name": "closed-objects-ignored",
-    "find": " or any(range(0; $p | length); $s.closed[$p[:.] | tojson] // false)",
-    "replace": ""
-  },
-  {
-    "name": "repeated-leaf-ignored",
-    "find": "if $s.leaves[$p | tojson] or any(",
-    "replace": "if false or any("
-  },
-  {
     "name": "several-values-accepted",
     "find": "jq -se 'length == 1 and (.[0] | type) == \"object\"'",
     "replace": "jq -se '(.[0] | type) == \"object\"'"
-  },
-  {
-    "name": "other-fences-ignored",
-    "find": "elif ($l | test(\"^(`{3,}|~{3,})\")) then",
-    "replace": "elif false then"
   },
   {
     "name": "short-close-accepted",
@@ -80,8 +60,43 @@
     "replace": "split"
   },
   {
+    "name": "dup-keys-allowed",
+    "find": "twice) echo \"invalid a key is given twice in the block\"; return 0 ;;",
+    "replace": "twice) ;;"
+  },
+  {
+    "name": "seen-not-recorded",
+    "find": "        seen.add(k)\n",
+    "replace": "        pass\n"
+  },
+  {
+    "name": "other-fences-ignored",
+    "find": "elif ($l | test(\"^ {0,3}(`{3,}[^`]*|~{3,}.*)$\")) then",
+    "replace": "elif false then"
+  },
+  {
     "name": "exact-close-only",
-    "find": "(if ($l | test(\"^```+[ \\t]*$\"))",
-    "replace": "(if ($l | test(\"^```[ \\t]*$\"))"
+    "find": "(if ($l | test(\"^ {0,3}```+[ \\t]*$\"))",
+    "replace": "(if ($l | test(\"^ {0,3}```[ \\t]*$\"))"
+  },
+  {
+    "name": "backtick-info-allowed",
+    "find": "(`{3,}[^`]*|~{3,}.*)",
+    "replace": "(`{3,}.*|~{3,}.*)"
+  },
+  {
+    "name": "other-close-unindented",
+    "find": "test(\"^ {0,3}\" + $o + \"[ \\t]*$\")",
+    "replace": "test(\"^\" + $o + \"[ \\t]*$\")"
+  },
+  {
+    "name": "other-open-unindented",
+    "find": "elif ($l | test(\"^ {0,3}(`{3,}",
+    "replace": "elif ($l | test(\"^(`{3,}"
+  },
+  {
+    "name": "json-close-unindented",
+    "find": "(if ($l | test(\"^ {0,3}```+[ \\t]*$\"))",
+    "replace": "(if ($l | test(\"^```+[ \\t]*$\"))"
   }
 ]
