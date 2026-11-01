@@ -8,6 +8,16 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 Breaking. There is no backward compatibility: a renamed check or input replaces the old one.
 
+Breaking changes:
+
+- Self-checkout at the pinned SHA: a workflow takes the practice-library tooling from a checkout at the commit it is pinned to, never from a branch or tag.
+- `practice_ci` package: the guards and helpers are one stdlib-only Python package under `tooling/practice_ci`; the shell libraries are thin wrappers over it.
+- Exact-head approvals: an approval counts only for the exact head commit it was given on; a later push needs a new one.
+- Protocol trust: a message is trusted by who sent it under `docs/protocol.md`, not by its text.
+- Removed paths: the label-approval library, fragment and unit cases (`selftest/lib/label-approval.sh`, `templates/fragments/label-approval.sh`, `selftest/unit/label-approval/`), and the plugin-matrix `plan`, `unit` and `merge` jobs, now one `run` job.
+
+Other changes:
+
 - Releases (#52, #66): `release.tag` in `policy/constants.json` is now the release being cut (it stayed at v2.0.0 through v2.6.0). `python3 -m practice_ci.release <tag>` fails unless the intended tag, the top version heading of this changelog and `release.tag` are the same. ADOPTING.md is rewritten: a minor release may enforce more strictly, and every release lists its API changes, enforcement changes, permissions and downloads, and consumer steps.
 - Onboarding (#38, #62): `scripts/onboard.sh` wraps `tooling/practice_ci/onboarding.py`, which reads, renders and validates every file before it makes any API write; a render failure makes none. The `schema-loosening-approved` label colour and description come from `onboarding.label` in the policy.
 - gate.yml pin check (#44): a local `uses: ./path` is followed (a composite action's `action.yml` or `action.yaml`, a local reusable workflow), up to `pinCheck.maxLocalDepth` levels; a `uses:` that is not a string, a local path that leaves the repository or names nothing, and a file that does not parse are refused. The step now says it downloaded yq, from where, and with which sha256.
