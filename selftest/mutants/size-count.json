@@ -83,5 +83,10 @@
     "name": "pathspec-as-glob",
     "find": "git --literal-pathspecs diff --text",
     "replace": "git diff --text"
+  },
+  {
+    "name": "git-paths-rewritten",
+    "find": "if $plain then . else newpath end",
+    "replace": "newpath"
   }
 ]
