@@ -18,13 +18,19 @@ main() {
 #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
 #   a required entry removed; an enum value added; additionalProperties or unevaluatedProperties false
 #   made anything else; a key added under properties or patternProperties beside an additionalProperties
-#   or unevaluatedProperties that was false (the new key accepts what the false refused);
+#   or unevaluatedProperties that was false (the new key accepts what the false refused, as below);
 #   const, pattern or format changed or removed; and, since a change the guard cannot show safe needs the
 #   label: a type set that gains a type or loses its type, any change under not, if, oneOf or contains
-#   (they do not count the normal way), prefixItems added beside a false items or unevaluatedItems, an
-#   allOf, anyOf, then, else or dependentSchemas changed beside unevaluatedProperties: false, a $ref, $dynamicRef or $recursiveRef added, removed or changed, an allOf,
-#   anyOf, prefixItems or list items that changes length, any constraint keyword removed, a subschema
-#   made true or a false one opened, and any other keyword changed (multipleOf, uniqueItems, ...).
+#   (they do not count the normal way); beside an additionalProperties, items, additionalItems,
+#   unevaluatedProperties or unevaluatedItems that is not true, a properties or patternProperties key,
+#   prefixItems or list items added, and beside an unevaluated one an additionalProperties, items,
+#   additionalItems or contains added or an allOf, anyOf, oneOf, if, then, else, dependentSchemas or
+#   dependencies changed (a key whose schema is the old additionalProperties is not counted); a
+#   minContains below 1 added beside contains; a changed $defs or definitions in a file with a reference
+#   and an unevaluated keyword that is not true; a $ref, $dynamicRef or $recursiveRef added,
+#   removed or changed; an allOf, anyOf, prefixItems or list items that changes length; any constraint
+#   keyword removed; a subschema made true or a false one opened; and any other keyword changed
+#   (multipleOf, uniqueItems, ...).
 #   Annotations (title, description, default, examples, $comment, ...) and $defs entries are not judged.
 # A pattern changed to another string is not loose when the pair is listed in TIGHTEN (unset means no
 # list): a JSON array of {"sha256": <64 lower-case hex>, "why": <text>}, each the SHA-256 of the pair
@@ -65,13 +71,6 @@ compare() {
              pair: (if $k == "pattern" and ($ov | type) == "string" and ($nv | type) == "string"
                       and ($refrev | not) and (any($p[]; . as $e | $rev | index([$e])) | not)
                     then [$ov, $nv] else null end)} ]
-        + [ $old | paths(. == false) | select(length > 0 and (.[-1] | IN("additionalProperties", "unevaluatedProperties")))
-            | .[:-1] as $at
-            | ["properties", "patternProperties"][] as $kw
-            | ($old | getpath($at + [$kw]) | if type == "object" then keys else [] end) as $ok
-            | ($new | try getpath($at + [$kw]) catch null | if type == "object" then keys else [] end)[]
-            | select(. as $x | $ok | index([$x]) | not)
-            | {path: ($at + [$kw, .] | map(tostring) | join("/")), pair: null} ]
         # What the rules above cannot show safe is loose. A schema place is the root, a keyword holding one
         # subschema, an entry of a keyword holding a map of them, or an item of one holding a list.
         + ( ["items","additionalItems","unevaluatedItems","contains","propertyNames","additionalProperties",
@@ -118,10 +117,6 @@ compare() {
                         elif $k | IN("not", "if", "oneOf", "contains") then
                           # Not monotonic (contains with maxContains counts matches): any change may accept more.
                           select($o[$k] != $n[$k]) | where($s + [$k])
-                        elif ($k | IN("allOf", "anyOf", "then", "else", "dependentSchemas")) and $o.unevaluatedProperties == false
-                             and $o[$k] != $n[$k] then
-                          # Beside unevaluatedProperties: false, a subschema that evaluates more properties opens the object.
-                          where($s + [$k])
                         elif $k | IN("allOf", "anyOf", "prefixItems") then
                           # A list of subschemas that changed length cannot be compared item by item.
                           select(($o[$k] | type) == "array" and (($n[$k] | type) != "array" or ($n[$k] | length) != ($o[$k] | length)))
@@ -141,12 +136,40 @@ compare() {
                           select($o[$k] != $n[$k]) | where($s + [$k])
                         end )
                   end ),
-              # Items added beside a false items or unevaluatedItems: the new positions accept what the false refused.
+              # Beside a keyword that judges what the others leave (additionalProperties, items, additionalItems,
+              # unevaluatedProperties, unevaluatedItems, unless it is true), a keyword that takes more properties
+              # or items for itself moves them out from under it: what it refused may now pass.
               ( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n
                 | select(($o | type) == "object" and ($n | type) == "object")
-                | select($o.items == false or $o.unevaluatedItems == false)
-                | select(($n.prefixItems | if type == "array" then length else 0 end) > ($o.prefixItems | if type == "array" then length else 0 end))
-                | where($s + ["prefixItems"]) ),
+                | def judges($k): $o | has($k) and .[$k] != true;
+                  def keysof($v): $v | if type == "object" then keys else [] end;
+                  def len($v): $v | if type == "array" then length else -1 end;
+                  def added($k): ($o | has($k) | not) and ($n | has($k));
+                  ( select(judges("additionalProperties") or judges("unevaluatedProperties"))
+                    | ["properties", "patternProperties"][] as $k
+                    | keysof($o[$k]) as $ok | keysof($n[$k])[] | select(. as $x | $ok | index([$x]) | not)
+                    # A key whose schema is the old additionalProperties accepts what it did before.
+                    | select(judges("unevaluatedProperties") or $n[$k][.] != $o.additionalProperties)
+                    | where($s + [$k, .]) ),
+                  ( select(judges("items") or judges("unevaluatedItems"))
+                    | select(len($n.prefixItems) > len($o.prefixItems)) | where($s + ["prefixItems"]) ),
+                  ( select(judges("additionalItems") or judges("unevaluatedItems"))
+                    | select(($n.items | type) == "array" and len($n.items) > len($o.items)) | where($s + ["items"]) ),
+                  ( select(judges("unevaluatedProperties")) | select(added("additionalProperties")) | where($s + ["additionalProperties"]) ),
+                  ( select(judges("unevaluatedItems")) | ["items", "additionalItems", "contains"][] as $k
+                    | select(added($k)) | where($s + [$k]) ),
+                  ( select(judges("unevaluatedProperties") or judges("unevaluatedItems"))
+                    | ["allOf", "anyOf", "oneOf", "if", "then", "else", "dependentSchemas", "dependencies"][] as $k
+                    | select($o[$k] != $n[$k]) | where($s + [$k]) ),
+                  # minContains defaults to 1 beside contains: one added below that accepts an array with no match.
+                  ( select(($o | has("contains")) and added("minContains") and ($n.minContains | type) == "number" and $n.minContains < 1)
+                    | where($s + ["minContains"]) ) ),
+              # A definition a reference reaches can evaluate properties or items for an unevaluated keyword the
+              # guard cannot tie it to, so in a file with both a changed $defs or definitions is loose.
+              ( select(any($old | .. | objects; (has("unevaluatedProperties") and .unevaluatedProperties != true)
+                                                 or (has("unevaluatedItems") and .unevaluatedItems != true)))
+                | select(any($old, $new | paths; .[-1] | IN($refs[])))
+                | ["$defs", "definitions"][] as $k | select(at($old; [$k]) != at($new; [$k])) | where([$k]) ),
               # A reference added, removed or changed: the guard cannot follow it.
               ( ($places + $newplaces | unique)[] as $s
                 | $refs[] as $r

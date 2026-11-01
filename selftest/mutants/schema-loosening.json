@@ -95,19 +95,9 @@
     "replace": "IN(\"$ref\", \"$dynamicRef\")"
   },
   {
-    "name": "added-keys-unchecked",
-    "find": "paths(. == false)",
-    "replace": "paths(. == \"never\")"
-  },
-  {
     "name": "pattern-properties-unchecked",
-    "find": "[\"properties\", \"patternProperties\"][] as $kw",
-    "replace": "[\"properties\"][] as $kw"
-  },
-  {
-    "name": "unevaluated-added-unchecked",
-    "find": "IN(\"additionalProperties\", \"unevaluatedProperties\")))",
-    "replace": "IN(\"additionalProperties\")))"
+    "find": "| [\"properties\", \"patternProperties\"][] as $k",
+    "replace": "| [\"properties\"][] as $k"
   },
   {
     "name": "unevaluated-opened-unchecked",
@@ -126,8 +116,8 @@
   },
   {
     "name": "new-shape-unguarded",
-    "find": "($new | try getpath($at + [$kw]) catch null | if type == \"object\" then keys else [] end)[]",
-    "replace": "($new | getpath($at + [$kw]) | if type == \"object\" then keys else [] end)[]"
+    "find": "def at($t; $p): $t | try getpath($p) catch null;",
+    "replace": "def at($t; $p): $t | getpath($p);"
   },
   {
     "name": "type-gain-ignored",
@@ -200,13 +190,58 @@
     "replace": "elif $k | IN(\"not\", \"if\", \"oneOf\") then"
   },
   {
-    "name": "prefix-beside-false-ignored",
-    "find": "| select($o.items == false or $o.unevaluatedItems == false)",
+    "name": "keys-beside-judge-ignored",
+    "find": "( select(judges(\"additionalProperties\") or judges(\"unevaluatedProperties\"))",
+    "replace": "( select(false)"
+  },
+  {
+    "name": "judge-only-false",
+    "find": "def judges($k): $o | has($k) and .[$k] != true;",
+    "replace": "def judges($k): $o | .[$k] == false;"
+  },
+  {
+    "name": "same-schema-key-counted",
+    "find": "| select(judges(\"unevaluatedProperties\") or $n[$k][.] != $o.additionalProperties)",
+    "replace": "| ."
+  },
+  {
+    "name": "prefix-beside-judge-ignored",
+    "find": "| select(len($n.prefixItems) > len($o.prefixItems))",
     "replace": "| select(false)"
   },
   {
-    "name": "unevaluated-subschemas-ignored",
-    "find": "\"dependentSchemas\")) and $o.unevaluatedProperties == false",
-    "replace": "\"dependentSchemas\")) and false"
+    "name": "items-list-beside-judge-ignored",
+    "find": "| select(($n.items | type) == \"array\" and len($n.items) > len($o.items))",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "additional-beside-uneval-ignored",
+    "find": "select(added(\"additionalProperties\"))",
+    "replace": "select(false)"
+  },
+  {
+    "name": "items-beside-uneval-ignored",
+    "find": "| select(added($k)) | where($s + [$k]) ),",
+    "replace": "| select(false) | where($s + [$k]) ),"
+  },
+  {
+    "name": "applicators-beside-uneval-ignored",
+    "find": "\"dependentSchemas\", \"dependencies\"][] as $k",
+    "replace": "\"dependentSchemas\", \"dependencies\"][] as $k | select(false)"
+  },
+  {
+    "name": "mincontains-added-ignored",
+    "find": "$n.minContains < 1)",
+    "replace": "$n.minContains < 0)"
+  },
+  {
+    "name": "defs-beside-uneval-ignored",
+    "find": "| [\"$defs\", \"definitions\"][] as $k | select(at($old; [$k]) != at($new; [$k]))",
+    "replace": "| [\"$defs\", \"definitions\"][] as $k | select(false)"
+  },
+  {
+    "name": "defs-without-ref",
+    "find": "| select(any($old, $new | paths; .[-1] | IN($refs[])))",
+    "replace": "| ."
   }
 ]

@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"minContains\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-mincontains-zero-added-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-mincontains-zero-added-new.json"
+  }
+}
