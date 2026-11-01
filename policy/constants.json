@@ -221,6 +221,20 @@
   "release": {
     "tag": "v2.0.0"
   },
+  "protocol": {
+    "maxBodyBytes": 65536,
+    "fenceOpen": "```json",
+    "unsafeCategories": [
+      "Cc",
+      "Cf",
+      "Zl",
+      "Zp"
+    ],
+    "verdictAuthor": "github-actions[bot]",
+    "verdictMarker": "protocol-verdict",
+    "toolingDir": "tooling",
+    "toolingCheckout": ".practice-ci"
+  },
   "guards": {
     "workflow": "guard.yml",
     "ids": [
@@ -249,6 +263,10 @@
     ],
     "sizeLabel": "size-approved",
     "tighteningPairs": [
+      {
+        "sha256": "a848fee9389b26eedeb2b9846e13b2972010c2015b0a0c9e420d159914db5c01",
+        "why": "v3.0.0 protocol message time and data.expires: the same time of day and Z, on a real calendar date, with an hour below 24 and a second below 60"
+      },
       {
         "sha256": "7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e",
         "why": "v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"

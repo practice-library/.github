@@ -6,6 +6,11 @@ name: message-check
 # spec/protocol/message.schema.json, whose type agrees with the kind:* label, and the body must hold no
 # denied term. An invalid message gets the label state:invalid and one comment saying why; the author's
 # text is never edited, and no part of it is repeated in the comment.
+# Trust is bound to a revision of the body. A verdict comment, written by the workflow token, holds the
+# sha256 of the body it speaks for. An edit by anyone but the issue's author taints the issue: it stays
+# invalid until the author edits it again, and no later event, a trusted relabel included, rehabilitates
+# it. Before the run acts, it reads the body again and stops if it is no longer the body it judged.
+# The rules live in tooling/practice_ci/protocol.py, read from a checkout of this repository at its release tag.
 on:
   workflow_call:
     inputs:
@@ -27,8 +32,10 @@ jobs:
     permissions:
       contents: read
       issues: write
+    env:
+      PRACTICE_CI_TOOLING: ${{ github.workspace }}/@@protocol.toolingCheckout@@/@@protocol.toolingDir@@
     steps:
-      - name: Is this issue a message?
+      - name: Is this issue from a trusted author?
         id: who
         shell: bash
         env:
@@ -42,20 +49,55 @@ jobs:
           trusted=false
           case "$ASSOCIATION" in OWNER|MEMBER) trusted=true ;; esac
           if [ -n "$APP" ] && [ "$LOGIN" = "$APP" ]; then trusted=true; fi
-          if [ -z "$kind" ]; then echo "not a message: no kind:* label"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "judge=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          { echo "judge=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
+          if [ "$trusted" != true ]; then echo "external signal: read as data, not judged as a message"; echo "trusted=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          { echo "trusted=true"; echo "kind=$kind"; } >> "$GITHUB_OUTPUT"
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        if: steps.who.outputs.judge == 'true'
+        if: steps.who.outputs.trusted == 'true'
         with:
           persist-credentials: false
+      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+        if: steps.who.outputs.trusted == 'true'
+        with:
+          repository: @@org.name@@/@@org.repo@@
+          ref: @@release.tag@@
+          path: @@protocol.toolingCheckout@@
+          persist-credentials: false
+      - name: Whose revision is this body?
+        if: steps.who.outputs.trusted == 'true'
+        id: trust
+        shell: bash
+        env:
+          ACTION: ${{ github.event.action }}
+          BODY_CHANGED: ${{ github.event.changes.body != null }}
+          ACTOR: ${{ github.actor }}
+          AUTHOR: ${{ github.event.issue.user.login }}
+          BODY: ${{ github.event.issue.body }}
+          NUMBER: ${{ github.event.issue.number }}
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          #@include message-extract.sh
+          # An edit that left the body alone (a new title) is judged like any event that is not an edit.
+          action="$ACTION"
+          if [ "$action" = edited ] && [ "$BODY_CHANGED" != true ]; then action=retitled; fi
+          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
+          gh api --paginate "repos/$REPO/issues/$NUMBER/comments" | jq -s 'add // []' > "$RUNNER_TEMP/comments.json"
+          digest="$(protocol digest "$RUNNER_TEMP/body.md")"
+          got="$(protocol decide "$action" "$ACTOR" "$AUTHOR" "$digest" "$RUNNER_TEMP/comments.json")"
+          echo "$got"
+          {
+            echo "digest=$digest"
+            echo "what=$(jq -r '.what' <<<"$got")"
+            echo "status=$(jq -r '.status // ""' <<<"$got")"
+            echo "reason=$(jq -r '.reason // ""' <<<"$got")"
+          } >> "$GITHUB_OUTPUT"
       #@fetch jsonschema
       - name: Judge the message
-        if: steps.who.outputs.judge == 'true'
+        if: steps.trust.outputs.what == 'judge' && steps.who.outputs.kind != ''
         id: judge
         shell: bash
         env:
-          BODY: ${{ github.event.issue.body }}
           KIND: ${{ steps.who.outputs.kind }}
           LIST: ${{ inputs.denylist }}
           JSONSCHEMA: ${{ runner.temp }}/tools/jsonschema/@@tools.jsonschema.bin@@
@@ -63,7 +105,6 @@ jobs:
         run: |
           set -uo pipefail
           verdict() { echo "$1"; printf 'reason=%s\n' "$2" >> "$GITHUB_OUTPUT"; exit 0; }
-          printf '%s' "$BODY" > "$RUNNER_TEMP/body.md"
           #@include message-extract.sh
           BODY_FILE="$RUNNER_TEMP/body.md"; export BODY_FILE
           got="$(main)"
@@ -92,10 +133,15 @@ jobs:
             *) verdict "$scan" "the denylist could not judge it: ${scan%% *}" ;;
           esac
           echo "ok a valid protocol v0 message"
-      - name: Label and comment
-        if: steps.who.outputs.judge == 'true'
+      - name: Record the verdict, label and comment
+        if: steps.who.outputs.trusted == 'true'
         shell: bash
         env:
+          WHAT: ${{ steps.trust.outputs.what }}
+          TRUST_STATUS: ${{ steps.trust.outputs.status }}
+          TRUST_REASON: ${{ steps.trust.outputs.reason }}
+          DIGEST: ${{ steps.trust.outputs.digest }}
+          KIND: ${{ steps.who.outputs.kind }}
           REASON: ${{ steps.judge.outputs.reason }}
           NUMBER: ${{ github.event.issue.number }}
           REPO: ${{ github.repository }}
@@ -103,6 +149,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          #@include message-extract.sh
+          # The body must still be the one that was judged; if it moved, the edit that moved it has its own run.
+          gh api "repos/$REPO/issues/$NUMBER" > "$RUNNER_TEMP/issue.json"
+          jq -j '.body // ""' "$RUNNER_TEMP/issue.json" > "$RUNNER_TEMP/body-now.md"
+          if [ "$(protocol digest "$RUNNER_TEMP/body-now.md")" != "$DIGEST" ]; then
+            echo "the body changed while it was judged; the run for that edit decides"; exit 0
+          fi
+          if [ "$WHAT" != judge ]; then
+            REASON="$TRUST_REASON"; status="$TRUST_STATUS"
+          elif [ "$KIND" = "" ] || [ -z "$REASON" ]; then
+            status=accepted
+          else
+            status=invalid
+          fi
+          gh api --paginate "repos/$REPO/issues/$NUMBER/comments" | jq -s 'add // []' > "$RUNNER_TEMP/comments.json"
+          existing="$(protocol verdict-id "$RUNNER_TEMP/comments.json")"
+          # An issue that is not a message gets a verdict only to clear an earlier one: the author's edit resubmits it.
+          if [ "$KIND" = "" ] && [ -z "$existing" ] && [ "$status" = accepted ]; then
+            echo "not a message: no kind:* label"; exit 0
+          fi
+          line="$(protocol verdict "$status" "$DIGEST")"
+          text="$line"$'\n'"Protocol verdict ($status) for this revision of the message. It is bound to the body's sha256; an edit by anyone but the author, or any later change, voids it."
+          if [ -n "$existing" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f "body=$text" > /dev/null
+          else
+            gh api -X POST "repos/$REPO/issues/$NUMBER/comments" -f "body=$text" > /dev/null
+          fi
+          if [ "$KIND" = "" ]; then echo "not a message: no kind:* label"; exit 0; fi
           if [ -z "$REASON" ]; then
             if [ "$HAS_INVALID" = true ]; then gh api -X DELETE "repos/$REPO/issues/$NUMBER/labels/state:invalid" > /dev/null; fi
             echo "valid"; exit 0

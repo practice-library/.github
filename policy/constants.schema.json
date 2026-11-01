@@ -22,6 +22,7 @@
     "spec",
     "tagRuleset",
     "release",
+    "protocol",
     "guards",
     "helpers"
   ],
@@ -683,6 +684,58 @@
         "tag": {
           "type": "string",
           "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+        }
+      }
+    },
+    "protocol": {
+      "description": "The message protocol reader (tooling/practice_ci/protocol.py) and its verdict record.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maxBodyBytes",
+        "fenceOpen",
+        "unsafeCategories",
+        "verdictAuthor",
+        "verdictMarker",
+        "toolingDir",
+        "toolingCheckout"
+      ],
+      "properties": {
+        "maxBodyBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fenceOpen": {
+          "description": "The line that opens the message block, at column 0.",
+          "type": "string",
+          "pattern": "^`{3}[a-z]+$"
+        },
+        "unsafeCategories": {
+          "description": "Unicode general categories refused in a decoded key or string; lone surrogates are always refused.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][a-z]$"
+          }
+        },
+        "verdictAuthor": {
+          "description": "The login whose comment holds the verdict; only it can write one, so an issue author cannot forge it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "verdictMarker": {
+          "type": "string",
+          "pattern": "^[a-z][a-z-]*$"
+        },
+        "toolingDir": {
+          "description": "Where tooling/practice_ci sits in a checkout of this repository.",
+          "$ref": "#/$defs/path"
+        },
+        "toolingCheckout": {
+          "description": "Where message-check checks this repository out, at the release tag, to run the reader.",
+          "$ref": "#/$defs/path"
         }
       }
     },
