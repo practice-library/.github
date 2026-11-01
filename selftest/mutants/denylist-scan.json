@@ -103,5 +103,15 @@
     "name": "exempt-other-rows",
     "find": "        else:\n            found.append(where)\nnote = \"\"",
     "replace": "        else:\n            pass\nnote = \"\""
+  },
+  {
+    "name": "renames-detected",
+    "find": "--no-prefix --no-renames --unified=0",
+    "replace": "--no-prefix --unified=0"
+  },
+  {
+    "name": "exempt-dot-wildcard",
+    "find": "else re.escape(c) for c in seg",
+    "replace": "else c for c in seg"
   }
 ]

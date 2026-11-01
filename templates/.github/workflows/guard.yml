@@ -132,7 +132,8 @@ jobs:
             DENY="$BASE_LIST"
           elif [ -n "$HEAD_LIST" ]; then
             echo "$LIST is new in this change; it is checked with that list, without its exemptions."
-            DENY="$(jq -c 'if type == "object" then del(.exemptPaths) else . end' <<<"$HEAD_LIST" 2>/dev/null)" || DENY="$HEAD_LIST"
+            DENY="$(jq -c 'if type == "object" then del(.exemptPaths) else . end' <<<"$HEAD_LIST" 2>/dev/null)" \
+              || { echo "::error file=$LIST::$LIST is not JSON"; exit 1; }
           fi
           unset TEXT_FILE
           export DENY MB HEAD EVENT

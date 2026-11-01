@@ -57,7 +57,8 @@ failed=0
 # Optional, set for one call: HEAD_LIST (the list the head commit writes), FILE (the file the head commit
 # adds, default notes.md), MERGE_COMMITTER (default GitHub), MERGE_MESSAGE, and for the exemption label
 # NUMBER (a pull request number; empty means not a pull request), LABELS (JSON, default []) and
-# GH_EVENTS (the label events, "<login><TAB><type>" lines).
+# GH_EVENTS (the label events, "<login><TAB><type>" lines). MOVE_FROM puts the line in that file on the
+# base and has the head commit move it to FILE (git mv) instead of adding the line.
 scenario() {
   local name="$1" want="$2" event="$3" list="$4" author="$5" message="$6" line="$7" merger="$8" repo got out
   repo="$(mktemp -d "$work/r.XXXXXX")"
@@ -65,11 +66,13 @@ scenario() {
   mkdir -p "$repo/.github"
   if [ -n "$list" ]; then printf '%s\n' "$list" > "$repo/$LIST"; fi
   printf 'Base.\n' > "$repo/README.md"
+  if [ -n "${MOVE_FROM:-}" ]; then mkdir -p "$(dirname "$repo/$MOVE_FROM")"; printf '%s\n' "$line" > "$repo/$MOVE_FROM"; fi
   git -C "$repo" add -A
   git -C "$repo" -c user.name=base -c user.email=base@example.invalid -c commit.gpgsign=false commit -q -m base
   local base; base="$(git -C "$repo" rev-parse HEAD)"
   mkdir -p "$(dirname "$repo/${FILE:-notes.md}")"
-  printf '%s\n' "$line" > "$repo/${FILE:-notes.md}"
+  if [ -n "${MOVE_FROM:-}" ]; then git -C "$repo" mv "$MOVE_FROM" "${FILE:-notes.md}"
+  else printf '%s\n' "$line" > "$repo/${FILE:-notes.md}"; fi
   if [ -n "${HEAD_LIST:-}" ]; then printf '%s\n' "$HEAD_LIST" > "$repo/$LIST"; fi
   git -C "$repo" add -A
   git -C "$repo" -c user.name="$author" -c user.email=a@example.invalid -c commit.gpgsign=false commit -q -m "$message"
@@ -124,6 +127,9 @@ FILE=vendors/acme/graph/nodes/a.json scenario exempt-term-in-tree 0 pull_request
 FILE=docs/a.md scenario exempt-term-outside-tree 1 pull_request "$tree" "Contributor" "Add notes" "Zebracorn quoted." ""
 FILE=vendors/zebracorn/graph/nodes/a.json scenario exempt-term-in-path 1 pull_request "$tree" "Contributor" "Add a node" "Clean." ""
 FILE=vendors/acme/graph/nodes/a.json scenario exempt-term-in-message 1 pull_request "$tree" "Contributor" "Quote Zebracorn" "Clean." ""
+# A file moved out of the tree is read whole at its new path, so the quoted term is found there.
+MOVE_FROM=vendors/acme/graph/nodes/a.json FILE=docs/a.md scenario exempt-renamed-out 1 pull_request "$tree" "Contributor" "Move a node" "Zebracorn quoted." ""
+MOVE_FROM=vendors/acme/graph/nodes/a.json FILE=vendors/beta/graph/nodes/a.json scenario exempt-renamed-within 0 pull_request "$tree" "Contributor" "Move a node" "Zebracorn quoted." ""
 # An exemption never applies to the change that adds it: not to a list on the base, nor to a first list.
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-added-by-change 1 pull_request "$plain" "Contributor" "Add a node" "Zebracorn quoted." ""
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-in-first-list 1 pull_request "" "Contributor" "Add a node" "Zebracorn quoted." ""
