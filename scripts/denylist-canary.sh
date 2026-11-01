@@ -152,8 +152,13 @@ HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="hel
 HEAD_LIST="$tree" scenario exempt-widened-push 0 push "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$plain" NUMBER=1 scenario exempt-removed 0 pull_request "$tree" "Contributor" "Drop the exemption" "Clean." ""
 HEAD_LIST="{" NUMBER=1 scenario exempt-head-list-unreadable 1 pull_request "$tree" "Contributor" "Break the list" "Clean." ""
-# Widening is judged where the change branched: the base dropping an exemption since is not the change's doing.
-BASE_AFTER_LIST="$plain" NUMBER=1 scenario exempt-base-dropped-since 0 pull_request "$tree" "Contributor" "Add notes" "Clean." ""
+# Widening is judged against the base as it is now: an exemption the base dropped after the change branched
+# would come back with the merge, so it needs the label like any added entry.
+BASE_AFTER_LIST="$plain" NUMBER=1 scenario exempt-base-dropped-since 1 pull_request "$tree" "Contributor" "Add notes" "Clean." ""
+two="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"docs/a.md\"},{\"glob\":\"vendors/*/graph/nodes/**\"}]}"
+moved="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"vendors/*/graph/nodes/**\"},{\"glob\":\"docs/a.md\"}]}"
+left="{\"salt\":\"$salt\",\"sha256\":[\"$term\"],\"exemptPaths\":[{\"glob\":\"docs/a.md\"}]}"
+HEAD_LIST="$moved" BASE_AFTER_LIST="$left" NUMBER=1 scenario exempt-moved-then-dropped-on-base 1 pull_request "$two" "Contributor" "Reorder" "Clean." ""
 HEAD_LIST="{" scenario exempt-head-list-unreadable-push 1 push "$tree" "Contributor" "Break the list" "Clean." ""
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on

@@ -298,8 +298,8 @@ jobs:
           echo "$result"
           [ "${result%% *}" = ok ]
           # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
-          # main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file
-          # where the change branched (the merge base) and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
+          # main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file on
+          # the base as it is now (what the merge lands on) and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
           # "ok ..." when every exemptPaths entry of the head list is also, exactly, an entry of the base list (an
           # entry removed is fine), "widened [<glob>, ...]" naming each head entry that is new or changed, or
           # "invalid ..." when a list that is there cannot be read. Widening is a loosening: it needs the approval
@@ -316,10 +316,8 @@ jobs:
             fi
             if [ "$out" = "[]" ]; then echo "ok no exemption added or widened"; else echo "widened $out"; fi
           }
-          # Widening is judged against the list where the change branched, so a list changed on the base
-          # since then is not the change's own doing.
-          BASE_LIST=""
-          if git cat-file -e "$MB:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$MB:$LIST")"; fi
+          # Widening is judged against the base as it is now, since that is what the merge lands on: an entry
+          # the base dropped after the change branched would come back with it.
           export BASE_LIST HEAD_LIST
           widened="$(main)"
           echo "$widened"
@@ -362,7 +360,13 @@ jobs:
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
-            missing*) echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            missing*)
+              MB_LIST=""
+              if git cat-file -e "$MB:$LIST" 2>/dev/null; then MB_LIST="$(git cat-file blob "$MB:$LIST")"; fi
+              if [ "$MB_LIST" != "$BASE_LIST" ]; then
+                echo "$LIST changed on the base after this change branched; if the change does not mean to add an exemption, merge the base in."
+              fi
+              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
 

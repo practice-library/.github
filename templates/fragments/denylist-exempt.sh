@@ -1,5 +1,5 @@
-# main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file
-# where the change branched (the merge base) and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
+# main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file on
+# the base as it is now (what the merge lands on) and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
 # "ok ..." when every exemptPaths entry of the head list is also, exactly, an entry of the base list (an
 # entry removed is fine), "widened [<glob>, ...]" naming each head entry that is new or changed, or
 # "invalid ..." when a list that is there cannot be read. Widening is a loosening: it needs the approval
