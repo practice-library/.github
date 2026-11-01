@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# The one way to run the practice_ci package. Python runs in isolated mode (-I: no PYTHON* variables,
+# no user site directory, neither the working directory nor a script directory on sys.path), and
+# launch.py adds only the directory this file is in. Nothing in a caller's checkout or environment can
+# stand in for a module: the caller's tree is data, passed to each command with --root.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+exec python3 -I "$here/launch.py" "$@"
