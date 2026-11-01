@@ -1,0 +1,10 @@
+{
+  "expect": "refused",
+  "env": {
+    "LABEL": "schema-loosening-approved",
+    "LABELS": "[\"schema-loosening-approved\"]",
+    "AUTHOR": "contributor",
+    "EVENTS": "\tUser"
+  },
+  "output": "refused schema-loosening-approved must be added by someone other than the author and not by a bot (last added by: unknown)"
+}

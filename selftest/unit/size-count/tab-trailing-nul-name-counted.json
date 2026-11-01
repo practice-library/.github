@@ -1,5 +1,6 @@
 {
   "expect": "ok",
+  "output": "ok 3 non-fixture lines (limit 600)",
   "env": {
     "FIXTURES": "[]",
     "LIMIT": "600"
@@ -9,7 +10,7 @@
       "a.txt": "a\n"
     },
     "head": {
-      "blob.bin": "\u0000\u0001\u0002"
+      "big.sh\t": "x\u0000\ny\nz\n"
     }
   }
 }

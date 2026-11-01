@@ -1,0 +1,9 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/empty-list.json",
+    "FOUND": "",
+    "CHECK": "other-check"
+  },
+  "output": "invalid the baseline is for check \"example-check\", not \"other-check\""
+}

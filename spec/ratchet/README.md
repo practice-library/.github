@@ -11,6 +11,6 @@ Reconciling a run's found keys against the baseline gives each key one result:
 | `unexplained` | listed with an empty or missing reason or owner, found or not | fail |
 | `paidOff` | listed with a reason, no longer found | fail until the entry is removed |
 
-A baseline that is missing, unreadable or malformed, or that lists a key twice, is a failure, never an empty list.
+A baseline that is missing, unreadable or malformed, or that lists a key twice, is a failure, never an empty list. With `--check <name>` (or `CHECK` for the library), a baseline whose `check` is another name is a failure too, so a check cannot be held against a baseline recorded for a different one.
 
 `bash spec/ratchet/reconcile.sh --write <baseline> < found-keys` re-records a measurement: it adds found keys that are not listed, with an empty reason and owner, so they still fail; it drops entries no longer found; it never fills a reason, so it cannot clear a judgement.

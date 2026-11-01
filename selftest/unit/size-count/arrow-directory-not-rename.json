@@ -1,0 +1,16 @@
+{
+  "expect": "ok",
+  "output": "ok 2 non-fixture lines (limit 600)",
+  "env": {
+    "FIXTURES": "[\"selftest/\"]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "a => selftest/b.sh": "x\ny\n"
+    }
+  }
+}

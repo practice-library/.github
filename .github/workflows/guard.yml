@@ -302,9 +302,25 @@ jobs:
           #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
           #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
           #   MESSAGES   the change's commit messages
-          #   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character
+          #   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character.
+          #             When unset, main counts them from git for MB..HEAD: added lines (git drops blank ones), after the hunk
+          #             header (so a line that starts with ++ counts), minus lines the same change removes (so a
+          #             line moved within the changelog counts nothing), with whitespace changes ignored.
           main() {
             local touched
+            if [ -z "${CHANGELOG_ADDED+x}" ]; then
+              [ -n "${MB:-}" ] && [ -n "${HEAD:-}" ] || { echo "invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from"; return 0; }
+              CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-textconv --text --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
+                | jq -Rsr '
+                    split("\n") as $l
+                    | ([range(0; $l | length) | select($l[.] | startswith("@@"))] | first) as $i
+                    | if $i == null then 0
+                      else [$l[$i:][] | select(startswith("+")) | .[1:]] as $added
+                        | [$l[$i:][] | select(startswith("-")) | .[1:]] as $removed
+                        | reduce $removed[] as $r ($added; (index([$r]) // null) as $k | if $k == null then . else del(.[$k]) end)
+                        | length
+                      end')" || { echo "invalid the changelog diff could not be read"; return 0; }
+            fi
             [[ "${CHANGELOG_ADDED:-}" =~ ^[0-9]+$ ]] || { echo "invalid CHANGELOG_ADDED must be a count"; return 0; }
             if ! touched="$(jq -c --argjson w "$WATCH" '
                 [.[] | select(. as $f | any($w[]; . as $p
@@ -322,10 +338,7 @@ jobs:
           }
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          # Added lines of the changelog that hold text; a whitespace-only edit adds none.
-          CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
-            | { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -cE '^\+.*[^[:space:]]' || true; })"
-          export CHANGED MESSAGES CHANGELOG_ADDED
+          export CHANGED MESSAGES MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -364,7 +377,9 @@ jobs:
           # the rules below, otherwise "loose [<path>, ...]". Rules, at every place in the schema:
           #   a minimum (minItems, minLength, minProperties, minimum, exclusiveMinimum, minContains) lowered or removed;
           #   a maximum (maxItems, maxLength, maxProperties, maximum, exclusiveMaximum, maxContains) raised or removed;
-          #   a required entry removed; an enum value added; additionalProperties false made anything else;
+          #   a required entry removed; an enum value added; additionalProperties or unevaluatedProperties false
+          #   made anything else; a key added under properties or patternProperties beside an additionalProperties
+          #   or unevaluatedProperties that was false (the new key accepts what the false refused);
           #   const, pattern or format changed or removed.
           # A pattern changed to another string is not loose when the pair is listed in TIGHTEN (unset means no
           # list): a JSON array of {"sha256": <64 lower-case hex>, "why": <text>}, each the SHA-256 of the pair
@@ -398,13 +413,21 @@ jobs:
                           ($nv | if type == "array" then . else [] end) as $nr | any($ov[]; . as $x | ($nr | index([$x])) == null)
                         elif $k == "enum" and ($ov | type) == "array" then
                           ($nv | type) != "array" or any($nv[]; . as $x | ($ov | index([$x])) == null)
-                        elif $k == "additionalProperties" and $ov == false then $nv != false
+                        elif ($k == "additionalProperties" or $k == "unevaluatedProperties") and $ov == false then $nv != false
                         elif $k == "const" or (($k == "pattern" or $k == "format") and ($ov | type) == "string") then $nv != $ov
                         else false end)
                     | {path: ($p | map(tostring) | join("/")),
                        pair: (if $k == "pattern" and ($ov | type) == "string" and ($nv | type) == "string"
                                 and ($refrev | not) and (any($p[]; . as $e | $rev | index([$e])) | not)
-                              then [$ov, $nv] else null end)} ]' 2>/dev/null)"; then
+                              then [$ov, $nv] else null end)} ]
+                  + [ $old | paths(. == false) | select(length > 0 and (.[-1] | IN("additionalProperties", "unevaluatedProperties")))
+                      | .[:-1] as $at
+                      | ["properties", "patternProperties"][] as $kw
+                      | ($old | getpath($at + [$kw]) | if type == "object" then keys else [] end) as $ok
+                      | ($new | try getpath($at + [$kw]) catch null | if type == "object" then keys else [] end)[]
+                      | select(. as $x | $ok | index([$x]) | not)
+                      | {path: ($at + [$kw, .] | map(tostring) | join("/")), pair: null} ]
+                  | reduce .[] as $e ([]; if any(.[]; .path == $e.path) then . else . + [$e] end)' 2>/dev/null)"; then
               echo "invalid both files must be JSON"; return 0
             fi
             while IFS= read -r entry; do
@@ -500,27 +523,55 @@ jobs:
           # they are more, or "invalid ..." when an input cannot be used.
           #   NUMSTAT   output of git diff --numstat -M: "<added><TAB><deleted><TAB><path>", a rename written as
           #             "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>"; a binary file shows "-" and counts 0.
-          #             When NUMSTAT is unset, main reads it from git for MB..HEAD with the repository's own
-          #             .gitattributes ignored, so a change cannot mark its text files binary to hide them.
+          #             When NUMSTAT is unset, main reads it from git for MB..HEAD (with -z, so a path is never
+          #             quoted) and recounts each file git calls binary from its diff taken with --text (its added
+          #             newline-separated lines), so neither a .gitattributes "binary" nor a NUL byte can hide a
+          #             text file, whatever its name.
           #   FIXTURES  JSON array of fixture entries. An entry starting and ending in / is a directory from the
           #             root ("/rulesets/"); any other entry ending in / is a directory anywhere in the path
           #             ("examples/" covers spec/x/examples/a.json); an entry with no / is a file name anywhere
-          #             ("INDEX.md"); any other entry is one exact path from the root, a leading / allowed.
+          #             ("INDEX.md"); any other entry is one exact path from the root, a leading / allowed. The
+          #             entry "/" alone would cover every path and is refused.
           #   LIMIT     the most non-fixture lines that pass, a whole number
-          # A changed line counts once, as an added line; a renamed file counts by its new path, once.
+          # A changed line counts once, as an added line; a renamed file counts by its new path, once. Only a
+          # NUMSTAT given as input has its rename arrows rewritten; read from git, paths are taken as they are.
+          # The new path of a numstat path: "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>".
+          SIZE_NEWPATH='def newpath:
+            if test("\\{.* => .*\\}") then sub("\\{(?<a>[^{}]*) => (?<b>[^{}]*)\\}"; "\(.b)") | gsub("//"; "/")
+            elif test(" => ") then sub("^.* => "; "") else . end;'
           main() {
             [[ "${LIMIT:-}" =~ ^[0-9]+$ ]] || { echo "invalid LIMIT must be a whole number"; return 0; }
-            jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0)' > /dev/null 2>&1 \
-              || { echo "invalid FIXTURES must be a JSON array of non-empty strings"; return 0; }
-            local n
+            jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0 and . != "/")' > /dev/null 2>&1 \
+              || { echo "invalid FIXTURES must be a JSON array of non-empty strings, not \"/\""; return 0; }
+            local n raw rec added deleted path old recount="" plain=false
             if [ -z "${NUMSTAT+x}" ]; then
-              NUMSTAT="$(git --attr-source="$(git hash-object -t tree /dev/null)" diff --numstat -M --no-ext-diff --no-textconv "$MB" "$HEAD")" \
-                || { echo "invalid the diff could not be read"; return 0; }
+              # Read from git with -z, a rename already gives its new path, so no path is rewritten: a directory
+              # named "a => selftest" stays that directory.
+              plain=true
+              # -z gives every path as it is: without it git quotes a path with non-ASCII bytes, a tab or a quote,
+              # and the quoted name would match no file when the line is recounted.
+              raw="$(mktemp)" || { echo "invalid the diff could not be read"; return 0; }
+              git diff --numstat -z -M --no-ext-diff --no-textconv "$MB" "$HEAD" > "$raw" \
+                || { rm -f "$raw"; echo "invalid the diff could not be read"; return 0; }
+              # Each record is split on its first two tabs by hand: read would trim tabs at the ends of the path.
+              while IFS= read -r -d '' rec; do
+                added="${rec%%$'\t'*}"; rec="${rec#*$'\t'}"; deleted="${rec%%$'\t'*}"; path="${rec#*$'\t'}"
+                # A rename is "<added><TAB><deleted><TAB>" followed by the old and the new path.
+                if [ -z "$path" ]; then IFS= read -r -d '' old; IFS= read -r -d '' path; fi
+                # The count below is one line per path, so a path holding a newline cannot be counted.
+                if [[ "$path" == *$'\n'* ]]; then rm -f "$raw"; echo "invalid a changed path holds a newline"; return 0; fi
+                if [ "$added" = - ]; then
+                  added="$(git --literal-pathspecs diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$path" \
+                    | LC_ALL=C awk 'f && /^\+/ { n++ } /^@@/ { f = 1 } END { print n + 0 }')" \
+                    || { rm -f "$raw"; echo "invalid the diff of a binary file could not be read"; return 0; }
+                fi
+                recount="$recount$added"$'\t'"$deleted"$'\t'"$path"$'\n'
+              done < "$raw"
+              rm -f "$raw"
+              NUMSTAT="$recount"
             fi
-            if ! n="$(printf '%s\n' "${NUMSTAT:-}" | jq -R --argjson f "$FIXTURES" -n '
-                def newpath:
-                  if test("\\{.* => .*\\}") then sub("\\{(?<a>[^{}]*) => (?<b>[^{}]*)\\}"; "\(.b)") | gsub("//"; "/")
-                  elif test(" => ") then sub("^.* => "; "") else . end;
+            if ! n="$(printf '%s\n' "${NUMSTAT:-}" | jq -R --argjson f "$FIXTURES" --argjson plain "$plain" -n '
+                '"$SIZE_NEWPATH"'
                 def fixture($p):
                   any($f[]; . as $e
                     | if ($e | startswith("/")) and ($e | endswith("/")) then ($p | startswith($e | ltrimstr("/")))
@@ -529,7 +580,7 @@ jobs:
                       else ($p | split("/") | last) == $e end);
                 [inputs | select(length > 0) | split("\t")
                   | if length < 3 or (.[0] | test("^([0-9]+|-)$") | not) then error("bad numstat line: " + join("\t")) else . end
-                  | {added: (if .[0] == "-" then 0 else (.[0] | tonumber) end), path: (.[2:] | join("\t") | newpath)}
+                  | {added: (if .[0] == "-" then 0 else (.[0] | tonumber) end), path: (.[2:] | join("\t") | if $plain then . else newpath end)}
                   | select(fixture(.path) | not) | .added] | add // 0' 2>/dev/null)"; then
               echo "invalid NUMSTAT is not git diff --numstat output"; return 0
             fi

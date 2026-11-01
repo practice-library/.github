@@ -55,13 +55,53 @@
     "replace": "$p == $e"
   },
   {
-    "name": "attributes-honoured",
-    "find": "git --attr-source=\"$(git hash-object -t tree /dev/null)\" diff",
-    "replace": "git diff"
-  },
-  {
     "name": "root-dir-anywhere",
     "find": "($p | startswith($e | ltrimstr(\"/\")))",
     "replace": "((\"/\" + $p) | contains($e))"
+  },
+  {
+    "name": "binary-not-recounted",
+    "find": "    NUMSTAT=\"$recount\"\n",
+    "replace": "\n"
+  },
+  {
+    "name": "slash-entry-allowed",
+    "find": " and . != \"/\")",
+    "replace": ")"
+  },
+  {
+    "name": "header-plus-counted",
+    "find": "f && /^\\+/ { n++ }",
+    "replace": "/^\\+/ { n++ }"
+  },
+  {
+    "name": "text-flag-dropped",
+    "find": "added=\"$(git --literal-pathspecs diff --text --no-textconv",
+    "replace": "added=\"$(git --literal-pathspecs diff --no-textconv"
+  },
+  {
+    "name": "pathspec-as-glob",
+    "find": "git --literal-pathspecs diff --text",
+    "replace": "git diff --text"
+  },
+  {
+    "name": "git-paths-rewritten",
+    "find": "if $plain then . else newpath end",
+    "replace": "newpath"
+  },
+  {
+    "name": "rename-paths-swapped",
+    "find": "IFS= read -r -d '' old; IFS= read -r -d '' path",
+    "replace": "IFS= read -r -d '' path; IFS= read -r -d '' old"
+  },
+  {
+    "name": "path-tabs-trimmed",
+    "find": "    while IFS= read -r -d '' rec; do\n      added=\"${rec%%$'\\t'*}\"; rec=\"${rec#*$'\\t'}\"; deleted=\"${rec%%$'\\t'*}\"; path=\"${rec#*$'\\t'}\"",
+    "replace": "    while IFS=$'\\t' read -r -d '' added deleted path; do"
+  },
+  {
+    "name": "newline-path-allowed",
+    "find": "if [[ \"$path\" == *$'\\n'* ]]; then",
+    "replace": "if false; then"
   }
 ]

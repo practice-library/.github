@@ -4,7 +4,7 @@ The organisation's public repositories ask each other for work through GitHub is
 
 ## A message
 
-A message is one issue, a thread between two repositories. Its body is plain text for people, then exactly one fenced block opened by a line ` ```json `. That block is one JSON object matching [`spec/protocol/message.schema.json`](../spec/protocol/message.schema.json). Its top-level names follow [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md):
+A message is one issue, a thread between two repositories. Its body is plain text for people, then exactly one fenced block opened by a line ` ```json ` (exactly three backticks at the start of the line; ` ~~~json `, ` ````json ` or an indented ` ```json ` is refused). A fenced example inside a longer or different fence is not the message, as in CommonMark. A key given twice anywhere in the object, at any depth, is refused. That block is one JSON object matching [`spec/protocol/message.schema.json`](../spec/protocol/message.schema.json). Its top-level names follow [CloudEvents 1.0](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/spec.md):
 
 | Field | Meaning |
 | --- | --- |

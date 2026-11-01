@@ -161,10 +161,7 @@ jobs:
           #@include release-note.sh
           CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          # Added lines of the changelog that hold text; a whitespace-only edit adds none.
-          CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
-            | { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -cE '^\+.*[^[:space:]]' || true; })"
-          export CHANGED MESSAGES CHANGELOG_ADDED
+          export CHANGED MESSAGES MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]

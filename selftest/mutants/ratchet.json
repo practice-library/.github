@@ -33,5 +33,30 @@
     "name": "version-unchecked",
     "find": "elif .ratchet != 1 then error(\"ratchet must be 1\")",
     "replace": ""
+  },
+  {
+    "name": "check-ignored",
+    "find": "if [ -n \"${CHECK:-}\" ] && [ \"$(jq -r '.check' <<<\"$base\")\" != \"$CHECK\" ]; then",
+    "replace": "if false; then"
+  },
+  {
+    "name": "unknown-top-keys-allowed",
+    "find": "elif (keys - [\"ratchet\", \"check\", \"entries\"]) != [] then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "spaced-key-allowed",
+    "find": "(.key | test(\"^\\\\S(.*\\\\S)?$\") | not)",
+    "replace": "false"
+  },
+  {
+    "name": "reason-type-unchecked",
+    "find": "or ((has(\"reason\") and (.reason | type) != \"string\"))",
+    "replace": ""
+  },
+  {
+    "name": "unknown-entry-keys-allowed",
+    "find": "or ((keys - [\"key\", \"reason\", \"owner\"]) != [])",
+    "replace": ""
   }
 ]

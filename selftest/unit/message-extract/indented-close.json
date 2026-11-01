@@ -1,0 +1,7 @@
+{
+  "expect": "ok",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/indented-close.md"
+  },
+  "output": "ok {\"a\":1}"
+}

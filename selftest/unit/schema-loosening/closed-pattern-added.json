@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/closed-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/closed-pattern-added.json"
+  },
+  "output": "loose [\"patternProperties/^x-\"]"
+}

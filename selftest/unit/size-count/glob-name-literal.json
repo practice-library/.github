@@ -1,0 +1,17 @@
+{
+  "expect": "ok",
+  "output": "ok 5 non-fixture lines (limit 600)",
+  "env": {
+    "FIXTURES": "[]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "*.dat": "1\u0000\n2\n",
+      "x.dat": "1\u0000\n2\n3\n"
+    }
+  }
+}

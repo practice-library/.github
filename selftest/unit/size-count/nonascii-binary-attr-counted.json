@@ -1,0 +1,17 @@
+{
+  "expect": "ok",
+  "output": "ok 4 non-fixture lines (limit 600)",
+  "env": {
+    "FIXTURES": "[]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      ".gitattributes": "\u00fc.sh binary\n",
+      "\u00fc.sh": "a\nb\nc\n"
+    }
+  }
+}

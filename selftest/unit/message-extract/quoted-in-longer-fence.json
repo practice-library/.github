@@ -1,0 +1,6 @@
+{
+  "expect": "none",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/quoted-in-longer-fence.md"
+  }
+}

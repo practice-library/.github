@@ -1,0 +1,16 @@
+{
+  "expect": "ok",
+  "env": {
+    "FIXTURES": "[]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "blob.bin": "\u0000\u0001\u0002"
+    }
+  },
+  "output": "ok 1 non-fixture lines (limit 600)"
+}

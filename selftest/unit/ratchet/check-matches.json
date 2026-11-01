@@ -1,0 +1,9 @@
+{
+  "expect": "ok",
+  "env": {
+    "BASELINE": "selftest/unit/ratchet/data/empty-list.json",
+    "FOUND": "",
+    "CHECK": "example-check"
+  },
+  "output": "ok {\"explained\":[]}"
+}

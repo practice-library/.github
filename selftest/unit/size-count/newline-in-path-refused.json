@@ -1,0 +1,16 @@
+{
+  "expect": "invalid",
+  "output": "invalid a changed path holds a newline",
+  "env": {
+    "FIXTURES": "[\"README.md\"]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "README.md\n0\t0\tq": "a\nb\n"
+    }
+  }
+}

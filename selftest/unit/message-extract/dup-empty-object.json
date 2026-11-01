@@ -1,0 +1,6 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/dup-empty-object.md"
+  }
+}

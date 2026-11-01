@@ -2,6 +2,7 @@
 #   BASELINE  the baseline file
 #   FOUND     the keys the run found, one per line (blank lines and surrounding spaces ignored)
 #   WRITE     "true" to print a re-recorded baseline instead of a verdict
+#   CHECK     optional: the check this run belongs to; a baseline whose check differs is invalid
 # Each key is one of: fresh (found, not listed), explained (found and listed with a reason and an owner),
 # unexplained (listed, found or not, with an empty or missing reason or owner), paidOff (listed with a
 # reason, no longer found). Prints one line:
@@ -25,6 +26,9 @@ main() {
                or ((keys - ["key", "reason", "owner"]) != [])) then error("each entry is {key, reason, owner}, key without outer spaces")
       elif (.entries | map(.key) | length) != (.entries | map(.key) | unique | length) then error("a key is listed twice")
       else . end' "$BASELINE" 2>&1)" || { echo "invalid ${base#jq: error (at *): }"; return 0; }
+  if [ -n "${CHECK:-}" ] && [ "$(jq -r '.check' <<<"$base")" != "$CHECK" ]; then
+    echo "invalid the baseline is for check $(jq -c '.check' <<<"$base"), not \"$CHECK\""; return 0
+  fi
   printf '%s\n' "${FOUND:-}" | jq -Rr --argjson b "$base" --arg w "${WRITE:-}" -n '
     [inputs | gsub("^\\s+|\\s+$"; "") | select(length > 0)] | unique as $found
     | ($b.entries | map({(.key): .}) | add // {}) as $listed

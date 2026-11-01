@@ -13,5 +13,25 @@
     "name": "one-line-not-enough",
     "find": "[ \"$CHANGELOG_ADDED\" -gt 0 ]",
     "replace": "[ \"$CHANGELOG_ADDED\" -gt 1 ]"
+  },
+  {
+    "name": "moves-counted",
+    "find": "| reduce $removed[] as $r ($added; (index([$r]) // null) as $k | if $k == null then . else del(.[$k]) end)\n",
+    "replace": "\n"
+  },
+  {
+    "name": "header-lines-counted",
+    "find": "select($l[.] | startswith(\"@@\"))] | first) as $i",
+    "replace": "select(true)] | first) as $i"
+  },
+  {
+    "name": "diff-failure-ignored",
+    "find": "|| { echo \"invalid the changelog diff could not be read\"; return 0; }",
+    "replace": "|| true"
+  },
+  {
+    "name": "no-range-counted",
+    "find": "[ -n \"${MB:-}\" ] && [ -n \"${HEAD:-}\" ] || { echo \"invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from\"; return 0; }",
+    "replace": "true"
   }
 ]

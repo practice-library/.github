@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/closed-both-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/closed-both-added.json"
+  },
+  "output": "loose [\"properties/b\"]"
+}
