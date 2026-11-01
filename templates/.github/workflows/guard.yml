@@ -246,7 +246,8 @@ jobs:
             # A deleted schema accepts everything it used to refuse, so it counts as loosened.
             if [ "$status" = D ]; then NEW_FILE=""
             else git cat-file blob "$HEAD:$new" > "$NEW_FILE" || { echo "::error file=$new::cannot read $new on the head"; exit 1; }; fi
-            export OLD_FILE NEW_FILE
+            FILE_PATH="$new"
+            export OLD_FILE NEW_FILE FILE_PATH
             result="$(main)"
             echo "$new: $result"
             case "$result" in

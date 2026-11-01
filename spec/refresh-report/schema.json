@@ -227,7 +227,7 @@
             "disallowed",
             "unreachable"
           ],
-          "description": "allowed: robots.txt permits every path the run fetches from this host. absent: robots.txt answered a 4xx other than 429, so no rule applies. disallowed: a rule forbids a path we fetch. unreachable: 5xx, 429 or a network error, treated as disallowed. A 429 asks the run to slow down; it never means there is no robots.txt."
+          "description": "allowed: robots.txt was read (a 2xx, when a status is recorded) and permits every path the run fetches from this host. absent: robots.txt answered a 4xx other than 429, so no rule applies. disallowed: robots.txt was read (a 2xx, when a status is recorded) and a rule forbids a path we fetch. unreachable: any 5xx, 429 or a network error (no status), treated as disallowed. A 429 asks the run to slow down; it never means there is no robots.txt."
         }
       },
       "allOf": [
@@ -269,6 +269,56 @@
               "httpStatus": {
                 "minimum": 400,
                 "maximum": 499
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "enum": [
+                  "allowed",
+                  "disallowed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "minimum": 200,
+                "maximum": 299
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "verdict"
+            ],
+            "properties": {
+              "verdict": {
+                "const": "unreachable"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "httpStatus": {
+                "anyOf": [
+                  {
+                    "const": 429
+                  },
+                  {
+                    "minimum": 500,
+                    "maximum": 599
+                  }
+                ]
               }
             }
           }

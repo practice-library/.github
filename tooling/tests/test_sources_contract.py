@@ -8,6 +8,8 @@ import glob
 import json
 import os
 import unittest
+import tempfile
+from unittest.mock import patch
 
 from tooling.practice_ci import config
 
@@ -26,9 +28,13 @@ def notes(directory):
     for path in sorted(glob.glob(os.path.join(SOURCES, directory, "*.json"))):
         with open(path, encoding="utf-8") as f:
             document = json.load(f)
-        for host in document["hosts"]:
-            if "note" in host.get("terms", {}):
-                found.append((os.path.basename(path), host["terms"]["note"]))
+        hosts = document.get("hosts") if isinstance(document, dict) else None
+        if not isinstance(hosts, list):
+            continue
+        for host in hosts:
+            terms = host.get("terms") if isinstance(host, dict) else None
+            if isinstance(terms, dict) and "note" in terms:
+                found.append((os.path.basename(path), terms["note"]))
     return found
 
 
@@ -52,6 +58,18 @@ class TermsNoteSchema(unittest.TestCase):
 
 
 class TermsNoteCases(unittest.TestCase):
+    def test_scanner_skips_malformed_containers_and_keeps_note_values(self):
+        documents = [None, [], {}, {"hosts": None}, {"hosts": {}},
+                     {"hosts": ["host", None, {}, {"terms": None},
+                                {"terms": "note"}, {"terms": ["note"]},
+                                {"terms": {"note": 42}}]}]
+        with tempfile.TemporaryDirectory() as tmp:
+            for index, document in enumerate(documents):
+                with open(os.path.join(tmp, str(index) + ".json"), "w") as f:
+                    json.dump(document, f)
+            with patch(__name__ + ".SOURCES", tmp):
+                self.assertEqual(notes("."), [(str(len(documents) - 1) + ".json", 42)])
+
     def test_accepted_cases_are_within_bounds(self):
         accepted = notes("examples")
         self.assertGreaterEqual(len(accepted), 3)

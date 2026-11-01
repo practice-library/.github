@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "graph": "vendors/example",
+  "commit": "0e6f5ed237dd52f9fe02a33f8c6b8ec653a3a2c3",
+  "run": {
+    "id": 1,
+    "url": "https://github.com/practice-library/graphs/actions/runs/1",
+    "startedAt": "2026-10-31T12:00:00Z",
+    "finishedAt": "2026-10-31T12:03:00Z"
+  },
+  "requests": 1,
+  "robots": [
+    {
+      "host": "docs.example.com",
+      "fetchedAt": "2026-10-31T12:00:30Z",
+      "verdict": "allowed",
+      "httpStatus": 599
+    }
+  ],
+  "results": []
+}

@@ -60,6 +60,174 @@
         "pdf",
         "docx"
       ]
+    },
+    {
+      "pointer": "/properties/maxRequestsPerRun/minimum",
+      "set": 0
+    },
+    {
+      "pointer": "/properties/maxRequestsPerRun/minimum",
+      "set": 2
+    },
+    {
+      "pointer": "/properties/maxRequestsPerRun/maximum",
+      "set": 199
+    },
+    {
+      "pointer": "/properties/maxRequestsPerRun/maximum",
+      "set": 201
+    },
+    {
+      "pointer": "/properties/retryAfterMaxSeconds/minimum",
+      "set": -1
+    },
+    {
+      "pointer": "/properties/retryAfterMaxSeconds/minimum",
+      "set": 1
+    },
+    {
+      "pointer": "/properties/retryAfterMaxSeconds/maximum",
+      "set": 119
+    },
+    {
+      "pointer": "/properties/retryAfterMaxSeconds/maximum",
+      "set": 121
+    },
+    {
+      "pointer": "/properties/unreadableRunsBeforeIssue/minimum",
+      "set": 1
+    },
+    {
+      "pointer": "/properties/unreadableRunsBeforeIssue/minimum",
+      "set": 3
+    },
+    {
+      "pointer": "/properties/unreadableRunsBeforeIssue/maximum",
+      "set": 9
+    },
+    {
+      "pointer": "/properties/unreadableRunsBeforeIssue/maximum",
+      "set": 11
+    },
+    {
+      "pointer": "/$defs/host/properties/maxRequestsPerRun/minimum",
+      "set": 0
+    },
+    {
+      "pointer": "/$defs/host/properties/maxRequestsPerRun/minimum",
+      "set": 2
+    },
+    {
+      "pointer": "/$defs/host/properties/maxRequestsPerRun/maximum",
+      "set": 49
+    },
+    {
+      "pointer": "/$defs/host/properties/maxRequestsPerRun/maximum",
+      "set": 51
+    },
+    {
+      "pointer": "/$defs/host/properties/minIntervalDays/minimum",
+      "set": 0
+    },
+    {
+      "pointer": "/$defs/host/properties/minIntervalDays/minimum",
+      "set": 2
+    },
+    {
+      "pointer": "/$defs/host/properties/minIntervalDays/maximum",
+      "set": 89
+    },
+    {
+      "pointer": "/$defs/host/properties/minIntervalDays/maximum",
+      "set": 91
+    },
+    {
+      "pointer": "/$defs/host/properties/maxBytes/minimum",
+      "set": 1023
+    },
+    {
+      "pointer": "/$defs/host/properties/maxBytes/minimum",
+      "set": 1025
+    },
+    {
+      "pointer": "/$defs/host/properties/maxBytes/maximum",
+      "set": 9999999
+    },
+    {
+      "pointer": "/$defs/host/properties/maxBytes/maximum",
+      "set": 10000001
+    },
+    {
+      "pointer": "/$defs/host/properties/timeoutSeconds/minimum",
+      "set": 0
+    },
+    {
+      "pointer": "/$defs/host/properties/timeoutSeconds/minimum",
+      "set": 2
+    },
+    {
+      "pointer": "/$defs/host/properties/timeoutSeconds/maximum",
+      "set": 59
+    },
+    {
+      "pointer": "/$defs/host/properties/timeoutSeconds/maximum",
+      "set": 61
+    },
+    {
+      "pointer": "/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/$defs/host/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/$defs/host/properties/robots/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/additionalProperties",
+      "set": true
+    },
+    {
+      "pointer": "/required",
+      "set": []
+    },
+    {
+      "pointer": "/$defs/host/required",
+      "set": []
+    },
+    {
+      "pointer": "/$defs/host/properties/robots/required",
+      "set": []
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/required",
+      "set": []
+    },
+    {
+      "pointer": "/properties/maxRequestsPerRun/type",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/properties/hosts/type",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/$defs/host/type",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/$defs/host/properties/robots/type",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/type",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/$defs/host/properties/maxBytes/type",
+      "set": "number"
     }
   ]
 }

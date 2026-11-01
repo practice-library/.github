@@ -1,0 +1,12 @@
+[
+  {
+    "schema": "schema.json",
+    "instances": "examples"
+  },
+  {
+    "schema": "schema.json",
+    "instances": "examples",
+    "mode": "guards",
+    "guards": "guards.json"
+  }
+]

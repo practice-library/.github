@@ -22,12 +22,16 @@
     "spec",
     "tagRuleset",
     "release",
-    "protocol",
     "guards",
+    "tooling",
+    "compatibility",
+    "reasons",
+    "profiles",
     "helpers",
     "pinCheck",
     "onboarding",
     "pluginGateway",
+    "protocol",
     "git",
     "approvals"
   ],
@@ -708,262 +712,6 @@
         }
       }
     },
-    "protocol": {
-      "description": "Protocol operations (docs/protocol.md): the REST client, label catalog, verdict comment format and live canary.",
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "maxBodyBytes",
-        "fenceOpen",
-        "unsafeCategories",
-        "verdictAuthor",
-        "verdictMarker",
-        "toolingDir",
-        "toolingCheckout",
-        "api",
-        "tokenEnv",
-        "prefixes",
-        "poll",
-        "verdict",
-        "labels",
-        "canary"
-      ],
-      "properties": {
-        "maxBodyBytes": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "fenceOpen": {
-          "description": "The line that opens the message block, at column 0.",
-          "type": "string",
-          "pattern": "^`{3}[a-z]+$"
-        },
-        "unsafeCategories": {
-          "description": "Unicode general categories refused in a decoded key or string; lone surrogates are always refused.",
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "pattern": "^[A-Z][a-z]$"
-          }
-        },
-        "verdictAuthor": {
-          "description": "The login whose comment holds the verdict; only it can write one, so an issue author cannot forge it.",
-          "type": "string",
-          "minLength": 1
-        },
-        "verdictMarker": {
-          "type": "string",
-          "pattern": "^[a-z][a-z-]*$"
-        },
-        "toolingDir": {
-          "description": "Where tooling/practice_ci sits in a checkout of this repository.",
-          "$ref": "#/$defs/path"
-        },
-        "toolingCheckout": {
-          "description": "Where message-check checks this repository out, at the release tag, to run the reader.",
-          "$ref": "#/$defs/path"
-        },
-        "api": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "base",
-            "version",
-            "accept",
-            "perPage",
-            "maxPages",
-            "timeoutSeconds"
-          ],
-          "properties": {
-            "base": {
-              "type": "string",
-              "pattern": "^https://[^/]+$"
-            },
-            "version": {
-              "type": "string",
-              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
-            },
-            "accept": {
-              "type": "string",
-              "minLength": 1
-            },
-            "perPage": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 100
-            },
-            "maxPages": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "timeoutSeconds": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 300
-            }
-          }
-        },
-        "tokenEnv": {
-          "type": "string",
-          "pattern": "^[A-Z][A-Z0-9_]*$"
-        },
-        "prefixes": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "to",
-            "from",
-            "state"
-          ],
-          "properties": {
-            "kind": {
-              "type": "string",
-              "pattern": "^[a-z]+:$"
-            },
-            "to": {
-              "type": "string",
-              "pattern": "^[a-z]+:$"
-            },
-            "from": {
-              "type": "string",
-              "pattern": "^[a-z]+:$"
-            },
-            "state": {
-              "type": "string",
-              "pattern": "^[a-z]+:$"
-            }
-          }
-        },
-        "poll": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "kind",
-            "state"
-          ],
-          "properties": {
-            "kind": {
-              "type": "string",
-              "pattern": "^[a-z]+$"
-            },
-            "state": {
-              "type": "string",
-              "pattern": "^[a-z]+$"
-            }
-          }
-        },
-        "verdict": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "marker",
-            "authors",
-            "invalidState"
-          ],
-          "properties": {
-            "marker": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^[^\\n]+$"
-            },
-            "authors": {
-              "type": "array",
-              "minItems": 1,
-              "uniqueItems": true,
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
-            "invalidState": {
-              "type": "string",
-              "pattern": "^[a-z]+$"
-            }
-          }
-        },
-        "labels": {
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "name",
-              "color",
-              "description"
-            ],
-            "properties": {
-              "name": {
-                "type": "string",
-                "minLength": 1,
-                "maxLength": 50
-              },
-              "color": {
-                "type": "string",
-                "pattern": "^[0-9a-f]{6}$"
-              },
-              "description": {
-                "type": "string",
-                "maxLength": 100
-              }
-            }
-          }
-        },
-        "canary": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "tokenSecret",
-            "titlePrefix",
-            "timeoutMinutes",
-            "waitSeconds",
-            "pollSeconds",
-            "specVersion",
-            "messageType",
-            "protocolVersion"
-          ],
-          "properties": {
-            "tokenSecret": {
-              "type": "string",
-              "pattern": "^[A-Z][A-Z0-9_]*$"
-            },
-            "titlePrefix": {
-              "type": "string",
-              "minLength": 1
-            },
-            "timeoutMinutes": {
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 360
-            },
-            "waitSeconds": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "pollSeconds": {
-              "type": "integer",
-              "minimum": 1
-            },
-            "specVersion": {
-              "type": "string",
-              "minLength": 1
-            },
-            "messageType": {
-              "type": "string",
-              "minLength": 1
-            },
-            "protocolVersion": {
-              "type": "string",
-              "minLength": 1
-            }
-          }
-        }
-      }
-    },
     "guards": {
       "type": "object",
       "additionalProperties": false,
@@ -1073,6 +821,128 @@
                 "minLength": 1,
                 "pattern": "^[^'$]+$",
                 "description": "Plain text: no ' or $, since it is rendered into a single-quoted YAML scalar that Actions also reads for expressions."
+              }
+            }
+          }
+        }
+      }
+    },
+    "tooling": {
+      "description": "Where the Python CI tooling lives in this repository.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "package"
+      ],
+      "properties": {
+        "dir": {
+          "$ref": "#/$defs/path"
+        },
+        "package": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$"
+        }
+      }
+    },
+    "compatibility": {
+      "description": "What the schema compatibility classifier (tooling/practice_ci/compatibility.py) reads: which files are schemas, which dialects count unevaluated keywords, which file is a check profile.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaUrlPattern",
+        "fullDialectPattern",
+        "tightenHashPattern",
+        "checkFile"
+      ],
+      "properties": {
+        "schemaUrlPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fullDialectPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tightenHashPattern": {
+          "type": "string",
+          "minLength": 1
+        },
+        "checkFile": {
+          "type": "string",
+          "pattern": "^[^/]+\\.json$"
+        }
+      }
+    },
+    "reasons": {
+      "description": "Expected-reason assertions for negative fixtures (tooling/practice_ci/reasons.py): the sidecar file naming each counter-example's keyword and instance location, and the validator flag that prints structured errors.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "file",
+        "validatorFlag"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "pattern": "^[^/]+\\.json$"
+        },
+        "validatorFlag": {
+          "type": "string",
+          "pattern": "^--[a-z-]+$"
+        }
+      }
+    },
+    "profiles": {
+      "description": "Check profiles shared by several callers, rendered to each caller's check.json from templates.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "specCheck"
+      ],
+      "properties": {
+        "specCheck": {
+          "description": "The rows every spec directory with examples, counter-examples and guards runs: validate, reject each counter-example, then apply the guard mutants.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "schema",
+              "instances"
+            ],
+            "properties": {
+              "schema": {
+                "type": "string",
+                "minLength": 1
+              },
+              "instances": {
+                "type": "string",
+                "minLength": 1
+              },
+              "expect": {
+                "enum": [
+                  "pass",
+                  "fail"
+                ]
+              },
+              "each": {
+                "enum": [
+                  "true",
+                  "false"
+                ]
+              },
+              "mode": {
+                "enum": [
+                  "validate",
+                  "metaschema",
+                  "guards"
+                ]
+              },
+              "guards": {
+                "type": "string",
+                "minLength": 1
               }
             }
           }
@@ -1362,6 +1232,262 @@
           "type": "string",
           "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)+$",
           "description": "The Python module the workflow runs with -m, from a checkout of this repository."
+        }
+      }
+    },
+    "protocol": {
+      "description": "Protocol operations (docs/protocol.md): the REST client, label catalog, verdict comment format and live canary.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api",
+        "tokenEnv",
+        "prefixes",
+        "poll",
+        "verdict",
+        "labels",
+        "canary",
+        "maxBodyBytes",
+        "fenceOpen",
+        "unsafeCategories",
+        "verdictAuthor",
+        "verdictMarker",
+        "toolingDir",
+        "toolingCheckout"
+      ],
+      "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base",
+            "version",
+            "accept",
+            "perPage",
+            "maxPages",
+            "timeoutSeconds"
+          ],
+          "properties": {
+            "base": {
+              "type": "string",
+              "pattern": "^https://[^/]+$"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "accept": {
+              "type": "string",
+              "minLength": 1
+            },
+            "perPage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        },
+        "tokenEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "prefixes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "to",
+            "from",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "to": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "from": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            }
+          }
+        },
+        "poll": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "verdict": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "marker",
+            "authors",
+            "invalidState"
+          ],
+          "properties": {
+            "marker": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            },
+            "authors": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "invalidState": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "color",
+              "description"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{6}$"
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "canary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tokenSecret",
+            "titlePrefix",
+            "timeoutMinutes",
+            "waitSeconds",
+            "pollSeconds",
+            "specVersion",
+            "messageType",
+            "protocolVersion"
+          ],
+          "properties": {
+            "tokenSecret": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "titlePrefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 360
+            },
+            "waitSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pollSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "specVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "messageType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "protocolVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "maxBodyBytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "fenceOpen": {
+          "description": "The line that opens the message block, at column 0.",
+          "type": "string",
+          "pattern": "^`{3}[a-z]+$"
+        },
+        "unsafeCategories": {
+          "description": "Unicode general categories refused in a decoded key or string; lone surrogates are always refused.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][a-z]$"
+          }
+        },
+        "verdictAuthor": {
+          "description": "The login whose comment holds the verdict; only it can write one, so an issue author cannot forge it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "verdictMarker": {
+          "type": "string",
+          "pattern": "^[a-z][a-z-]*$"
+        },
+        "toolingDir": {
+          "description": "Where tooling/practice_ci sits in a checkout of this repository.",
+          "$ref": "#/$defs/path"
+        },
+        "toolingCheckout": {
+          "description": "Where message-check checks this repository out, at the release tag, to run the reader.",
+          "$ref": "#/$defs/path"
         }
       }
     },
