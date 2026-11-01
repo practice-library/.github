@@ -1,0 +1,9 @@
+{
+  "userAgent": "practice-library-graphs/1 (+https://github.com/practice-library/graphs)",
+  "maxRequestsPerRun": 50,
+  "retryAfterMaxSeconds": 60,
+  "unreadableRunsBeforeIssue": 3,
+  "hosts": [
+    "docs.example.com"
+  ]
+}

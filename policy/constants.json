@@ -22,7 +22,7 @@
     "callerFetchDepth": 0
   },
   "tooling": {
-    "package": "tooling/practice_ci",
+    "package": "practice_ci",
     "launcher": "scripts/practice-ci",
     "exitCodes": {
       "pass": 0,
@@ -123,7 +123,8 @@
           "why": "a cap comes from policy/constants.json"
         }
       ]
-    }
+    },
+    "dir": "tooling"
   },
   "actions": {
     "checkout": {
@@ -208,7 +209,7 @@
       "email": "selftest@example.invalid"
     },
     "unitDir": "selftest/unit",
-    "libDir": "templates/fragments",
+    "libDir": "selftest/lib",
     "mutantsDir": "selftest/mutants",
     "parseErrorPatterns": [
       "compile error",
@@ -610,5 +611,35 @@
     "toolingPath": ".practice-ci",
     "schemaLooseningKind": "schema-loosening",
     "sizeKind": "size"
+  },
+  "compatibility": {
+    "schemaUrlPattern": "^https?://json-schema\\.org/",
+    "fullDialectPattern": "^https?://json-schema\\.org/draft/(2019-09|2020-12)/schema#?$",
+    "tightenHashPattern": "^[0-9a-f]{64}$",
+    "checkFile": "check.json"
+  },
+  "reasons": {
+    "file": "reasons.json",
+    "validatorFlag": "--json"
+  },
+  "profiles": {
+    "specCheck": [
+      {
+        "schema": "schema.json",
+        "instances": "examples"
+      },
+      {
+        "schema": "schema.json",
+        "instances": "counter-examples",
+        "expect": "fail",
+        "each": "true"
+      },
+      {
+        "schema": "schema.json",
+        "instances": "examples",
+        "mode": "guards",
+        "guards": "guards.json"
+      }
+    ]
   }
 }
