@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"$defs/host/properties/maxRequestsPerRun/type\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/sources-v2.6.0.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/sources-type-removed.json"
+  }
+}

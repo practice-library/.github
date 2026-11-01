@@ -95,19 +95,9 @@
     "replace": "IN(\"$ref\", \"$dynamicRef\")"
   },
   {
-    "name": "added-keys-unchecked",
-    "find": "paths(. == false)",
-    "replace": "paths(. == \"never\")"
-  },
-  {
     "name": "pattern-properties-unchecked",
-    "find": "[\"properties\", \"patternProperties\"][] as $kw",
-    "replace": "[\"properties\"][] as $kw"
-  },
-  {
-    "name": "unevaluated-added-unchecked",
-    "find": "IN(\"additionalProperties\", \"unevaluatedProperties\")))",
-    "replace": "IN(\"additionalProperties\")))"
+    "find": "| [\"properties\", \"patternProperties\"][] as $k",
+    "replace": "| [\"properties\"][] as $k"
   },
   {
     "name": "unevaluated-opened-unchecked",
@@ -126,7 +116,237 @@
   },
   {
     "name": "new-shape-unguarded",
-    "find": "($new | try getpath($at + [$kw]) catch null | if type == \"object\" then keys else [] end)[]",
-    "replace": "($new | getpath($at + [$kw]) | if type == \"object\" then keys else [] end)[]"
+    "find": "def at($t; $p): $t | try getpath($p) catch null;",
+    "replace": "def at($t; $p): $t | getpath($p);"
+  },
+  {
+    "name": "type-gain-ignored",
+    "find": "| select(any($nt[]; . as $x | $ot | index([$x]) | not)) | where($s + [$k])",
+    "replace": "| select(false) | where($s + [$k])"
+  },
+  {
+    "name": "nonmonotonic-ignored",
+    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\", \"contains\") then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "removal-ignored",
+    "find": "if ($n | has($k)) | not then",
+    "replace": "if false then"
+  },
+  {
+    "name": "refs-ignored",
+    "find": "| select($or != $nr) | where($s + [$r]) )",
+    "replace": "| select(false) | where($s + [$r]) )"
+  },
+  {
+    "name": "list-length-ignored",
+    "find": "select(($o[$k] | type) == \"array\" and (($n[$k] | type) != \"array\" or ($n[$k] | length) != ($o[$k] | length)))",
+    "replace": "select(false)"
+  },
+  {
+    "name": "items-list-length-ignored",
+    "find": "select(($n[$k] | type) != \"array\" or ($n[$k] | length) != ($o[$k] | length)) | where($s + [$k])",
+    "replace": "select(false) | where($s + [$k])"
+  },
+  {
+    "name": "entry-removal-ignored",
+    "find": "| select(. as $x | $nk | index([$x]) | not)",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "made-true-ignored",
+    "find": "elif $n == true then",
+    "replace": "elif false then"
+  },
+  {
+    "name": "false-opened-ignored",
+    "find": "(select($o == false and ($s | length) > 0 and $n != false and $n != null) | where($s))",
+    "replace": "(select(false) | where($s))"
+  },
+  {
+    "name": "annotations-judged",
+    "find": "| select($k | IN($annot[]) | not)",
+    "replace": "| select(true)"
+  },
+  {
+    "name": "other-change-ignored",
+    "find": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select($o[$k] != $n[$k])",
+    "replace": "# Any other keyword changed (multipleOf, uniqueItems, dependentRequired, ...).\n                          select(false)"
+  },
+  {
+    "name": "contains-monotonic",
+    "find": "elif $k | IN(\"not\", \"if\", \"oneOf\", \"contains\") then",
+    "replace": "elif $k | IN(\"not\", \"if\", \"oneOf\") then"
+  },
+  {
+    "name": "keys-beside-judge-ignored",
+    "find": "( select(judges(\"additionalProperties\") or judges(\"unevaluatedProperties\"))",
+    "replace": "( select(false)"
+  },
+  {
+    "name": "judge-only-false",
+    "find": "def judges($k): $o | has($k) and .[$k] != true;",
+    "replace": "def judges($k): $o | .[$k] == false;"
+  },
+  {
+    "name": "same-schema-key-counted",
+    "find": "| select(judges(\"unevaluatedProperties\") or $n[$k][.] != $o.additionalProperties)",
+    "replace": "| ."
+  },
+  {
+    "name": "prefix-beside-judge-ignored",
+    "find": "| select(len($n.prefixItems) > len($o.prefixItems))",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "items-list-beside-judge-ignored",
+    "find": "| select(($n.items | type) == \"array\" and len($n.items) > len($o.items))",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "additional-beside-uneval-ignored",
+    "find": "select(added(\"additionalProperties\"))",
+    "replace": "select(false)"
+  },
+  {
+    "name": "items-beside-uneval-ignored",
+    "find": "| select(added($k)) | where($s + [$k]) ),",
+    "replace": "| select(false) | where($s + [$k]) ),"
+  },
+  {
+    "name": "applicators-beside-uneval-ignored",
+    "find": "\"dependentSchemas\", \"dependencies\"][] as $k",
+    "replace": "\"dependentSchemas\", \"dependencies\"][] as $k | select(false)"
+  },
+  {
+    "name": "mincontains-added-ignored",
+    "find": "$n.minContains < 1)",
+    "replace": "$n.minContains < 0)"
+  },
+  {
+    "name": "defs-beside-uneval-ignored",
+    "find": "| [\"$defs\", \"definitions\"][] as $k | select(at($old; [$k]) != at($new; [$k]))",
+    "replace": "| [\"$defs\", \"definitions\"][] as $k | select(false)"
+  },
+  {
+    "name": "defs-without-ref",
+    "find": "| select(any($old, $new | paths; .[-1] | IN($refs[])))",
+    "replace": "| ."
+  },
+  {
+    "name": "identity-as-annotation",
+    "find": "\"contentMediaType\",\"contentEncoding\",\"$defs\",\"definitions\"] as $annot",
+    "replace": "\"contentMediaType\",\"contentEncoding\",\"$defs\",\"definitions\",\"$schema\",\"$id\",\"$anchor\",\"$dynamicAnchor\",\"$vocabulary\"] as $annot"
+  },
+  {
+    "name": "shape-change-ignored",
+    "find": "is not compared.\n                    where($s)",
+    "replace": "is not compared.\n                    empty"
+  },
+  {
+    "name": "refrev-tightening-ignored",
+    "find": "( select($refrev)\n",
+    "replace": "( select(false)\n"
+  },
+  {
+    "name": "refrev-shape-ignored",
+    "find": "elif $k | IN($submap[]) or IN($subarr[]) then ($o[$k] | shape) != ($n[$k] | shape)",
+    "replace": "elif $k | IN($submap[]) or IN($subarr[]) then false"
+  },
+  {
+    "name": "refrev-boolean-ignored",
+    "find": "select($o != $n and $n != null) | where($s)",
+    "replace": "empty"
+  },
+  {
+    "name": "refrev-annotations-judged",
+    "find": "                    | select($k | IN($annot[]) | not)\n                    | select(\n",
+    "replace": "                    | select(\n"
+  },
+  {
+    "name": "contentschema-not-a-place",
+    "find": "\"else\",\"contentSchema\"] as $sub",
+    "replace": "\"else\"] as $sub"
+  },
+  {
+    "name": "off-type-handled-ignored",
+    "find": "| select(($o[$k] | type) != $t and $o[$k] != $n[$k]) | where($s + [$k])",
+    "replace": "| select(false)"
+  },
+  {
+    "name": "off-type-wrong-type",
+    "find": "if ($mins + $maxs) | index([$k]) then \"number\"",
+    "replace": "if ($mins + $maxs) | index([$k]) then \"boolean\""
+  },
+  {
+    "name": "refuses-other-map-ignored",
+    "find": "and ((if $k == \"properties\" then \"patternProperties\" else \"properties\" end) as $other | has($other) | not)",
+    "replace": "and true"
+  },
+  {
+    "name": "refuses-uneval-applicators-ignored",
+    "find": "$x | has($a)) | not)));",
+    "replace": "$x | has($a)) | not or true)));"
+  },
+  {
+    "name": "refuses-uneval-additional-ignored",
+    "find": "($unevalcounts and .unevaluatedProperties == false and (has(\"additionalProperties\") | not)",
+    "replace": "($unevalcounts and .unevaluatedProperties == false and true"
+  },
+  {
+    "name": "ident-new-places-ignored",
+    "find": "( ($places + $newplaces | unique)[] as $s | at($old; $s) as $o | at($new; $s) as $n\n                | select(($n | type) == \"object\")\n                | $ident",
+    "replace": "( $places[] as $s | at($old; $s) as $o | at($new; $s) as $n\n                | select(($n | type) == \"object\")\n                | $ident"
+  },
+  {
+    "name": "draft4-id-ignored",
+    "find": "\"$id\",\"id\",\"$anchor\"",
+    "replace": "\"$id\",\"$anchor\""
+  },
+  {
+    "name": "recursive-anchor-ignored",
+    "find": "\"$dynamicAnchor\",\"$recursiveAnchor\",\"$vocabulary\"",
+    "replace": "\"$dynamicAnchor\",\"$vocabulary\""
+  },
+  {
+    "name": "closed-removal-not-excepted",
+    "find": "select(($k | IN(\"properties\", \"patternProperties\")) and ($o | refuses($k)) and ($n | refuses($k)) | not)",
+    "replace": "select(true)"
+  },
+  {
+    "name": "closed-entry-not-excepted",
+    "find": "| select((($o | refuses($k)) and ($n | refuses($k))) | not)",
+    "replace": "| ."
+  },
+  {
+    "name": "identity-added-ignored",
+    "find": "| $ident[] as $k | select(($o | type == \"object\" and has($k)) | not) | select($n | has($k))",
+    "replace": "| $ident[] as $k | select(false)"
+  },
+  {
+    "name": "dependent-entry-excepted",
+    "find": "type == \"object\" and ($k | IN(\"properties\", \"patternProperties\"))",
+    "replace": "type == \"object\""
+  },
+  {
+    "name": "uneval-any-dialect",
+    "find": "or ($unevalcounts and .unevaluatedProperties == false",
+    "replace": "or (.unevaluatedProperties == false"
+  },
+  {
+    "name": "uneval-root-dialect-only",
+    "find": "and all([$old, $new][] | .. | objects | select(has(\"$schema\")) | .[\"$schema\"];",
+    "replace": "and all([$old, $new][] | .[\"$schema\"];"
+  },
+  {
+    "name": "uneval-root-schema-optional",
+    "find": "(([$old, $new] | all(.[]; type == \"object\" and has(\"$schema\")))",
+    "replace": "((true)"
+  },
+  {
+    "name": "uneval-dialect-prefix",
+    "find": "(2019-09|2020-12)/schema#?$\")))",
+    "replace": "(2019-09|2020-12)/\")))"
   }
 ]

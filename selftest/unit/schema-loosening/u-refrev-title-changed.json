@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "output": "ok nothing loosened",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-refrev-title-changed-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-refrev-title-changed-new.json"
+  }
+}

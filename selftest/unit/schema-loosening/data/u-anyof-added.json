@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "n": {
+      "type": "integer",
+      "multipleOf": 2,
+      "uniqueItems": true
+    },
+    "r": {
+      "$ref": "#/$defs/a"
+    },
+    "x": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "boolean"
+        }
+      ],
+      "allOf": [
+        {
+          "minimum": 0
+        },
+        {
+          "maximum": 9
+        }
+      ]
+    },
+    "i": {
+      "items": false
+    },
+    "m": {
+      "description": "m"
+    }
+  },
+  "dependentSchemas": {
+    "n": {
+      "required": [
+        "x"
+      ]
+    }
+  },
+  "$defs": {
+    "a": {
+      "type": "string"
+    },
+    "b": {
+      "type": "string"
+    }
+  }
+}

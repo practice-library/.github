@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"dependentSchemas/n/required\",\"dependentSchemas/n\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-closed-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-closed-dependent-removed.json"
+  }
+}

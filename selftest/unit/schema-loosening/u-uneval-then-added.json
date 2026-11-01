@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"then\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-uneval-then-added-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-uneval-then-added-new.json"
+  }
+}

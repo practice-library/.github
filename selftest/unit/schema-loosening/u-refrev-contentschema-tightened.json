@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/a/contentSchema/maximum\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-refrev-contentschema-tightened-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-refrev-contentschema-tightened-new.json"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"dependentSchemas\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-uneval-dependent-added-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-uneval-dependent-added-new.json"
+  }
+}

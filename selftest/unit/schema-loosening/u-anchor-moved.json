@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"$defs/x/$anchor\",\"$defs/y/$anchor\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-anchor-moved-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-anchor-moved-new.json"
+  }
+}

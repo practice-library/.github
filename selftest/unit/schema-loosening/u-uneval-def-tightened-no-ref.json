@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "output": "ok nothing loosened",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-uneval-def-tightened-no-ref-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-uneval-def-tightened-no-ref-new.json"
+  }
+}

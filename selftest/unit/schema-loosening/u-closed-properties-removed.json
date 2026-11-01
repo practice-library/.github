@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/x/allOf/0/minimum\",\"properties/x/allOf/1/maximum\",\"properties/r/$ref\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-closed-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-closed-properties-removed.json"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/a\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-closed-removed-pattern-still-matches-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-closed-removed-pattern-still-matches-new.json"
+  }
+}

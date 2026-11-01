@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"exclusiveMaximum\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-draft4-exclusive-maximum-off-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-draft4-exclusive-maximum-off-new.json"
+  }
+}
