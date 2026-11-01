@@ -1,0 +1,17 @@
+#!/usr/bin/env -S python3 -I
+"""Launcher for the CI tooling: python3 -I scripts/practice-ci <command> [args...].
+
+Isolated mode ignores PYTHONPATH, the working directory and the user site; this puts the one directory
+that holds the practice_ci package first on sys.path, so no code from the caller's checkout is imported.
+"""
+import os
+import sys
+
+_HERE = os.path.dirname(os.path.realpath(__file__))
+_PACKAGE_PARENT = os.path.join(os.path.dirname(_HERE), "tooling")
+
+sys.path[:] = [_PACKAGE_PARENT] + [p for p in sys.path if p and os.path.realpath(p) != _HERE]
+
+from practice_ci.__main__ import main  # noqa: E402
+
+sys.exit(main(sys.argv[1:]))

@@ -8,8 +8,6 @@ from tooling.practice_ci import config
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TEMPLATE = os.path.join(ROOT, "templates", ".github", "workflows", config.get("pluginGateway", "workflow"))
-# Actions this template needs that policy has no pin for yet; the integration render adds them.
-UNPINNED = ("actions.uploadArtifact.", "actions.downloadArtifact.")
 
 
 def text():
@@ -49,12 +47,10 @@ class Template(unittest.TestCase):
             with self.subTest(name):
                 self.assertRegex(text(), r"(?m)^      %s:\n(?:.*\n)*?        default: @@pluginGateway\." % re.escape(name))
 
-    def test_every_placeholder_resolves_in_policy_except_the_unpinned_actions(self):
+    def test_every_placeholder_resolves_in_policy(self):
         keys = set(re.findall(r"@@([A-Za-z0-9_.]+)@@", text()))
         self.assertTrue(keys)
         for key in sorted(keys):
-            if key.startswith(UNPINNED):
-                continue
             with self.subTest(key):
                 config.get(*key.split("."))
 

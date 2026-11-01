@@ -40,7 +40,7 @@ jobs:
           }
           trap cleanup EXIT
           fence='```'
-          block="$(jq -n --arg id "$PREFIX-$RUN" --arg src "https://github.com/$REPO" --arg to "https://github.com/$REPO" \
+          block="$(jq -n --arg id "$PREFIX-$RUN" --arg src "@@protocol.repositoryBaseUrl@@/$REPO" --arg to "@@protocol.repositoryBaseUrl@@/$REPO" \
             --arg sv "$SPEC_VERSION" --arg type "$TYPE" --arg proto "$PROTOCOL" \
             '{specversion: $sv, id: $id, source: $src, type: $type, protocol: $proto, data: {to: $to}}')"
           valid_body="$(printf 'Canary message, valid.\n\n%sjson\n%s\n%s\n' "$fence" "$block" "$fence")"

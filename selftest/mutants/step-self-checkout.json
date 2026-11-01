@@ -1,0 +1,15 @@
+{
+  "target": "templates/fragments/self-checkout.yml",
+  "tests": ["tooling.tests.test_steps"],
+  "mutants": [
+    {"name": "empty-repository-passes", "find": "[ -n \"$WORKFLOW_REPOSITORY\" ]", "replace": "[ -z \"$WORKFLOW_REPOSITORY\" ]"},
+    {"name": "empty-repository-exits-zero", "find": "cannot be fetched\"; exit 1;", "replace": "cannot be fetched\"; exit 0;"},
+    {"name": "sha-length-39", "find": "^[0-9a-f]{40}$", "replace": "^[0-9a-f]{39}$"},
+    {"name": "sha-end-anchor-dropped", "find": "^[0-9a-f]{40}$", "replace": "^[0-9a-f]{40}"},
+    {"name": "sha-start-anchor-dropped", "find": "^[0-9a-f]{40}$", "replace": "[0-9a-f]{40}$"},
+    {"name": "head-compare-inverted", "find": "[ \"$actual\" = \"$WORKFLOW_SHA\" ]", "replace": "[ \"$actual\" != \"$WORKFLOW_SHA\" ]"},
+    {"name": "head-read-from-the-workspace", "find": "git -C \"$GITHUB_WORKSPACE/@@selfCheckout.dir@@\" rev-parse", "replace": "git -C \"$GITHUB_WORKSPACE\" rev-parse"},
+    {"name": "credentials-persisted", "find": "persist-credentials: false", "replace": "persist-credentials: true"},
+    {"name": "ref-is-not-the-workflow-sha", "find": "ref: ${{ job.workflow_sha }}", "replace": "ref: ${{ github.sha }}"}
+  ]
+}
