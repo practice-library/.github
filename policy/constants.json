@@ -263,6 +263,34 @@
       }
     ]
   },
+  "approvals": {
+    "apiUrl": "https://api.github.com",
+    "apiVersion": "2022-11-28",
+    "timeoutSeconds": 30,
+    "perPage": 100,
+    "approvedState": "APPROVED",
+    "decisiveStates": [
+      "APPROVED",
+      "CHANGES_REQUESTED",
+      "DISMISSED"
+    ],
+    "allowedRoles": [
+      "admin",
+      "maintain"
+    ],
+    "botType": "Bot",
+    "botSuffix": "[bot]",
+    "kinds": [
+      "schema-loosening",
+      "size",
+      "publication"
+    ],
+    "publicationKind": "publication",
+    "publicationLabel": "publication",
+    "publicationStatement": "I approve this change for publication.",
+    "headPrefix": "Head: ",
+    "toolingPath": ".practice-ci"
+  },
   "helpers": {
     "yq": {
       "version": "4.44.3",
