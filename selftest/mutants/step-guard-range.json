@@ -1,0 +1,13 @@
+{
+  "target": "templates/.github/workflows/guard.yml",
+  "tests": ["tooling.tests.test_steps"],
+  "mutants": [
+    {"name": "unknown-guard-accepted", "find": ". == $g", "replace": ". != $g"},
+    {"name": "pull-request-sides-swapped", "find": "base=\"$PR_BASE\"; head=\"$PR_HEAD\" ;;", "replace": "base=\"$PR_HEAD\"; head=\"$PR_BASE\" ;;"},
+    {"name": "push-zero-before-is-a-range", "find": "&& ! [[ \"$PUSH_BEFORE\" =~ ^0+$ ]]", "replace": "&& [[ \"$PUSH_BEFORE\" =~ ^0+$ ]]"},
+    {"name": "push-head-is-before", "find": "base=\"$PUSH_BEFORE\"; head=\"$PUSH_AFTER\"", "replace": "base=\"$PUSH_BEFORE\"; head=\"$PUSH_BEFORE\""},
+    {"name": "empty-base-is-a-range", "find": "if [ -z \"$base\" ]; then echo \"none=true\"", "replace": "if [ -n \"$base\" ]; then echo \"none=true\""},
+    {"name": "merge-base-is-the-base", "find": "mb=\"$(git merge-base \"$base\" \"$head\")\"", "replace": "mb=\"$base\""},
+    {"name": "mb-output-dropped", "find": "echo \"none=false\"; echo \"base=$base\"; echo \"mb=$mb\"; echo \"head=$head\"", "replace": "echo \"none=false\"; echo \"base=$base\"; echo \"head=$head\""}
+  ]
+}

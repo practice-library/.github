@@ -7,6 +7,8 @@
   "required": [
     "org",
     "runner",
+    "selfCheckout",
+    "tooling",
     "actions",
     "tools",
     "leakScan",
@@ -190,7 +192,9 @@
       "additionalProperties": false,
       "required": [
         "image",
-        "timeoutMinutes"
+        "timeoutMinutes",
+        "unitTimeoutMinutes",
+        "fetchRetries"
       ],
       "properties": {
         "image": {
@@ -201,6 +205,204 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 360
+        },
+        "unitTimeoutMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 360
+        },
+        "fetchRetries": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "selfCheckout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "callerDir",
+        "callerFetchDepth"
+      ],
+      "properties": {
+        "dir": {
+          "$ref": "#/$defs/path"
+        },
+        "callerDir": {
+          "$ref": "#/$defs/path"
+        },
+        "callerFetchDepth": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tooling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "package",
+        "launcher",
+        "exitCodes",
+        "lint"
+      ],
+      "properties": {
+        "package": {
+          "$ref": "#/$defs/path"
+        },
+        "launcher": {
+          "$ref": "#/$defs/path"
+        },
+        "exitCodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pass",
+            "fail",
+            "error"
+          ],
+          "properties": {
+            "pass": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "fail": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            },
+            "error": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          }
+        },
+        "lint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "pythonRoots",
+            "pythonExcludeDirs",
+            "templateRoots",
+            "templateSuffixes",
+            "allowedNumbers",
+            "policyKeywords",
+            "policyCalls",
+            "policyNames",
+            "urlPattern",
+            "textRules"
+          ],
+          "properties": {
+            "pythonRoots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/path"
+              }
+            },
+            "pythonExcludeDirs": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "templateRoots": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/path"
+              }
+            },
+            "templateSuffixes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "pattern": "^\\."
+              }
+            },
+            "allowedNumbers": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            },
+            "policyKeywords": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "policyCalls": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "call",
+                  "positions"
+                ],
+                "properties": {
+                  "call": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "positions": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  }
+                }
+              }
+            },
+            "policyNames": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "urlPattern": {
+              "type": "string",
+              "minLength": 1
+            },
+            "textRules": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "id",
+                  "regex",
+                  "why"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9-]*$"
+                  },
+                  "regex": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "why": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
         }
       }
     },
@@ -298,7 +500,9 @@
         "builder",
         "author",
         "unitDir",
-        "libDir"
+        "libDir",
+        "mutantsDir",
+        "parseErrorPatterns"
       ],
       "properties": {
         "fixturesDir": {
@@ -334,6 +538,18 @@
         },
         "libDir": {
           "$ref": "#/$defs/path"
+        },
+        "mutantsDir": {
+          "$ref": "#/$defs/path"
+        },
+        "parseErrorPatterns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },

@@ -1,0 +1,30 @@
+- name: The called workflow must say which tooling it is
+  shell: bash
+  env:
+    WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+    WORKFLOW_SHA: ${{ job.workflow_sha }}
+  run: |
+    set -euo pipefail
+    [ -n "$WORKFLOW_REPOSITORY" ] || { echo "::error::job.workflow_repository is empty; the tooling of this workflow cannot be fetched"; exit 1; }
+    [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::job.workflow_sha is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
+- name: Check out the tooling at the commit this workflow runs from
+  uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+  with:
+    repository: ${{ job.workflow_repository }}
+    ref: ${{ job.workflow_sha }}
+    path: @@selfCheckout.dir@@
+    persist-credentials: false
+- name: The tooling is at exactly that commit
+  shell: bash
+  env:
+    WORKFLOW_SHA: ${{ job.workflow_sha }}
+  run: |
+    set -euo pipefail
+    actual="$(git -C "$GITHUB_WORKSPACE/@@selfCheckout.dir@@" rev-parse HEAD)"
+    [ "$actual" = "$WORKFLOW_SHA" ] || { echo "::error::the tooling is at $actual, not at $WORKFLOW_SHA"; exit 1; }
+- name: Check out the caller
+  uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
+  with:
+    path: @@selfCheckout.callerDir@@
+    fetch-depth: @@selfCheckout.callerFetchDepth@@
+    persist-credentials: false

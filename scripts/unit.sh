@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs every unit case against the rendered shell libraries the workflows embed.
+# Runs every unit case against the shell fragments the workflows embed, loaded straight from the
+# fragments directory (selftest.libDir): there is no second copy of a library.
 # A case is <unitDir>/<lib>/<name>.json = {"env": {...}, "expect": "<first word of main's output>"};
 # it runs <libDir>/<lib>.sh's main with that environment. Each lib needs at least one case.
 # A case may add "output": the whole line main must print, when the first word is not enough.

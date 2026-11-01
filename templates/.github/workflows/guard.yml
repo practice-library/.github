@@ -65,6 +65,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      # The include point for the called workflow's own tooling: it must come after the checkout above,
+      # which cleans the workspace. Checks wire their commands to the tooling it provides.
+      #@include self-checkout.yml
       - name: The change to check
         id: range
         shell: bash
