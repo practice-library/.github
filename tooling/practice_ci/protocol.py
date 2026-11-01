@@ -219,7 +219,7 @@ def decide(action, actor, author, body_digest, verdict):
             return JUDGE, None, None
         return KEEP_INVALID, TAINTED, "its body was edited by someone other than its author; the author resubmits by editing it"
     if verdict is None:
-        return JUDGE, None, None
+        return KEEP_INVALID, TAINTED, "its body has no stored revision verdict; the author resubmits by editing it"
     if verdict["status"] == TAINTED:
         return KEEP_INVALID, TAINTED, "its body was edited by someone other than its author; the author resubmits by editing it"
     if verdict["sha256"] != body_digest:

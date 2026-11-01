@@ -159,6 +159,22 @@ class Trust(unittest.TestCase):
         what, status, _ = self.event(comments, "labeled", self.AUTHOR, b"tampered body")
         self.assertEqual((what, status), (protocol.KEEP_INVALID, protocol.TAINTED))
 
+    def test_unlabeled_create_foreign_edit_relabel_without_verdict_is_invalid(self):
+        comments = []
+        original, tampered = b"original body", b"foreign revision"
+        self.assertEqual(self.event(comments, "opened", self.AUTHOR, original)[0], protocol.JUDGE)
+        # No kind label: the opened run stores no verdict. The foreign edit's
+        # run has not recorded taint when the relabel run reads the new body.
+        for action in ("labeled", "retitled"):
+            with self.subTest(action=action):
+                what, status, reason = self.event(comments, action, self.AUTHOR, tampered)
+                self.assertEqual((what, status), (protocol.KEEP_INVALID, protocol.TAINTED))
+                self.assertTrue(reason)
+                comments = [self.verdict_comment(status, tampered)]
+                self.assertEqual(self.event(comments, action, self.AUTHOR, tampered)[0], protocol.KEEP_INVALID)
+                self.assertEqual(self.event(comments, "edited", self.AUTHOR, tampered)[0], protocol.JUDGE)
+                comments = []
+
     def test_author_edit_resubmits(self):
         comments = [self.verdict_comment(protocol.TAINTED, b"tampered")]
         what, _, _ = self.event(comments, "edited", self.AUTHOR, b"fixed by author")
