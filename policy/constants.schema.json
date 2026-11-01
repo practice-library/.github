@@ -631,7 +631,9 @@
       "additionalProperties": false,
       "required": [
         "nodeSchemaId",
-        "nodeSchemaPath"
+        "nodeSchemaPath",
+        "sourcesSchemaPath",
+        "termsNoteMaxLength"
       ],
       "properties": {
         "nodeSchemaId": {
@@ -640,6 +642,14 @@
         },
         "nodeSchemaPath": {
           "$ref": "#/$defs/path"
+        },
+        "sourcesSchemaPath": {
+          "$ref": "#/$defs/path"
+        },
+        "termsNoteMaxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The longest spec/sources terms.note; a test holds the schema's maxLength to this value, since a schema file cannot read policy."
         }
       }
     },
