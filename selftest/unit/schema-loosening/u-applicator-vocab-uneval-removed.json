@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"properties/b\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-applicator-vocab-uneval-removed-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-applicator-vocab-uneval-removed-new.json"
+  }
+}

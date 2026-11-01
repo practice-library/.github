@@ -343,5 +343,10 @@
     "name": "uneval-root-schema-optional",
     "find": "(([$old, $new] | all(.[]; type == \"object\" and has(\"$schema\")))",
     "replace": "((true)"
+  },
+  {
+    "name": "uneval-dialect-prefix",
+    "find": "(2019-09|2020-12)/schema#?$\")))",
+    "replace": "(2019-09|2020-12)/\")))"
   }
 ]
