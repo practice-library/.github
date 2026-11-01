@@ -29,7 +29,8 @@ jobs:
   unit:
     name: unit
     runs-on: @@runner.image@@
-    timeout-minutes: @@runner.timeoutMinutes@@
+    # Every unit case and every mutant of every library: longer than the other jobs.
+    timeout-minutes: 20
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:
