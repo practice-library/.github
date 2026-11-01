@@ -113,5 +113,10 @@
     "name": "exempt-dot-wildcard",
     "find": "else re.escape(c) for c in seg",
     "replace": "else c for c in seg"
+  },
+  {
+    "name": "rows-split-on-cr",
+    "find": "encoding=\"utf-8\", errors=\"replace\", newline=\"\\n\") as f:",
+    "replace": "encoding=\"utf-8\", errors=\"replace\") as f:"
   }
 ]

@@ -121,7 +121,9 @@ def h(term):
 name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
 found = []
 let_through = []
-with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
+# Rows are split on "\n" only, as collect wrote them: a lone "\r" inside a line or a message must not
+# start a row whose where the change chose.
+with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace", newline="\n") as f:
     for line in f:
         where, _, text = line.rstrip("\n").partition("\t")
         words = re.findall(r"[a-z0-9]+", text.lower())

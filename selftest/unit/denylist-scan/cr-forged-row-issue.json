@@ -1,0 +1,8 @@
+{
+  "expect": "found",
+  "output": "found 1 issue body:1",
+  "env": {
+    "DENY": "{\"salt\":\"unit\",\"sha256\":[\"53b48689254d028ad6d6cf865394ad59ea74ee7d072d8d0c0756ea81d9412fd8\"],\"exemptPaths\":[{\"glob\":\"vendors/*/graph/nodes/**\"}]}",
+    "TEXT_FILE": "selftest/unit/denylist-scan/data/cr-issue.txt"
+  }
+}

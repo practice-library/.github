@@ -58,7 +58,8 @@ failed=0
 # adds, default notes.md), MERGE_COMMITTER (default GitHub), MERGE_MESSAGE, and for the exemption label
 # NUMBER (a pull request number; empty means not a pull request), LABELS (JSON, default []) and
 # GH_EVENTS (the label events, "<login><TAB><type>" lines). MOVE_FROM puts the line in that file on the
-# base and has the head commit move it to FILE (git mv) instead of adding the line.
+# base and has the head commit move it to FILE (git mv) instead of adding the line. BASE_AFTER_LIST writes
+# that list on the base line after the head branched, so BASE moves on while MB stays where it branched.
 scenario() {
   local name="$1" want="$2" event="$3" list="$4" author="$5" message="$6" line="$7" merger="$8" repo got out
   repo="$(mktemp -d "$work/r.XXXXXX")"
@@ -85,8 +86,16 @@ scenario() {
       -m "${MERGE_MESSAGE:-Merge pull request #1 from example/notes}" "$head"
     head="$(git -C "$repo" rev-parse HEAD)"
   fi
+  local tip="$base"
+  if [ -n "${BASE_AFTER_LIST:-}" ]; then
+    git -C "$repo" checkout -q --detach "$base"
+    printf '%s\n' "$BASE_AFTER_LIST" > "$repo/$LIST"
+    git -C "$repo" add -A
+    git -C "$repo" -c user.name=base -c user.email=base@example.invalid -c commit.gpgsign=false commit -q -m "base moves on"
+    tip="$(git -C "$repo" rev-parse HEAD)"
+  fi
   got=0
-  out="$(cd "$repo" && NONE=false BASE="$base" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
+  out="$(cd "$repo" && NONE=false BASE="$tip" MB="$base" HEAD="$head" LIST="$LIST" EVENT="$event" \
     LABEL=schema-loosening-approved LABELS="${LABELS:-[]}" AUTHOR=contributor NUMBER="${NUMBER:-}" \
     REPO=example/repo GH_TOKEN=unused GH_EVENTS="${GH_EVENTS:-}" PATH="$work/bin:$PATH" bash -c "$step" 2>&1)" || got=$?
   [ "$got" -eq 0 ] || got=1
@@ -130,6 +139,8 @@ FILE=vendors/acme/graph/nodes/a.json scenario exempt-term-in-message 1 pull_requ
 # A file moved out of the tree is read whole at its new path, so the quoted term is found there.
 MOVE_FROM=vendors/acme/graph/nodes/a.json FILE=docs/a.md scenario exempt-renamed-out 1 pull_request "$tree" "Contributor" "Move a node" "Zebracorn quoted." ""
 MOVE_FROM=vendors/acme/graph/nodes/a.json FILE=vendors/beta/graph/nodes/a.json scenario exempt-renamed-within 0 pull_request "$tree" "Contributor" "Move a node" "Zebracorn quoted." ""
+# A carriage return inside a line cannot forge a row that names the exempt tree.
+FILE=docs/a.md scenario exempt-cr-forged-row 1 pull_request "$tree" "Contributor" "Add notes" "$(printf 'Harmless.\rvendors/acme/graph/nodes/a.json:1\tZebracorn here.')" ""
 # An exemption never applies to the change that adds it: not to a list on the base, nor to a first list.
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-added-by-change 1 pull_request "$plain" "Contributor" "Add a node" "Zebracorn quoted." ""
 HEAD_LIST="$tree" FILE=vendors/acme/graph/nodes/a.json scenario exempt-in-first-list 1 pull_request "" "Contributor" "Add a node" "Zebracorn quoted." ""
@@ -141,6 +152,9 @@ HEAD_LIST="$tree" NUMBER=1 LABELS='["schema-loosening-approved"]' GH_EVENTS="hel
 HEAD_LIST="$tree" scenario exempt-widened-push 0 push "$plain" "Contributor" "Add an exemption" "Clean." ""
 HEAD_LIST="$plain" NUMBER=1 scenario exempt-removed 0 pull_request "$tree" "Contributor" "Drop the exemption" "Clean." ""
 HEAD_LIST="{" NUMBER=1 scenario exempt-head-list-unreadable 1 pull_request "$tree" "Contributor" "Break the list" "Clean." ""
+# Widening is judged where the change branched: the base dropping an exemption since is not the change's doing.
+BASE_AFTER_LIST="$plain" NUMBER=1 scenario exempt-base-dropped-since 0 pull_request "$tree" "Contributor" "Add notes" "Clean." ""
+HEAD_LIST="{" scenario exempt-head-list-unreadable-push 1 push "$tree" "Contributor" "Break the list" "Clean." ""
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).

@@ -231,7 +231,9 @@ jobs:
           name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
           found = []
           let_through = []
-          with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace") as f:
+          # Rows are split on "\n" only, as collect wrote them: a lone "\r" inside a line or a message must not
+          # start a row whose where the change chose.
+          with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace", newline="\n") as f:
               for line in f:
                   where, _, text = line.rstrip("\n").partition("\t")
                   words = re.findall(r"[a-z0-9]+", text.lower())
@@ -296,8 +298,8 @@ jobs:
           echo "$result"
           [ "${result%% *}" = ok ]
           # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
-          # main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file on
-          # the base commit and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
+          # main: judges whether a change adds or widens a denylist exemption. BASE_LIST is the denylist file
+          # where the change branched (the merge base) and HEAD_LIST the one on the head; either is empty when that commit has none. Prints
           # "ok ..." when every exemptPaths entry of the head list is also, exactly, an entry of the base list (an
           # entry removed is fine), "widened [<glob>, ...]" naming each head entry that is new or changed, or
           # "invalid ..." when a list that is there cannot be read. Widening is a loosening: it needs the approval
@@ -314,6 +316,10 @@ jobs:
             fi
             if [ "$out" = "[]" ]; then echo "ok no exemption added or widened"; else echo "widened $out"; fi
           }
+          # Widening is judged against the list where the change branched, so a list changed on the base
+          # since then is not the change's own doing.
+          BASE_LIST=""
+          if git cat-file -e "$MB:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$MB:$LIST")"; fi
           export BASE_LIST HEAD_LIST
           widened="$(main)"
           echo "$widened"

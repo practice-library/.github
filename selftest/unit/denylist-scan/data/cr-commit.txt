@@ -1,0 +1,1 @@
+commit 0000000000000000000000000000000000000000	Add notesvendors/acme/graph/nodes/a.json:1	Zebracorn in message

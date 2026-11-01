@@ -142,6 +142,10 @@ jobs:
           [ "${result%% *}" = ok ]
           # An exemption the change adds or widens is a loosening of the list, judged like a loosened schema.
           #@include denylist-exempt.sh
+          # Widening is judged against the list where the change branched, so a list changed on the base
+          # since then is not the change's own doing.
+          BASE_LIST=""
+          if git cat-file -e "$MB:$LIST" 2>/dev/null; then BASE_LIST="$(git cat-file blob "$MB:$LIST")"; fi
           export BASE_LIST HEAD_LIST
           widened="$(main)"
           echo "$widened"
