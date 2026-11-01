@@ -291,8 +291,8 @@
   },
   {
     "name": "refuses-uneval-additional-ignored",
-    "find": "(.unevaluatedProperties == false and (has(\"additionalProperties\") | not)",
-    "replace": "(.unevaluatedProperties == false and true"
+    "find": "($unevalcounts and .unevaluatedProperties == false and (has(\"additionalProperties\") | not)",
+    "replace": "($unevalcounts and .unevaluatedProperties == false and true"
   },
   {
     "name": "ident-new-places-ignored",
@@ -328,5 +328,10 @@
     "name": "dependent-entry-excepted",
     "find": "type == \"object\" and ($k | IN(\"properties\", \"patternProperties\"))",
     "replace": "type == \"object\""
+  },
+  {
+    "name": "uneval-any-dialect",
+    "find": "or ($unevalcounts and .unevaluatedProperties == false",
+    "replace": "or (.unevaluatedProperties == false"
   }
 ]

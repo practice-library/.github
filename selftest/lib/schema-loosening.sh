@@ -98,11 +98,14 @@ compare() {
             # object can still take it: a false additionalProperties with no entry of the other map (a pattern
             # may match the name), or a false unevaluatedProperties with neither that nor additionalProperties
             # nor any keyword that evaluates properties (an allOf or a reference may name the key).
-            def refuses($k):
+            # unevaluatedProperties is a keyword only from draft 2019-09: under an older $schema it refuses nothing.
+            ([$old, $new] | all(.[]; (if type == "object" then .["$schema"] else null end)
+                                     | type == "string" and test("^https?://json-schema\\.org/draft/20(19-09|20-12)/"))) as $unevalcounts
+            | def refuses($k):
               type == "object" and ($k | IN("properties", "patternProperties"))
               and ((if $k == "properties" then "patternProperties" else "properties" end) as $other | has($other) | not)
               and (.additionalProperties == false
-                   or (.unevaluatedProperties == false and (has("additionalProperties") | not)
+                   or ($unevalcounts and .unevaluatedProperties == false and (has("additionalProperties") | not)
                        and (. as $x | any("allOf", "anyOf", "oneOf", "if", "then", "else", "dependentSchemas",
                                           "dependencies", "$ref", "$dynamicRef", "$recursiveRef"; . as $a | $x | has($a)) | not)));
             def where($p): if ($p | length) == 0 then "(root)" else $p | map(tostring) | join("/") end;
