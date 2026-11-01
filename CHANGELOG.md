@@ -4,6 +4,8 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## Unreleased
 
+## v2.4.0
+
 Additive. All three changes widen a schema and were reviewed as loosenings (label on #48). `schema-loosening` reports the new `rel` and `format` values but not the new `attrs.status` property, since it does not yet see a property added under `additionalProperties: false` (#35).
 
 - spec/node/schema.json: `attrs.status`, optional, one of `in-force`, `notified-not-in-force`, `draft` or `superseded`, for a fact that is a rule with a legal or published state (#47). Any other value fails, and so does any other unknown attribute. A domain schema may narrow the list or forbid `status`.
