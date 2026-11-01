@@ -24,7 +24,7 @@ main() {
   [[ "${LIMIT:-}" =~ ^[0-9]+$ ]] || { echo "invalid LIMIT must be a whole number"; return 0; }
   jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0 and . != "/")' > /dev/null 2>&1 \
     || { echo "invalid FIXTURES must be a JSON array of non-empty strings, not \"/\""; return 0; }
-  local n raw added deleted path old recount="" plain=false
+  local n raw rec added deleted path old recount="" plain=false
   if [ -z "${NUMSTAT+x}" ]; then
     # Read from git with -z, a rename already gives its new path, so no path is rewritten: a directory
     # named "a => selftest" stays that directory.
@@ -34,14 +34,17 @@ main() {
     raw="$(mktemp)" || { echo "invalid the diff could not be read"; return 0; }
     git diff --numstat -z -M --no-ext-diff --no-textconv "$MB" "$HEAD" > "$raw" \
       || { rm -f "$raw"; echo "invalid the diff could not be read"; return 0; }
-    while IFS=$'\t' read -r -d '' added deleted path; do
+    # Each record is split on its first two tabs by hand: read would trim tabs at the ends of the path.
+    while IFS= read -r -d '' rec; do
+      added="${rec%%$'\t'*}"; rec="${rec#*$'\t'}"; deleted="${rec%%$'\t'*}"; path="${rec#*$'\t'}"
       # A rename is "<added><TAB><deleted><TAB>" followed by the old and the new path.
       if [ -z "$path" ]; then IFS= read -r -d '' old; IFS= read -r -d '' path; fi
+      # The count below is one line per path, so a path holding a newline cannot be counted.
+      if [[ "$path" == *$'\n'* ]]; then rm -f "$raw"; echo "invalid a changed path holds a newline"; return 0; fi
       if [ "$added" = - ]; then
         added="$(git --literal-pathspecs diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$path" \
           | LC_ALL=C awk 'f && /^\+/ { n++ } /^@@/ { f = 1 } END { print n + 0 }')" \
           || { rm -f "$raw"; echo "invalid the diff of a binary file could not be read"; return 0; }
-        deleted=0
       fi
       recount="$recount$added"$'\t'"$deleted"$'\t'"$path"$'\n'
     done < "$raw"

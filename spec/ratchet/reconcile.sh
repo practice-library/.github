@@ -56,7 +56,7 @@ WRITE=""; CHECK=""
 while [ $# -gt 1 ]; do
   case "$1" in
     --write) WRITE=true; shift ;;
-    --check) CHECK="${2:-}"; shift 2 ;;
+    --check) [ -n "${2:-}" ] || { echo "usage: --check needs a check name" >&2; exit 2; }; CHECK="$2"; shift 2 ;;
     *) break ;;
   esac
 done

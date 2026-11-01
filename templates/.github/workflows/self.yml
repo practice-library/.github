@@ -46,6 +46,14 @@ jobs:
         env:
           YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: bash @@self.unitScript@@
+      - name: reconcile.sh refuses a baseline for another check, and --check without a name
+        run: |
+          set -euo pipefail
+          r=spec/ratchet/reconcile.sh; b=selftest/unit/ratchet/data/empty-list.json
+          bash "$r" --check example-check "$b" < /dev/null
+          if bash "$r" --check other-check "$b" < /dev/null; then echo "::error::--check other-check passed"; exit 1; fi
+          rc=0; bash "$r" --check "" "$b" < /dev/null || rc=$?
+          [ "$rc" = 2 ] || { echo "::error::--check with an empty name gave exit $rc, not the usage exit 2"; exit 1; }
       - name: The shipped tightening list is exactly the reviewed fixture pairs and clears nothing else
         env:
           TIGHTEN: '@@json:guards.tighteningPairs@@'

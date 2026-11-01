@@ -93,5 +93,15 @@
     "name": "rename-paths-swapped",
     "find": "IFS= read -r -d '' old; IFS= read -r -d '' path",
     "replace": "IFS= read -r -d '' path; IFS= read -r -d '' old"
+  },
+  {
+    "name": "path-tabs-trimmed",
+    "find": "    while IFS= read -r -d '' rec; do\n      added=\"${rec%%$'\\t'*}\"; rec=\"${rec#*$'\\t'}\"; deleted=\"${rec%%$'\\t'*}\"; path=\"${rec#*$'\\t'}\"",
+    "replace": "    while IFS=$'\\t' read -r -d '' added deleted path; do"
+  },
+  {
+    "name": "newline-path-allowed",
+    "find": "if [[ \"$path\" == *$'\\n'* ]]; then",
+    "replace": "if false; then"
   }
 ]

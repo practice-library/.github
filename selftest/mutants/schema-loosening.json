@@ -123,5 +123,10 @@
     "name": "duplicates-kept",
     "find": "| reduce .[] as $e ([]; if any(.[]; .path == $e.path) then . else . + [$e] end)",
     "replace": ""
+  },
+  {
+    "name": "new-shape-unguarded",
+    "find": "($new | try getpath($at + [$kw]) catch null | if type == \"object\" then keys else [] end)[]",
+    "replace": "($new | getpath($at + [$kw]) | if type == \"object\" then keys else [] end)[]"
   }
 ]
