@@ -4,14 +4,15 @@ name: guard
 #   denylist          no denied term in the added lines, added paths, or commit messages and names;
 #                     the list (salted sha256 entries) is read from the base commit; no list fails;
 #                     on push, a merge commit's author name is not judged (whoever pressed merge);
-#                     an exemptPaths entry the change adds or widens needs the label "schema-loosening-approved"
+#                     an exemptPaths entry the change adds or widens needs an approval of the exact head
 #   removed-paths     nothing outside the history files mentions a path the change removed
 #   release-note      a change under a watched path changes the changelog or says "Release: none"
-#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs the label "schema-loosening-approved" from someone other
-#                     than the author and not a bot; the caller's pull_request types include labeled
+#   schema-loosening  a loosened JSON schema (a $schema of json-schema.org) needs an approval of the exact head
 #   size              (optional, the gate does not require it) the lines added or changed outside
-#                     fixtures are at most size-limit, or the label "size-approved" from someone
-#                     other than the author and not a bot lets more through
+#                     fixtures are at most size-limit, or an approval of the exact head lets more through
+# An approval is a review in state APPROVED on the current head commit, by a maintainer or admin who is not
+# the author and not a bot (tooling/practice_ci/approvals.py). A new push needs a new approval. The labels
+# "schema-loosening-approved" and "size-approved" only re-run the check; they authorize nothing.
 on:
   workflow_call:
     inputs:
@@ -36,7 +37,7 @@ on:
         type: string
         default: CHANGELOG.md
       label:
-        description: The label that lets a loosened schema, or a denylist exemption added or widened, through.
+        description: The label a maintainer adds to re-run the check after approving a loosened schema, or a denylist exemption added or widened. Only a review approving the head authorizes.
         type: string
         default: schema-loosening-approved
       size-limit:
@@ -48,7 +49,7 @@ on:
         type: string
         default: '["selftest/","examples/","counter-examples/","tests/fixtures/"]'
       size-label:
-        description: size only. The label that lets a larger pull request through.
+        description: size only. The label a maintainer adds to re-run the check after approving a larger pull request. Only a review approving the head authorizes.
         type: string
         default: size-approved
 permissions:
@@ -65,6 +66,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          persist-credentials: false
+      - name: The approval tooling
+        if: inputs.guard == 'denylist' || inputs.guard == 'schema-loosening' || inputs.guard == 'size'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: practice-library/.github
+          ref: v3.0.0
+          path: .practice-ci
           persist-credentials: false
       - name: The change to check
         id: range
@@ -83,7 +92,7 @@ jobs:
             || { echo "::error::unknown guard $GUARD; known: $GUARDS"; exit 1; }
           base=""; head=""
           case "$EVENT" in
-            pull_request|pull_request_target) base="$PR_BASE"; head="$PR_HEAD" ;;
+            pull_request|pull_request_target|pull_request_review) base="$PR_BASE"; head="$PR_HEAD" ;;
             push) if [ -n "$PUSH_BEFORE" ] && ! [[ "$PUSH_BEFORE" =~ ^0+$ ]]; then base="$PUSH_BEFORE"; head="$PUSH_AFTER"; fi ;;
           esac
           if [ -z "$base" ]; then echo "none=true" >> "$GITHUB_OUTPUT"; echo "No change to compare on $EVENT."; exit 0; fi
@@ -102,177 +111,19 @@ jobs:
           LIST: ${{ inputs.denylist }}
           EVENT: ${{ github.event_name }}
           LABEL: ${{ inputs.label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/.practice-ci/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # collect: prints "<where><TAB><text>" for every added line, added path, and commit message, author name
-          # and committer name of the change MB..HEAD in the current repository. A name is printed with the where
-          # "author <sha>" or "committer <sha>" by a git log of its own, so no message line can pose as a name.
-          # Each git read goes to a file first and any failed read makes collect fail, so a change that cannot be
-          # read is never judged clean. The content diff is taken with --no-renames, so a moved file's every line
-          # is read at its new path (a rename out of an exempt tree carries nothing past the guard), and with
-          # --text and --no-textconv, so no
-          # .gitattributes in the change (-diff, binary, a diff driver) can hide a line. Words inside compressed
-          # binary files (images, archives) are not visible as text.
-          # A "+++ " line is a file header only between "diff --git" and the first "@@"; inside a hunk it is an
-          # added line that starts with "++". --no-prefix keeps the path at a fixed place whatever the config;
-          # git ends the header with a tab when the path holds a space, and that tab is dropped.
-          # EVENT is the GitHub event. On push, the author name of a merge commit is not judged: a merge made in
-          # the browser is authored by whoever pressed merge. Its message and committer are judged like any other.
-          # On any other event, or when EVENT is unset, every author name is judged.
-          collect() {
-            local skip=() buf
-            if [ "${EVENT:-}" = push ]; then skip=(--no-merges); fi
-            buf="$(mktemp)" || return 1
-            git diff --text --no-textconv --no-ext-diff --no-color --no-prefix --no-renames --unified=0 "$MB" "$HEAD" > "$buf" \
-              || { rm -f "$buf"; return 1; }
-            awk '
-              /^diff --git / { hdr = 1; next }
-              hdr && /^\+\+\+ / { f = substr($0, 5); sub(/\t$/, "", f); next }
-              /^@@/ { hdr = 0; match($0, /\+[0-9]+/); n = substr($0, RSTART + 1, RLENGTH - 1) + 0; next }
-              !hdr && /^\+/ { print f ":" n "\t" substr($0, 2); n++ }' "$buf"
-            # An added path is reported by its place in the list, since the path may hold the term.
-            git diff --name-only --diff-filter=AR --no-ext-diff "$MB" "$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            awk '{ print "added path " NR "\t" $0 }' "$buf"
-            git log ${skip[@]+"${skip[@]}"} --format='author %H%x09%an' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            cat "$buf"
-            git log --format='committer %H%x09%cn' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            cat "$buf"
-            # Each commit is one NUL-ended record, "<sha>\n<message>", so no line of a message can pose as the
-            # start of the next commit: the whole message is payload.
-            git log -z --format='%H%n%B' "$MB..$HEAD" > "$buf" || { rm -f "$buf"; return 1; }
-            local rec sha line
-            while IFS= read -r -d '' rec; do
-              sha="${rec%%$'\n'*}"
-              [ "$rec" = "$sha" ] && continue
-              while IFS= read -r line || [ -n "$line" ]; do
-                printf 'commit %s\t%s\n' "$sha" "$line"
-              done <<<"${rec#*$'\n'}"
-            done < "$buf"
-            rm -f "$buf"
-          }
-
-          # main: prints "ok ..." when no line holds a denied term, "found <n> <where>..." when lines do,
-          # "unguarded ..." when there is no list or it is empty, or "invalid ..." when DENY cannot be used.
-          # The term itself is never printed.
-          #   DENY       JSON {"salt": "<text>", "sha256": ["<hex>", ...], "allowAuthorNames": ["<hex>", ...]}: each
-          #              sha256 entry is 64 lower-case hex characters, sha256(salt + ":" + term), where a term is one word or two adjacent words,
-          #              lower case, words joined by one space; empty when the repository has no list. The optional
-          #              allowAuthorNames entries are sha256(salt + ":" + name) of whole names, written the same way:
-          #              64 lower-case hex characters each; an author or committer name that is one of them is
-          #              not judged. Messages, added lines and added paths are judged whatever the name.
-          #              The optional exemptPaths is a list of {"glob": <path glob>, "terms": [<hex>, ...]}: an added
-          #              line of a file whose path matches a glob is not found for the sha256 entries in terms, or for
-          #              any entry when terms is absent. It applies to added lines only; added paths, messages and
-          #              names are judged as before. A glob is relative to the root: * and ? stay inside one path
-          #              segment, a segment that is exactly ** spans any number of segments, and the first segment
-          #              holds no wildcard, so no glob covers the whole repository. Each line an exemption lets
-          #              through is printed with its glob (the first 20, after the count).
-          #   EVENT      the GitHub event; push leaves merge commits out (see collect)
-          #   TEXT_FILE  lines "<where><TAB><text>"; when unset, the change MB..HEAD is collected (see collect)
-          # A text is cut into words of [a-z0-9]; each word, each two adjacent words, and those two written
-          # together are checked. scripts/denylist-hash.sh lists a two-word term both ways ("ab cd" and "abcd"),
-          # so "Ab Cd", "ab-cd" and "AbCd" all match it.
+          # main: prints "ok ...", "found <n> <where>...", "unguarded ..." or "invalid ..."; the term itself is
+          # never printed. The scan is tooling/practice_ci/guards/denylist.py, which reads git as bytes (names,
+          # quoted paths and commit messages with a NUL are exact) and judges typed records.
+          # Inputs: DENY (JSON, see the module), EVENT, TEXT_FILE (rows "<where><TAB><text>") or MB and HEAD.
+          # TODO: call scripts/practice-ci denylist once the core track adds the launcher.
           main() {
-            if [ -z "${DENY:-}" ]; then echo "unguarded no denylist: add one (scripts/denylist-hash.sh)"; return 0; fi
-            if [ -z "${TEXT_FILE:-}" ]; then
-              TEXT_FILE="$(mktemp)"
-              collect > "$TEXT_FILE" || { echo "invalid the change could not be read"; return 0; }
-            fi
-            TEXT_FILE="$TEXT_FILE" python3 -I -c '
-          import hashlib, json, os, re, sys
-          try:
-              deny = json.loads(os.environ["DENY"])
-              salt = deny["salt"]
-              terms = deny["sha256"]
-              allow = deny.get("allowAuthorNames", [])
-              assert isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)
-              # Every entry is a digest: an entry no digest can equal would make the list look full and match nothing.
-              assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in terms)
-              assert all(isinstance(h, str) and re.fullmatch(r"[0-9a-f]{64}", h) for h in allow)
-              hashes = set(terms)
-              allow = set(allow)
-          except Exception:
-              print("invalid the denylist must be {\"salt\": text, \"sha256\": [64 lower-case hex, ...], \"allowAuthorNames\": [64 lower-case hex, ...]}")
-              sys.exit(0)
-          def glob_re(g):
-              segs = g.split("/")
-              out = ""
-              for i, seg in enumerate(segs):
-                  last = i == len(segs) - 1
-                  if seg == "**":
-                      out += ".+" if last else "(?:[^/]+/)*"
-                      continue
-                  out += "".join("[^/]*" if c == "*" else "[^/]" if c == "?" else re.escape(c) for c in seg)
-                  if not last:
-                      out += "/"
-              return re.compile(out)
-          exempt = []
-          try:
-              rules = deny.get("exemptPaths", [])
-              assert isinstance(rules, list)
-              for r in rules:
-                  assert isinstance(r, dict) and set(r) <= {"glob", "terms"}
-                  g = r["glob"]
-                  assert isinstance(g, str) and re.fullmatch(r"[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*", g)
-                  segs = g.split("/")
-                  assert not re.search(r"[*?]", segs[0]) and ".." not in segs and "." not in segs
-                  assert all(s == "**" or "**" not in s for s in segs)
-                  t = r.get("terms")
-                  assert t is None or (isinstance(t, list) and t and all(isinstance(x, str) and re.fullmatch(r"[0-9a-f]{64}", x) for x in t))
-                  exempt.append((g, glob_re(g), None if t is None else set(t)))
-          except Exception:
-              print("invalid exemptPaths must be [{\"glob\": path glob whose first segment has no wildcard, \"terms\": [hex, ...]}]")
-              sys.exit(0)
-          line_row = re.compile(r"(.+):([0-9]+)")
-          if not hashes:
-              print("unguarded the denylist has no entries")
-              sys.exit(0)
-          def h(term):
-              return hashlib.sha256((salt + ":" + term).encode()).hexdigest()
-          # A name row is exactly "author <id>" or "committer <id>"; a path or a line in a file named "author x"
-          # never is, since its where carries ":<line>" or starts with "added path".
-          name_row = re.compile(r"(?:author|committer) (?:[0-9a-f]{40}|[0-9a-f]{64})")
-          found = []
-          let_through = []
-          # Rows are split on "\n" only, as collect wrote them: a lone "\r" inside a line or a message must not
-          # start a row whose where the change chose.
-          with open(os.environ["TEXT_FILE"], encoding="utf-8", errors="replace", newline="\n") as f:
-              for line in f:
-                  where, _, text = line.rstrip("\n").partition("\t")
-                  words = re.findall(r"[a-z0-9]+", text.lower())
-                  if name_row.fullmatch(where) and h(" ".join(words)) in allow:
-                      continue
-                  terms = set(words)
-                  for a, b in zip(words, words[1:]):
-                      terms.add(a + " " + b)
-                      terms.add(a + b)
-                  hit = {h(t) for t in terms} & hashes
-                  if not hit:
-                      continue
-                  m = line_row.fullmatch(where) if exempt else None
-                  if m:
-                      for g, rx, t in exempt:
-                          if rx.fullmatch(m.group(1)) and (t is None or hit <= t):
-                              let_through.append("%s (%s)" % (where, g))
-                              break
-                      else:
-                          found.append(where)
-                  else:
-                      found.append(where)
-          note = ""
-          if let_through:
-              note = "; exempt %d: %s" % (len(let_through), ", ".join(let_through[:20]))
-          if found:
-              seen = list(dict.fromkeys(found))
-              print("found %d %s%s" % (len(found), ", ".join(seen[:20]), note))
-          else:
-              print("ok no denied term in the change" + note)
-          '
+            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" denylist
           }
           if [ "$NONE" = true ]; then
             # Nothing to compare, but a repository whose list is missing, empty or unreadable is still
@@ -347,36 +198,23 @@ jobs:
             *) echo "::error file=$LIST::$widened"; exit 1 ;;
           esac
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; the exemption is judged on the pull request"; exit 0; fi
-          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
-          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
-          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
-          # so removing it and adding it again changes the verdict.
-          #   LABEL   the approval label
-          #   LABELS  JSON array of the labels on the pull request now
-          #   AUTHOR  the pull request author's login
-          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          unset -f main
+          # main: prints one line, "ok approved by <login> at <head>", "missing ..." (no review approves the head) or
+          # "refused ..." (an approval that does not count, a moved head, or an unreadable answer). The verdict is
+          # an APPROVED review at the pull request's exact head by a maintainer or admin who is neither the author
+          # nor a bot (tooling/practice_ci/approvals.py); a label is only a trigger to run again, never the proof.
+          #   TOOLING  directory holding the practice_ci package
+          #   REPO     owner/name
+          #   NUMBER   the pull request number
+          #   KIND     what is being approved (one of approvals.kinds)
+          #   HEAD     the head this run judges; a pull request that has moved on is refused
+          #   GH_TOKEN token that can read pull requests
           main() {
-            local last login type
-            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
-              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
-                echo "missing the label $LABEL is not on the pull request"; return 0
-              fi
-              echo "refused LABELS must be a JSON array"; return 0
-            fi
-            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
-            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
-              echo "refused no event shows who added $LABEL"; return 0
-            fi
-            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
-            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
-              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
-            fi
-            echo "ok approved by $login"
+            # TOOLING is the trusted checkout, never the PR working directory. Isolated mode
+            # ignores PYTHONPATH and user site/startup hooks; add only the trusted package root.
+            (cd -- "$TOOLING" && python3 -I -c 'import os, runpy, sys; sys.path.insert(0, os.getcwd()); runpy.run_module("practice_ci.approvals", run_name="__main__")' --repo "$REPO" --pr "$NUMBER" --kind "$KIND" --head "$HEAD") || true
           }
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          export KIND='schema-loosening'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok exemption accepted: ${verdict#ok }" ;;
@@ -386,7 +224,7 @@ jobs:
               if [ "$MB_LIST" != "$BASE_LIST" ]; then
                 echo "$LIST changed on the base after this change branched; if the change does not mean to add an exemption, merge the base in."
               fi
-              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+              echo "::error file=$LIST::a denylist exemption is added or widened; a maintainer reviews it and approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
 
@@ -399,46 +237,15 @@ jobs:
           HISTORY: ${{ inputs.history }}
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when nothing in the tree ROOT mentions a path the change removed, otherwise
-          # "referenced [{path, at}, ...]".
-          #   DELETED  JSON array of paths the change deleted or renamed away
-          #   ROOT     the tree after the change
-          #   HISTORY  JSON array of files whose mentions are a record of the past and are allowed
-          # Besides each removed path, every parent directory that no longer exists is looked for, as "dir/"
-          # and as "dir". A mention must not be preceded by a path character, so "x/a.json" is not "a.json".
+          # main: prints "ok ..." or "referenced [{path, at}, ...]" or "invalid ...". The guard is
+          # tooling/practice_ci/guards/removed_paths.py (inputs in its docstring): the removed paths (both paths of a
+          # rename, exact) are read from git for MB..HEAD when DELETED is unset.
+          # TODO: call scripts/practice-ci removed-paths once the core track adds the launcher.
           main() {
-            local terms t esc hits
-            if ! jq -en --argjson d "$DELETED" --argjson h "$HISTORY" '($d | type) == "array" and ($h | type) == "array"' > /dev/null 2>&1; then
-              echo "invalid DELETED and HISTORY must be JSON arrays"; return 0
-            fi
-            terms="$(
-              jq -r '.[]' <<<"$DELETED" | while IFS= read -r p; do
-                [ -n "$p" ] || continue
-                printf '%s\n' "$p"
-                d="$(dirname "$p")"
-                while [ "$d" != . ] && [ "$d" != / ]; do
-                  if [ ! -e "$ROOT/$d" ]; then printf '%s/\n%s\n' "$d" "$d"; fi
-                  d="$(dirname "$d")"
-                done
-              done | sort -u | awk '{ print length($0) "\t" $0 }' | sort -rn | cut -f2-
-            )"
-            hits="$(
-              while IFS= read -r t; do
-                [ -n "$t" ] || continue
-                esc="$(printf '%s' "$t" | sed 's/[][\.*^$+?(){}|/]/\\&/g')"
-                grep -rnIE --exclude-dir=.git "(^|[^A-Za-z0-9._/-])${esc}(\$|[^A-Za-z0-9_-])" "$ROOT" 2>/dev/null \
-                  | while IFS= read -r m; do
-                      file="${m%%:*}"; rest="${m#*:}"; file="${file#"$ROOT"/}"
-                      jq -en --arg f "$file" --argjson h "$HISTORY" 'any($h[]; . == $f)' > /dev/null && continue
-                      jq -cn --arg p "$t" --arg at "$file:${rest%%:*}" '{path: $p, at: $at}'
-                    done
-              done <<<"$terms" | jq -sc 'unique_by(.at) | .[:20]'
-            )"
-            if [ "$hits" = "[]" ]; then echo "ok no removed path is mentioned"; else echo "referenced $hits"; fi
+            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" removed-paths
           }
-          DELETED="$(git diff --name-status -M --diff-filter=DR --no-ext-diff "$MB" "$HEAD" | awk -F '\t' '{ print $2 }' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
           ROOT="$GITHUB_WORKSPACE"
-          export DELETED ROOT HISTORY
+          export ROOT HISTORY
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -454,50 +261,15 @@ jobs:
           MARKER: 'Release: none'
         run: |
           set -euo pipefail
-          # main: prints "ok ..." when the change touches no watched path, or adds a line with text to the
-          # changelog (a whitespace-only edit does not count), or a commit message holds the marker line;
-          # otherwise "missing ...".
-          #   CHANGED    JSON array of changed paths, old and new
-          #   WATCH      JSON array of watched paths; an entry ending in / covers everything under it
-          #   CHANGELOG  the changelog path       MARKER  the line that says no release is needed
-          #   MESSAGES   the change's commit messages
-          #   CHANGELOG_ADDED  how many lines the change adds to the changelog that hold a non-space character.
-          #             When unset, main counts them from git for MB..HEAD: added lines (git drops blank ones), after the hunk
-          #             header (so a line that starts with ++ counts), minus lines the same change removes (so a
-          #             line moved within the changelog counts nothing), with whitespace changes ignored.
+          # main: prints "ok ...", "missing ..." or "invalid ...". The guard is
+          # tooling/practice_ci/guards/release_note.py (inputs in its docstring): the changed paths (both paths of
+          # a rename, exact) and the commit messages (every byte) are read from git for MB..HEAD when CHANGED and
+          # MESSAGES are unset.
+          # TODO: call scripts/practice-ci release-note once the core track adds the launcher.
           main() {
-            local touched
-            if [ -z "${CHANGELOG_ADDED+x}" ]; then
-              [ -n "${MB:-}" ] && [ -n "${HEAD:-}" ] || { echo "invalid CHANGELOG_ADDED is unset and there is no MB..HEAD to count from"; return 0; }
-              CHANGELOG_ADDED="$(git diff -w --ignore-blank-lines --no-ext-diff --no-textconv --text --no-color --unified=0 "$MB" "$HEAD" -- "$CHANGELOG" \
-                | jq -Rsr '
-                    split("\n") as $l
-                    | ([range(0; $l | length) | select($l[.] | startswith("@@"))] | first) as $i
-                    | if $i == null then 0
-                      else [$l[$i:][] | select(startswith("+")) | .[1:]] as $added
-                        | [$l[$i:][] | select(startswith("-")) | .[1:]] as $removed
-                        | reduce $removed[] as $r ($added; (index([$r]) // null) as $k | if $k == null then . else del(.[$k]) end)
-                        | length
-                      end')" || { echo "invalid the changelog diff could not be read"; return 0; }
-            fi
-            [[ "${CHANGELOG_ADDED:-}" =~ ^[0-9]+$ ]] || { echo "invalid CHANGELOG_ADDED must be a count"; return 0; }
-            if ! touched="$(jq -c --argjson w "$WATCH" '
-                [.[] | select(. as $f | any($w[]; . as $p
-                  | if ($p | endswith("/")) then ($f | startswith($p)) else $f == $p end))] | unique' <<<"$CHANGED" 2>/dev/null)"; then
-              echo "invalid CHANGED and WATCH must be JSON arrays"; return 0
-            fi
-            if [ "$touched" = "[]" ]; then echo "ok no watched path changed"; return 0; fi
-            if [ "$CHANGELOG_ADDED" -gt 0 ] && jq -en --arg c "$CHANGELOG" --argjson f "$CHANGED" 'any($f[]; . == $c)' > /dev/null; then
-              echo "ok $CHANGELOG has $CHANGELOG_ADDED added lines"; return 0
-            fi
-            if printf '%s\n' "$MESSAGES" | sed 's/[[:space:]]*$//' | grep -qxF -- "$MARKER"; then
-              echo "ok a commit message says: $MARKER"; return 0
-            fi
-            echo "missing $touched changed, but neither $CHANGELOG nor a \"$MARKER\" line in a commit message"
+            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" release-note
           }
-          CHANGED="$(git diff --name-status -M --no-ext-diff "$MB" "$HEAD" | cut -f2- | tr '\t' '\n' | jq -Rsc 'split("\n") | map(select(length > 0)) | unique')"
-          MESSAGES="$(git log --format='%B' "$MB..$HEAD")"
-          export CHANGED MESSAGES MB HEAD
+          export WATCH CHANGELOG MARKER MB HEAD
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
@@ -509,10 +281,9 @@ jobs:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
           # Reviewed pattern changes that only tighten, shipped with this workflow at its pin.
-          TIGHTEN: '[{"sha256":"7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e","why":"v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"},{"sha256":"b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983","why":"v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z"},{"sha256":"ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d","why":"v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"}]'
+          TIGHTEN: '[{"sha256":"a848fee9389b26eedeb2b9846e13b2972010c2015b0a0c9e420d159914db5c01","why":"v3.0.0 protocol message time and data.expires: the same time of day and Z, on a real calendar date, with an hour below 24 and a second below 60"},{"sha256":"7663e1bec8c96806db4767e51a62f6277cb32c33f31ef220b58e1e38c368fc2e","why":"v2.1.0 node measuredAt: any YYYY-MM-DD becomes a real calendar date"},{"sha256":"b3f86a4733165b4c53c2522ac953dc11eddb93189459f76af87f876f23d52983","why":"v2.1.0 node attrs.fetched_at: any text ending in Z becomes a real UTC date-time ending in Z"},{"sha256":"ac72432b0442a01bda943d78218bfb26c30cbb525aa82869035e4d4fa0b9bf4d","why":"v2.1.0 refresh-report and sources defs.time (moved from practice-library/graphs): the same time of day, on a real calendar date"}]'
           LABEL: ${{ inputs.label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/.practice-ci/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -790,40 +561,27 @@ jobs:
           if [ "$loose" = "[]" ]; then echo "ok no schema loosened"; exit 0; fi
           echo "loosened: $loose"
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; loosening is judged on the pull request"; exit 0; fi
-          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
-          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
-          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
-          # so removing it and adding it again changes the verdict.
-          #   LABEL   the approval label
-          #   LABELS  JSON array of the labels on the pull request now
-          #   AUTHOR  the pull request author's login
-          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          unset -f main
+          # main: prints one line, "ok approved by <login> at <head>", "missing ..." (no review approves the head) or
+          # "refused ..." (an approval that does not count, a moved head, or an unreadable answer). The verdict is
+          # an APPROVED review at the pull request's exact head by a maintainer or admin who is neither the author
+          # nor a bot (tooling/practice_ci/approvals.py); a label is only a trigger to run again, never the proof.
+          #   TOOLING  directory holding the practice_ci package
+          #   REPO     owner/name
+          #   NUMBER   the pull request number
+          #   KIND     what is being approved (one of approvals.kinds)
+          #   HEAD     the head this run judges; a pull request that has moved on is refused
+          #   GH_TOKEN token that can read pull requests
           main() {
-            local last login type
-            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
-              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
-                echo "missing the label $LABEL is not on the pull request"; return 0
-              fi
-              echo "refused LABELS must be a JSON array"; return 0
-            fi
-            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
-            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
-              echo "refused no event shows who added $LABEL"; return 0
-            fi
-            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
-            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
-              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
-            fi
-            echo "ok approved by $login"
+            # TOOLING is the trusted checkout, never the PR working directory. Isolated mode
+            # ignores PYTHONPATH and user site/startup hooks; add only the trusted package root.
+            (cd -- "$TOOLING" && python3 -I -c 'import os, runpy, sys; sys.path.insert(0, os.getcwd()); runpy.run_module("practice_ci.approvals", run_name="__main__")' --repo "$REPO" --pr "$NUMBER" --kind "$KIND" --head "$HEAD") || true
           }
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          export KIND='schema-loosening'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok loosening accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::a schema is loosened; a maintainer reviews it and adds the label $LABEL"; exit 1 ;;
+            missing*) echo "::error::a schema is loosened; a maintainer reviews it and approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac
 
@@ -836,81 +594,18 @@ jobs:
           LIMIT: ${{ inputs.size-limit }}
           FIXTURES: ${{ inputs.size-fixtures }}
           LABEL: ${{ inputs.size-label }}
-          LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
+          TOOLING: ${{ github.workspace }}/.practice-ci/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # main: prints "ok <n> non-fixture lines (limit <L>)" when the lines the change adds or changes outside
-          # fixtures are at most LIMIT, "over <n> non-fixture lines, more than <L>: split the pull request" when
-          # they are more, or "invalid ..." when an input cannot be used.
-          #   NUMSTAT   output of git diff --numstat -M: "<added><TAB><deleted><TAB><path>", a rename written as
-          #             "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>"; a binary file shows "-" and counts 0.
-          #             When NUMSTAT is unset, main reads it from git for MB..HEAD (with -z, so a path is never
-          #             quoted) and recounts each file git calls binary from its diff taken with --text (its added
-          #             newline-separated lines), so neither a .gitattributes "binary" nor a NUL byte can hide a
-          #             text file, whatever its name.
-          #   FIXTURES  JSON array of fixture entries. An entry starting and ending in / is a directory from the
-          #             root ("/rulesets/"); any other entry ending in / is a directory anywhere in the path
-          #             ("examples/" covers spec/x/examples/a.json); an entry with no / is a file name anywhere
-          #             ("INDEX.md"); any other entry is one exact path from the root, a leading / allowed. The
-          #             entry "/" alone would cover every path and is refused.
-          #   LIMIT     the most non-fixture lines that pass, a whole number
-          # A changed line counts once, as an added line; a renamed file counts by its new path, once. Only a
-          # NUMSTAT given as input has its rename arrows rewritten; read from git, paths are taken as they are.
-          # The new path of a numstat path: "<old> => <new>" or "<dir>/{<old> => <new>}/<rest>".
-          SIZE_NEWPATH='def newpath:
-            if test("\\{.* => .*\\}") then sub("\\{(?<a>[^{}]*) => (?<b>[^{}]*)\\}"; "\(.b)") | gsub("//"; "/")
-            elif test(" => ") then sub("^.* => "; "") else . end;'
+          # main: prints "ok <n> non-fixture lines (limit <L>)", "over <n> non-fixture lines, more than <L>: split the
+          # pull request" or "invalid ...". The guard is tooling/practice_ci/guards/size.py (inputs in its
+          # docstring): when NUMSTAT is unset the counts are read from git for MB..HEAD with exact paths.
+          # TODO: call scripts/practice-ci size once the core track adds the launcher.
           main() {
-            [[ "${LIMIT:-}" =~ ^[0-9]+$ ]] || { echo "invalid LIMIT must be a whole number"; return 0; }
-            jq -en --argjson f "${FIXTURES:-null}" '($f | type) == "array" and all($f[]; type == "string" and length > 0 and . != "/")' > /dev/null 2>&1 \
-              || { echo "invalid FIXTURES must be a JSON array of non-empty strings, not \"/\""; return 0; }
-            local n raw rec added deleted path old recount="" plain=false
-            if [ -z "${NUMSTAT+x}" ]; then
-              # Read from git with -z, a rename already gives its new path, so no path is rewritten: a directory
-              # named "a => selftest" stays that directory.
-              plain=true
-              # -z gives every path as it is: without it git quotes a path with non-ASCII bytes, a tab or a quote,
-              # and the quoted name would match no file when the line is recounted.
-              raw="$(mktemp)" || { echo "invalid the diff could not be read"; return 0; }
-              git diff --numstat -z -M --no-ext-diff --no-textconv "$MB" "$HEAD" > "$raw" \
-                || { rm -f "$raw"; echo "invalid the diff could not be read"; return 0; }
-              # Each record is split on its first two tabs by hand: read would trim tabs at the ends of the path.
-              while IFS= read -r -d '' rec; do
-                added="${rec%%$'\t'*}"; rec="${rec#*$'\t'}"; deleted="${rec%%$'\t'*}"; path="${rec#*$'\t'}"
-                # A rename is "<added><TAB><deleted><TAB>" followed by the old and the new path.
-                if [ -z "$path" ]; then IFS= read -r -d '' old; IFS= read -r -d '' path; fi
-                # The count below is one line per path, so a path holding a newline cannot be counted.
-                if [[ "$path" == *$'\n'* ]]; then rm -f "$raw"; echo "invalid a changed path holds a newline"; return 0; fi
-                if [ "$added" = - ]; then
-                  added="$(git --literal-pathspecs diff --text --no-textconv --no-ext-diff --no-color --unified=0 "$MB" "$HEAD" -- "$path" \
-                    | LC_ALL=C awk 'f && /^\+/ { n++ } /^@@/ { f = 1 } END { print n + 0 }')" \
-                    || { rm -f "$raw"; echo "invalid the diff of a binary file could not be read"; return 0; }
-                fi
-                recount="$recount$added"$'\t'"$deleted"$'\t'"$path"$'\n'
-              done < "$raw"
-              rm -f "$raw"
-              NUMSTAT="$recount"
-            fi
-            if ! n="$(printf '%s\n' "${NUMSTAT:-}" | jq -R --argjson f "$FIXTURES" --argjson plain "$plain" -n '
-                '"$SIZE_NEWPATH"'
-                def fixture($p):
-                  any($f[]; . as $e
-                    | if ($e | startswith("/")) and ($e | endswith("/")) then ($p | startswith($e | ltrimstr("/")))
-                      elif ($e | endswith("/")) then (("/" + $p) | contains("/" + $e))
-                      elif ($e | contains("/")) then $p == ($e | ltrimstr("/"))
-                      else ($p | split("/") | last) == $e end);
-                [inputs | select(length > 0) | split("\t")
-                  | if length < 3 or (.[0] | test("^([0-9]+|-)$") | not) then error("bad numstat line: " + join("\t")) else . end
-                  | {added: (if .[0] == "-" then 0 else (.[0] | tonumber) end), path: (.[2:] | join("\t") | if $plain then . else newpath end)}
-                  | select(fixture(.path) | not) | .added] | add // 0' 2>/dev/null)"; then
-              echo "invalid NUMSTAT is not git diff --numstat output"; return 0
-            fi
-            if [ "$n" -le "$LIMIT" ]; then echo "ok $n non-fixture lines (limit $LIMIT)"
-            else echo "over $n non-fixture lines, more than $LIMIT: split the pull request"; fi
+            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" size
           }
           export LIMIT FIXTURES MB HEAD
           result="$(main)"
@@ -922,39 +617,25 @@ jobs:
           esac
           if [ -z "$NUMBER" ]; then echo "ok not a pull request; size is judged on the pull request"; exit 0; fi
           unset -f main
-          # main: prints "ok approved by <login>" when the pull request carries LABEL and the last person to add
-          # it is neither the author nor a bot; "missing ..." when the label is not on the pull request; otherwise
-          # "refused ..." (added by the author, by a bot, or by no one the events show). Who added it last counts,
-          # so removing it and adding it again changes the verdict.
-          #   LABEL   the approval label
-          #   LABELS  JSON array of the labels on the pull request now
-          #   AUTHOR  the pull request author's login
-          #   EVENTS  one line per time LABEL was added, oldest first: "<login><TAB><actor type>"
+          # main: prints one line, "ok approved by <login> at <head>", "missing ..." (no review approves the head) or
+          # "refused ..." (an approval that does not count, a moved head, or an unreadable answer). The verdict is
+          # an APPROVED review at the pull request's exact head by a maintainer or admin who is neither the author
+          # nor a bot (tooling/practice_ci/approvals.py); a label is only a trigger to run again, never the proof.
+          #   TOOLING  directory holding the practice_ci package
+          #   REPO     owner/name
+          #   NUMBER   the pull request number
+          #   KIND     what is being approved (one of approvals.kinds)
+          #   HEAD     the head this run judges; a pull request that has moved on is refused
+          #   GH_TOKEN token that can read pull requests
           main() {
-            local last login type
-            if ! jq -en --arg l "$LABEL" --argjson ls "$LABELS" '($ls | type) == "array" and any($ls[]; . == $l)' > /dev/null 2>&1; then
-              if jq -en --argjson ls "$LABELS" '($ls | type) == "array"' > /dev/null 2>&1; then
-                echo "missing the label $LABEL is not on the pull request"; return 0
-              fi
-              echo "refused LABELS must be a JSON array"; return 0
-            fi
-            last="$(printf '%s\n' "${EVENTS:-}" | awk 'NF { l = $0 } END { print l }')"
-            if [ -z "$last" ] || [[ "$last" != *$'\t'* ]]; then
-              echo "refused no event shows who added $LABEL"; return 0
-            fi
-            login="${last%%$'\t'*}"; type="${last#*$'\t'}"
-            if [ -z "$login" ] || [ "$login" = "$AUTHOR" ] || [ "$type" = Bot ] || [[ "$login" == *"[bot]" ]]; then
-              echo "refused $LABEL must be added by someone other than the author and not by a bot (last added by: ${login:-unknown})"; return 0
-            fi
-            echo "ok approved by $login"
+            # TOOLING is the trusted checkout, never the PR working directory. Isolated mode
+            # ignores PYTHONPATH and user site/startup hooks; add only the trusted package root.
+            (cd -- "$TOOLING" && python3 -I -c 'import os, runpy, sys; sys.path.insert(0, os.getcwd()); runpy.run_module("practice_ci.approvals", run_name="__main__")' --repo "$REPO" --pr "$NUMBER" --kind "$KIND" --head "$HEAD") || true
           }
-          EVENTS="$(gh api --paginate "repos/$REPO/issues/$NUMBER/events" \
-                --jq ".[] | select(.event == \"labeled\" and .label.name == \"$LABEL\") | [.actor.login, .actor.type] | @tsv")" \
-            || { echo "::error::cannot read the label events of #$NUMBER"; exit 1; }
-          export LABEL LABELS AUTHOR EVENTS
+          export KIND='size'
           verdict="$(main)"
           case "$verdict" in
             ok*) echo "ok larger pull request accepted: ${verdict#ok }" ;;
-            missing*) echo "::error::${result#over }; or a maintainer adds the label $LABEL"; exit 1 ;;
+            missing*) echo "::error::${result#over }; or a maintainer approves this exact head (${verdict#missing }); the label $LABEL only re-runs the check"; exit 1 ;;
             *) echo "::error::${verdict#refused }"; exit 1 ;;
           esac

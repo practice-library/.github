@@ -1,0 +1,90 @@
+# Generated from templates/.github/workflows/plugin-matrix.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: plugin-matrix
+# Runs a contract v0 plugin with bounded parallel units in one job. The logic is in
+# tooling.practice_ci.plugin_gateway (policy: pluginGateway); this file only wires the jobs.
+on:
+  workflow_call:
+    inputs:
+      plugin:
+        description: The plugin executable's path in the caller's checkout.
+        type: string
+        required: true
+      prepare:
+        description: A command run in the caller's checkout that writes the plan input JSON to $PLAN_INPUT.
+        type: string
+        required: true
+      time-seconds:
+        description: The most one plugin call may run, and the most one unit may spend across its retries and waits.
+        type: number
+        default: 300
+      output-bytes:
+        description: The most one plugin call may write to stdout.
+        type: number
+        default: 10000000
+      max-parallel:
+        description: Units run at once. Never above 3, nor above what the plan asks for.
+        type: number
+        default: 3
+      retry-attempts:
+        description: Calls of one unit in all, the first included, while the plugin exits 75 (a temporary failure).
+        type: number
+        default: 3
+      retry-wait-seconds:
+        description: Seconds to wait between those calls, never past time-seconds.
+        type: number
+        default: 60
+      tooling-ref:
+        description: The ref of practice-library/.github to take the gateway helpers from; pass the commit the workflow is pinned at.
+        type: string
+        default: v3.0.0
+    outputs:
+      report:
+        description: The merged report as JSON.
+        value: ${{ jobs.run.outputs.report }}
+permissions:
+  contents: read
+jobs:
+  run:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      report: ${{ steps.run.outputs.report }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: practice-library/.github
+          ref: ${{ inputs.tooling-ref }}
+          path: .practice-ci
+          persist-credentials: false
+      - name: Prepare the plan input
+        shell: bash
+        env:
+          PREPARE: ${{ inputs.prepare }}
+        run: |
+          set -euo pipefail
+          PLAN_INPUT="$RUNNER_TEMP/plan-input.json"
+          export PLAN_INPUT
+          bash -c "$PREPARE"
+          [ -f "$PLAN_INPUT" ] || { echo "::error::prepare did not write \$PLAN_INPUT"; exit 1; }
+      - name: Plan, run units and merge
+        id: run
+        shell: bash
+        env:
+          PYTHONPATH: .practice-ci
+          PLUGIN: ${{ inputs.plugin }}
+          TIME_SECONDS: ${{ inputs.time-seconds }}
+          OUTPUT_BYTES: ${{ inputs.output-bytes }}
+          MAX_PARALLEL: ${{ inputs.max-parallel }}
+          RETRY_ATTEMPTS: ${{ inputs.retry-attempts }}
+          RETRY_WAIT_SECONDS: ${{ inputs.retry-wait-seconds }}
+        run: |
+          set -euo pipefail
+          python3 -m tooling.practice_ci.plugin_gateway run \
+            --plugin "$GITHUB_WORKSPACE/$PLUGIN" \
+            --plan-input "$RUNNER_TEMP/plan-input.json" \
+            --out "$RUNNER_TEMP/report.json" \
+            --time-seconds "$TIME_SECONDS" --output-bytes "$OUTPUT_BYTES" --max-parallel "$MAX_PARALLEL" \
+            --retry-attempts "$RETRY_ATTEMPTS" --retry-wait-seconds "$RETRY_WAIT_SECONDS"

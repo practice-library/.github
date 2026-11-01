@@ -1,11 +1,11 @@
 <!-- Generated from templates/README.md and policy/constants.json by scripts/render.sh. Do not edit. -->
 # .github
 
-Organisation defaults for practice-library: community files, reusable workflows, and the ruleset record. Every limit, name, pin and URL lives in `policy/constants.json`; the workflows, `rulesets/main.json` and this README are rendered from it by `scripts/render.sh`.
+Organisation defaults for practice-library: community files and reusable workflows that check pull requests. Every limit, name, pin and URL lives in `policy/constants.json`.
 
-## Plug a repository in
+## Adopt
 
-Add one workflow that calls the checks it needs and ends in a job named `gate` (pin `<sha>` to a commit of this repository), and list exactly the jobs the gate needs in `.github/required-checks.json` as `{"jobs": [...]}`; it must include ["leak-scan","denylist","removed-paths","release-note","schema-loosening"]:
+Call the checks from one workflow, pinned to a full commit of this repository with the release tag as a comment, and end it in a job named `gate`:
 
 ```yaml
 on:
@@ -15,53 +15,57 @@ permissions:
   contents: read
 jobs:
   leak-scan:
-    uses: practice-library/.github/.github/workflows/leak-scan.yml@<sha>
+    uses: practice-library/.github/.github/workflows/leak-scan.yml@<sha> # v3.0.0
   denylist:
-    permissions: { contents: read, pull-requests: read }
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha>
-    with: { guard: denylist }
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    with:
+      guard: denylist
   removed-paths:
-    permissions: { contents: read, pull-requests: read }
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha>
-    with: { guard: removed-paths }
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    with:
+      guard: removed-paths
   release-note:
-    permissions: { contents: read, pull-requests: read }
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha>
-    with: { guard: release-note }
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    with:
+      guard: release-note
   schema-loosening:
-    permissions: { contents: read, pull-requests: read }
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha>
-    with: { guard: schema-loosening }
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    with:
+      guard: schema-loosening
   gate:
     if: always()
     needs: ["leak-scan","denylist","removed-paths","release-note","schema-loosening"]
-    uses: practice-library/.github/.github/workflows/gate.yml@<sha>
+    uses: practice-library/.github/.github/workflows/gate.yml@<sha> # v3.0.0
     with:
       needs: ${{ toJSON(needs) }}
 ```
 
-The guards in `guard.yml` (input `guard`, one of denylist, removed-paths, release-note, schema-loosening, size) are mechanical review checks:
+List the jobs the gate needs in `.github/required-checks.json` as `{"jobs": [...]}`; it must include ["leak-scan","denylist","removed-paths","release-note","schema-loosening"].
 
-- `denylist`: no denied term in the added lines, added paths, or the commit messages, author names and committer names. On a push, a merge commit's author name is left out, since a merge made in the browser is authored by whoever merged it; its message and committer are judged. A name that must never fail it, such as a maintainer's account name, goes in the list's optional `allowAuthorNames`: salted hashes of whole names (64 lower-case hex characters each; any other entry makes the check invalid), from `scripts/denylist-hash.sh --names .github/denylist.json < names`. An author or committer name that is one of them is not judged; the same word in a message, an added line or an added path still is. A change that cannot be read fails as invalid, never as clean. A consumer needs no `allowAuthorNames` unless a maintainer's name holds a denied word. A data tree whose files must quote third-party text exactly can be exempted by path with the list's optional `exemptPaths`: `[{"glob": "vendors/*/graph/nodes/**", "terms": [...]}]`. An added line of a file under a glob is not found for the hashes in `terms`, or for any entry when `terms` is left out; added paths, commit messages and names, and every other file, are judged as before. In a glob, `*` and `?` stay inside one path segment, a segment that is exactly `**` spans any number of segments, and the first segment holds no wildcard. The exemptions come from the base commit like the list, so an exemption never applies to the change that adds it, and a first list is used without its exemptions. A change that adds or widens an entry (any entry the base list does not hold exactly) fails until a maintainer who is not the author adds the label `schema-loosening-approved`, as for a loosened schema; on a push it is reported, not judged. A change whose list cannot be read as JSON fails. The guard prints the lines an exemption let through, with their globs (the count, then the first 20). A file under an exempt tree whose path git quotes (non-ASCII, a quote, a backslash or a control character) is never exempted, so such a tree is checked in full. Leaving out `terms` also exempts entries added to the list later. Widening is judged against the base list as it is now, so an entry the base dropped after a change branched counts as added again; the guard says when the list changed on the base, and merging the base in clears it. A moved file is read whole at its new path, so renaming a file out of an exempt tree is judged like adding it there. The label is the one that approves a loosened schema, so a maintainer who adds it approves every loosening in the pull request, exemptions included, and it stays valid after later pushes until removed: remove and re-add it after reviewing new changes. A generated file that must repeat names from an exempt tree (an automerge path list, CODEOWNERS) is listed the same way, by its exact path and with `terms` naming only the entries it repeats, so every other term is still caught in it. The list is `.github/denylist.json` on the base commit: `{"salt": ..., "sha256": [...]}`, salted hashes of one- or two-word terms (64 lower-case hex characters each; any other entry makes the list invalid), so the file does not say what it guards against. A change that writes the list must leave a usable, non-empty one, since the next change is judged with it, and a change that deletes a non-empty list fails. `scripts/denylist-hash.sh <list> < terms` prints the entries; a finding names where, never the term. With no list, or an empty one, it fails as unguarded; the change that adds the first list is checked with it. Every changed file is read as text whatever `.gitattributes` says (`-diff` or `binary` hide nothing), but binary files are not scanned in any useful sense: words inside compressed content such as images and archives are not visible. Limits: a term is one or two words, so a list entry of three or more words never matches; text that is encoded (base64, gzip, URL or HTML escapes) or spelled out with separators inside a word is not decoded.
-- `removed-paths`: nothing mentions a path the change deleted or renamed away, or a directory that is gone, except the files in the input `history` (default ["CHANGELOG.md"]).
-- `release-note`: a change under a path in the input `watch` adds at least one line with text to `CHANGELOG.md` (a whitespace-only or blank-line edit, or a line moved within the file, does not count) or has a `Release: none` line in a commit message. The default `watch` is [], so the guard is off until a repository lists its watched paths; this repository watches ["consumer/","spec/",".github/workflows/","rulesets/"].
-- `schema-loosening`: a changed JSON schema (a file whose top-level `$schema` is a json-schema.org meta-schema) that accepts more than before fails until a maintainer who is not the author adds the label `schema-loosening-approved`: a lowered or removed minimum, a raised or removed maximum, a removed `required` entry, a wider `enum`, a relaxed `additionalProperties: false` or `unevaluatedProperties: false`, a property or pattern property added beside either of them, a changed `const`, `pattern` or `format`, or a deleted schema. A change it cannot show to be safe also needs the label: a `type` that gains a type or is removed, any change under `not`, `if`, `oneOf` or `contains`, beside an `additionalProperties`, `items`, `additionalItems`, `unevaluatedProperties` or `unevaluatedItems` that is not `true`, a `properties` or `patternProperties` key, `prefixItems` or list `items` added (a key whose schema is exactly the old `additionalProperties` is not counted), and beside an unevaluated one an `additionalProperties`, `items`, `additionalItems` or `contains` added or an `allOf`, `anyOf`, `oneOf`, `if`, `then`, `else`, `dependentSchemas` or `dependencies` added or changed, a `minContains` below 1 added beside `contains`, a changed `$defs` or `definitions` in a file with a reference and an unevaluated keyword that is not `true`, a `$ref`, `$dynamicRef` or `$recursiveRef` added, removed or changed, an `allOf`, `anyOf`, `prefixItems` or list `items` that changes length, any other constraint removed or changed (`multipleOf`, `uniqueItems`, `dependentRequired`, a property or `dependentSchemas` entry), a draft-04 boolean `exclusiveMaximum` or `exclusiveMinimum` changed (any keyword in a type its rule does not compare), a subschema made `true`, a `false` one opened or one replaced by another shape (a list `items` for a schema `items`), and a `$schema`, `$id`, `$anchor`, `$dynamicAnchor` or `$vocabulary` added, removed or changed, since each moves what a reference reaches or which keywords count. Annotations (`title`, `description`, `default`, `examples`, `$comment`, ...) are not judged; a `$defs` entry is judged like any other place, but adding or removing a whole entry is not. In a file with a reference under `not`, `if`, `oneOf` or `contains`, any constraint change at any place is flagged, a tightening included, since the reference may reach that place where a tighter rule accepts more. A changed `pattern` is not flagged when the exact old and new pair is on the reviewed list of tightenings, `guards.tighteningPairs` in `policy/constants.json`: each entry is the SHA-256 of `["<old>","<new>"]` as compact JSON, with why the new pattern accepts nothing the old one refused. The list ships with the workflow at its pin and grows only by pull request here; a caller cannot add to it. The list is ignored for a pattern under `not`, `if`, `oneOf` or `contains`, where a tighter pattern can make the schema accept more, and for a whole file that has a `$ref`, `$dynamicRef` or `$recursiveRef` under one of those. The guard judges one file at a time, so a reference to the pattern from another file is not seen; a schema that uses another file's pattern under `not` is the case the list cannot judge. An unlisted pair, a removed pattern or a list that cannot be read is still flagged. A base file that cannot be read fails the guard. On a push the guard reports loosening but asks for no label: the label is judged on the pull request, so a branch protected by the ruleset (changes only through pull requests) is what makes a push without one impossible. The label is judged by who added it last, not by when: it stays valid after later pushes until removed, so a maintainer removes and re-adds it after reviewing new changes.
+## Supported platform
 
-- `size` (optional: the gate does not require it, so a repository opts in by adding the job and listing it in `.github/required-checks.json`): the lines a pull request adds or changes outside fixtures are at most the input `size-limit` (default 600), or the label `size-approved`, added last by someone other than the author and not a bot, lets more through. Fixtures are the input `size-fixtures` (default ["selftest/","examples/","counter-examples/","tests/fixtures/"]): an entry ending in `/` is a directory anywhere in the path, an entry with no `/` a file name anywhere, any other entry one exact path. A renamed file counts once, by its new path. A file git treats as binary counts its added newline-separated lines, whatever its name, so neither a NUL byte nor a `.gitattributes` `binary` hides lines; a real binary file counts too, so a repository adding images may list those folders as fixtures. The entry `/` alone would cover everything and is refused. A change with a path holding a newline is refused. The count is printed either way, for the pull request record.
+GitHub.com only. GitHub Enterprise Server and other hosts are not supported.
 
-Auto-merge is a second workflow on `pull_request_target` that calls `automerge.yml` with `contents: write`, `pull-requests: write` and the required input `trusted-authors`; its allowlist is `.github/automerge-paths.json` (`{"paths": [...]}`) on the base commit, and the gate fails if CODEOWNERS owns any of those paths. It turns auto-merge on only for a trusted author whose pull request touches nothing outside the allowlist; every other pull request needs a maintainer (`.github/CODEOWNERS`). The ruleset in `rulesets/main.json` requires the `gate / gate` check, so a failed check always blocks the merge. Branches need not be up to date with `main` before merging (strict status checks off): a workflow can only update a branch with its own token, and pushes made with that token start no checks, so strict checks would leave automation pull requests waiting forever. The run on `main` after every merge shows any combination that breaks.
+## Required check
 
-## Contract
+Require the check `gate / gate`. The ruleset in `rulesets/main.json` does.
 
-Input names are the API: adding an optional input is a minor change; renaming or removing an input, or making one required, is a major change. `schema-check` takes an optional `expect` (`pass` or `fail`) so a repository can keep counter-examples that must fail validation. Its `mode` is `validate` (default), `metaschema` (check the caller's own schemas, a file or a directory, against their `$schema`), or `guards`. `guards` applies each mutant in a guards file (`{"examples", "counter-examples", "mutants": [{"pointer", "mutation": "delete" | "true"} or {"pointer", "set"}]}`) and passes only when every mutant turns an example or a counter-example red, after checking that the unmutated schema is green. `resolve` lists extra schemas to resolve by `$id`, one path per line, and `resolve-ids` the `$id` each must carry, so a wrong pin fails the check whatever `expect` says. `message-check.yml` is the protocol v0 guard for `issues` events ([docs/protocol.md](docs/protocol.md)). Inputs starting with `_selftest-` belong to this repository's self-test and are not part of the API. Pin the full commit SHA of a release with the tag as a comment, for example `@<sha> # v2.0.0`; Dependabot proposes the bumps (`consumer/.github/dependabot.yml`). Release tags matching ["refs/tags/v*"] can be neither deleted nor moved (`rulesets/tags.json`).
+## Links
 
-The contracts under `spec/` (the fact-node envelope, refresh-report, sources, ratchet and the protocol message) are described in [spec/README.md](spec/README.md) and checked in CI through `schema-check`. To move a repository to a new release, see [ADOPTING.md](ADOPTING.md).
-
-The breaking surface is: input and output names of the reusable workflows, their file names, the required check name `gate / gate`, the keys of `check.json`, the formats of `.github/required-checks.json`, `.github/automerge-paths.json` and `.github/denylist.json`, the labels `schema-loosening-approved` and `size-approved`, the line `Release: none`, and the `$id` of every schema under `spec/`. Any change to it is a line in `CHANGELOG.md`. A Dependabot config for repositories that call these workflows is in `consumer/.github/dependabot.yml`.
-
-## Change something
-
-- A pin, limit or path: edit `policy/constants.json`, then run `scripts/render.sh`.
-- A schema to check: put a `check.json` (`{"schema": ..., "instances": ...}`, paths relative to it) next to the schema; nothing else changes.
-- A new kind of check: a reusable workflow plus one row in `checks` in `policy/constants.json`.
-- A self-test case: add a directory under `selftest/fixtures` with a `case.json`.
+- [ADOPTING.md](ADOPTING.md): moving to a new release, and what each release changes.
+- [CHANGELOG.md](CHANGELOG.md): the API, enforcement, permission and download changes of every release.
+- [docs/new-repo-checklist.md](docs/new-repo-checklist.md): bringing a repository in (`scripts/onboard.sh`).
+- [spec/README.md](spec/README.md): the contracts under `spec/`.
+- [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
