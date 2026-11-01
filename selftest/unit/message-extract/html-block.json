@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/html-block.md"
+  },
+  "output": "invalid an HTML block outside a fence hides text from a reader"
+}
