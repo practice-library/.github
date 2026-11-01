@@ -143,6 +143,37 @@ class MutantsRunnerTest(unittest.TestCase):
         self.assertIn("FAIL step-demo/comment: survived", out)
         self.assertIn("3 mutants, 2 not caught", out)
 
+    def test_a_python_module_target_is_mutated_and_a_python_syntax_error_is_not_a_kill(self):
+        write(self.box, "demo_mod.py", "def answer():\n    return 1\n")
+        write(self.box, "demo_mod_test.py", "import unittest\nimport demo_mod\n\n\nclass Demo(unittest.TestCase):\n"
+                                           "    def test_answer(self):\n        self.assertEqual(demo_mod.answer(), 1)\n")
+        write(self.box, "selftest/mutants/py-demo.json", {"target": "demo_mod.py", "tests": ["demo_mod_test"], "mutants": [
+            {"name": "flip", "find": "return 1", "replace": "return 2"},
+            {"name": "broken", "find": "return 1", "replace": "return ("},
+            {"name": "same", "find": "return 1", "replace": "return 1  # same"},
+        ]})
+        rc, out = self.run_runner("py-demo")
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("caught py-demo/flip by test_answer", out)
+        self.assertIn("FAIL py-demo/broken: the mutated demo_mod.py does not parse", out)
+        self.assertIn("FAIL py-demo/same: survived", out)
+        with open(os.path.join(self.box, "demo_mod.py"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "def answer():\n    return 1\n")
+
+    def test_a_python_target_can_be_judged_by_a_librarys_unit_cases(self):
+        write(self.box, "lib/demo.sh", "main() { python3 -I demo_mod.py; }\n")
+        write(self.box, "unit/demo/a.json", {"env": {}, "expect": "ok"})
+        write(self.box, "demo_mod.py", 'print("ok")\n')
+        write(self.box, "selftest/mutants/py-unit.json", {"target": "demo_mod.py", "unit": "demo", "mutants": [
+            {"name": "flip", "find": '"ok"', "replace": '"no"'},
+            {"name": "same", "find": 'print("ok")', "replace": 'print("ok")  # same'},
+        ]})
+        rc, out = self.run_runner("py-unit")
+        self.assertNotEqual(rc, 0, out)
+        self.assertIn("caught py-unit/flip by demo/a", out)
+        self.assertIn("FAIL py-unit/same: survived", out)
+        self.assertIn("2 mutants, 1 not caught", out)
+
 
 if __name__ == "__main__":
     unittest.main()

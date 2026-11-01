@@ -16,8 +16,8 @@
   },
   {
     "name": "spaces-kept",
-    "find": "tostring | gsub(\"^\\\\s+|\\\\s+$\"; \"\")",
-    "replace": "tostring"
+    "find": "      | (.v | gsub(\"^\\\\s+|\\\\s+$\"; \"\")) as $v\n      | ($v | split(\"/\")[0]",
+    "replace": "      | .v as $v\n      | ($v | split(\"/\")[0]"
   },
   {
     "name": "yaml-extension-skipped",
@@ -36,17 +36,17 @@
   },
   {
     "name": "steps-unread",
-    "find": ", (.value.steps // [] | .[] | .uses | select(. != null))",
-    "replace": ""
+    "find": ", (.value.steps // [] | .[] | select(has(\"uses\")) | .uses))",
+    "replace": ")"
   },
   {
     "name": "job-uses-unread",
-    "find": "((.value.uses | select(. != null)), ",
-    "replace": "(("
+    "find": "((.value | select(has(\"uses\")) | .uses), ",
+    "replace": "("
   },
   {
     "name": "parse-error-ignored",
-    "find": "|| { echo \"invalid ${f#\"${ROOT:-.}/\"} is not YAML\"; return 0; }",
+    "find": "|| { pc_invalid=\"$rel is not YAML\"; return 1; }",
     "replace": "|| true"
   },
   {
@@ -61,8 +61,8 @@
   },
   {
     "name": "files-not-accumulated",
-    "find": "found=\"$found$one\"",
-    "replace": "found=\"$one\""
+    "find": "pc_found=\"$pc_found$one\"",
+    "replace": "pc_found=\"$one\""
   },
   {
     "name": "other-owner-judged",

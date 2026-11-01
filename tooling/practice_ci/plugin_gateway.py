@@ -9,6 +9,12 @@ Every limit, name and default is in policy/constants.json under pluginGateway.
     python3 -m tooling.practice_ci.plugin_gateway unit  --plugin P --plan plan.json --unit ID --out-dir DIR
     python3 -m tooling.practice_ci.plugin_gateway merge --plugin P --plan plan.json --partials-dir DIR --out report.json
 
+    python3 -m tooling.practice_ci.plugin_gateway run   --plugin P --plan-input F --out report.json
+
+`run` is plan, every unit (in parallel, at most the matrix width) and merge in one step. It writes the report and
+sets the `report` output (compact JSON) even when a unit was fatal; that unit has no partial, merge reports its
+facts unreadable, and the step then exits 1.
+
 Exit status: 0 on success, 1 when the step failed (a warning or error annotation says why), 2 on bad arguments.
 """
 from concurrent.futures import ThreadPoolExecutor
@@ -350,17 +356,20 @@ def _step_run(args, caps, sleep, clock):
         return run_unit(args.plugin, data, unit_id, caps, args.retry_attempts,
                         args.retry_wait_seconds, sleep, clock)
     partials = []
+    fatal = []
     with ThreadPoolExecutor(max_workers=width) as pool:
         for unit_id, outcome in zip(ids, pool.map(execute, ids)):
             if outcome["state"] == "fatal":
-                print(f"::warning::unit {unit_id}: {outcome['reason']}; no partial")
+                fatal.append(unit_id)
+                print(f"::warning::unit {unit_id}: {outcome['reason']}; no partial, so merge reports its facts unreadable")
             else:
                 partials.append(outcome["partial"])
     report = _must_succeed(args.plugin, _policy("operations", "merge"),
                            {"plan": data, "partials": partials}, caps)
     _write_json(args.out, report)
     _output("report", report)
-    return EXIT_OK
+    # The report is complete either way; a fatal unit still fails the step, as the unit step did.
+    return EXIT_FAILED if fatal else EXIT_OK
 
 
 def main(argv=None, sleep=time.sleep, clock=time.monotonic):

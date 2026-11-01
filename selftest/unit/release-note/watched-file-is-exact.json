@@ -1,0 +1,12 @@
+{
+  "expect": "ok",
+  "env": {
+    "CHANGED": "[\"README.md.bak\"]",
+    "WATCH": "[\"README.md\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Change",
+    "CHANGELOG_ADDED": "0"
+  },
+  "output": "ok no watched path changed"
+}
