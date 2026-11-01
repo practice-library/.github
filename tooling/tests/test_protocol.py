@@ -147,7 +147,7 @@ class Trust(unittest.TestCase):
         return protocol.decide(action, actor, self.AUTHOR, protocol.digest(text), protocol.parse_verdict(comments))
 
     def verdict_comment(self, status, text, run_id=1):
-        return {"user": {"login": config.get("protocol", "verdictAuthor")}, "body": protocol.render_verdict(status, protocol.digest(text), run_id)}
+        return {"user": {"login": config.get("protocol", "verdictAuthor")}, "body": protocol.render_verdict(status, protocol.digest(text), run_id, protocol.digest(text))}
 
     def test_create_foreign_edit_trusted_relabel_is_invalid(self):
         original, tampered = b"original body", b"tampered body"
@@ -206,7 +206,7 @@ class Trust(unittest.TestCase):
         self.assertEqual(what, protocol.JUDGE)
 
     def test_forged_verdict_by_another_login_is_ignored(self):
-        forged = {"user": {"login": self.OTHER}, "body": protocol.render_verdict(protocol.ACCEPTED, protocol.digest(b"x"), 1)}
+        forged = {"user": {"login": self.OTHER}, "body": protocol.render_verdict(protocol.ACCEPTED, protocol.digest(b"x"), 1, protocol.digest(b"x"))}
         self.assertIsNone(protocol.parse_verdict([forged]))
 
     def test_latest_verdict_wins(self):
@@ -230,7 +230,7 @@ class DurableRevision(unittest.TestCase):
         self.assertNotEqual(accepted[0], relabel[0])
         self.assertEqual(relabel[1:3], (protocol.KEEP_INVALID, protocol.TAINTED))
         comments = [dict(user=dict(login=config.get("protocol", "verdictAuthor")),
-                         body=protocol.render_verdict(relabel[2], relabel[0], 4))]
+                         body=protocol.render_verdict(relabel[2], relabel[0], 4, protocol.digest(b"A")))]
         # An older taint run is refused, but the relabel already recorded taint.
         self.assertFalse(protocol.can_record(2, comments))
         self.assertEqual(protocol.snapshot_revision(restored)[1], protocol.KEEP_INVALID)
@@ -309,13 +309,13 @@ class WorkflowSequence(unittest.TestCase):
             workflow = f.read()
         self.assertIn("group: message-check-${{ github.repository }}-${{ github.event.issue.number }}", workflow)
         self.assertIn("cancel-in-progress: false", workflow)
-        self.assertIn('protocol verdict "$status" "$DIGEST" "$RUN_ID"', workflow)
+        self.assertIn('protocol verdict "$status" "$DIGEST" "$RUN_ID" "$(protocol digest "$RUNNER_TEMP/body.md")"', workflow)
         start = workflow.index('          if [ "$(protocol can-record')
         end = workflow.index('          existing=', start)
         guard = workflow[start:end]
         with tempfile.TemporaryDirectory() as tmp:
             comments = [{"user": {"login": config.get("protocol", "verdictAuthor")},
-                         "body": protocol.render_verdict(protocol.TAINTED, protocol.digest(b"A"), 3)}]
+                         "body": protocol.render_verdict(protocol.TAINTED, protocol.digest(b"A"), 3, protocol.digest(b"A"))}]
             with open(os.path.join(tmp, "comments.json"), "w") as f:
                 json.dump(comments, f)
             code = "import sys; from practice_ci import protocol; sys.exit(protocol.main(sys.argv[1:]))"
@@ -357,7 +357,7 @@ class WorkflowSequence(unittest.TestCase):
             return json.loads(self.cli("decide", action, actor, author, self.cli("digest", path), comments))
 
         def store(status, path):
-            line = self.cli("verdict", status, self.cli("digest", path), "1")
+            line = self.cli("verdict", status, self.cli("digest", path), "1", self.cli("digest", path))
             with open(comments, "w", encoding="utf-8") as f:
                 json.dump([{"id": 7, "user": {"login": config.get("protocol", "verdictAuthor")}, "body": line}], f)
 

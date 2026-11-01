@@ -8,6 +8,7 @@ import unittest
 
 from .gitrepo import RepoCase  # first: it puts tooling on sys.path
 
+from practice_ci import __main__, cli, config  # noqa: E402
 from practice_ci import git_objects as go  # noqa: E402
 from practice_ci import scan_records  # noqa: E402
 from practice_ci.guards import denylist, release_note, removed_paths, size  # noqa: E402
@@ -190,10 +191,29 @@ class RecordKind(RepoCase):
 
 
 class Launcher(unittest.TestCase):
-    def test_runner_runs_isolated_and_prints_one_line(self):
-        runner = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "run_practice_ci.py")
-        done = subprocess.run([sys.executable, "-I", runner, "denylist"], env={"DENY": ""}, stdout=subprocess.PIPE, cwd="/")
+    def test_launcher_runs_every_guard_isolated_and_prints_one_plain_line(self):
+        launcher = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), config.get("tooling", "launcher"))
+        done = subprocess.run([sys.executable, "-I", launcher, "denylist"], env={"DENY": ""}, stdout=subprocess.PIPE, cwd="/")
         self.assertTrue(done.stdout.startswith(b"unguarded "), done.stdout)
+        self.assertEqual(done.stdout.count(b"\n"), 1)
+        self.assertEqual(done.returncode, 0)
+
+    def test_every_guard_is_a_launcher_command(self):
+        self.assertEqual(set(cli.GUARDS), {"denylist", "removed-paths", "release-note", "size"})
+        self.assertTrue(set(cli.GUARDS) <= set(__main__.commands()))
+
+    def test_no_script_or_template_names_the_removed_runner(self):
+        root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        self.assertFalse(os.path.exists(os.path.join(root, "tooling", "run_practice_ci.py")))
+        for top in ("templates", "scripts", "policy"):
+            for where, _, names in os.walk(os.path.join(root, top)):
+                for name in names:
+                    with open(os.path.join(where, name), encoding="utf-8", errors="ignore") as f:
+                        text = f.read()
+                    with self.subTest(file=os.path.join(where, name)):
+                        self.assertNotIn("run_practice_ci", text)
+                        self.assertNotIn("runnerScript", text)
+                        self.assertNotIn("core track adds the launcher", text)
 
 
 if __name__ == "__main__":

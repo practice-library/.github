@@ -10,6 +10,9 @@
     {"name": "head-compare-inverted", "find": "[ \"$actual\" = \"$WORKFLOW_SHA\" ]", "replace": "[ \"$actual\" != \"$WORKFLOW_SHA\" ]"},
     {"name": "head-read-from-the-workspace", "find": "git -C \"$GITHUB_WORKSPACE/@@selfCheckout.dir@@\" rev-parse", "replace": "git -C \"$GITHUB_WORKSPACE\" rev-parse"},
     {"name": "credentials-persisted", "find": "persist-credentials: false", "replace": "persist-credentials: true"},
-    {"name": "ref-is-not-the-workflow-sha", "find": "ref: ${{ job.workflow_sha }}", "replace": "ref: ${{ github.sha }}"}
+    {"name": "ref-is-not-the-chosen-commit", "find": "ref: ${{ steps.tooling-ref.outputs.sha }}", "replace": "ref: ${{ github.sha }}"},
+    {"name": "verified-commit-is-not-the-chosen-one", "find": "WORKFLOW_SHA: ${{ steps.tooling-ref.outputs.sha }}", "replace": "WORKFLOW_SHA: ${{ job.workflow_sha }}"},
+    {"name": "local-call-uses-the-workflow-sha", "find": "github.sha || job.workflow_sha", "replace": "job.workflow_sha || job.workflow_sha"},
+    {"name": "commit-not-published", "find": "echo \"sha=$WORKFLOW_SHA\" >> \"$GITHUB_OUTPUT\"", "replace": "true"}
   ]
 }

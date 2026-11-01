@@ -63,7 +63,7 @@ jobs:
       contents: read
       pull-requests: read
     env:
-      PRACTICE_CI_RUNNER: ${{ github.workspace }}/_practice_ci/tooling/run_practice_ci.py
+      PRACTICE_CI_RUNNER: ${{ github.workspace }}/_practice_ci/scripts/practice-ci
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -72,27 +72,33 @@ jobs:
       # The include point for the called workflow's own tooling: it must come after the checkout above,
       # which cleans the workspace. Checks wire their commands to the tooling it provides.
       - name: The called workflow must say which tooling it is
+        id: tooling-ref
         shell: bash
         env:
           WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
-          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          # A repository that runs its own reusable workflow from its own pull request is a local call: the
+          # workflow and its tooling are the caller's commit, the one the caller's checkout gets (for a pull
+          # request, the merge commit, not the head). Any other call runs the tooling at job.workflow_sha.
+          WORKFLOW_SHA: ${{ job.workflow_repository == github.repository && github.sha || job.workflow_sha }}
         run: |
           set -euo pipefail
           [ -n "$WORKFLOW_REPOSITORY" ] || { echo "::error::job.workflow_repository is empty; the tooling of this workflow cannot be fetched"; exit 1; }
-          [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::job.workflow_sha is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
+          [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the commit of the tooling is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
+          echo "sha=$WORKFLOW_SHA" >> "$GITHUB_OUTPUT"
       - name: Check out the tooling at the commit this workflow runs from
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: ${{ job.workflow_repository }}
-          ref: ${{ job.workflow_sha }}
+          ref: ${{ steps.tooling-ref.outputs.sha }}
           path: _practice_ci
           persist-credentials: false
       - name: The tooling is at exactly that commit
         shell: bash
         env:
-          WORKFLOW_SHA: ${{ job.workflow_sha }}
+          WORKFLOW_SHA: ${{ steps.tooling-ref.outputs.sha }}
         run: |
           set -euo pipefail
+          [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the commit of the tooling is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
           actual="$(git -C "$GITHUB_WORKSPACE/_practice_ci" rev-parse HEAD)"
           [ "$actual" = "$WORKFLOW_SHA" ] || { echo "::error::the tooling is at $actual, not at $WORKFLOW_SHA"; exit 1; }
       - name: Check out the caller
@@ -147,9 +153,9 @@ jobs:
           # never printed. The scan is tooling/practice_ci/guards/denylist.py, which reads git as bytes (names,
           # quoted paths and commit messages with a NUL are exact) and judges typed records.
           # Inputs: DENY (JSON, see the module), EVENT, TEXT_FILE (rows "<where><TAB><text>") or MB and HEAD.
-          # TODO: call scripts/practice-ci denylist once the core track adds the launcher.
+          # PRACTICE_CI_RUNNER is the launcher (scripts/practice-ci) of the checkout that holds the tooling.
           main() {
-            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" denylist
+            python3 -I "${PRACTICE_CI_RUNNER:-scripts/practice-ci}" denylist
           }
           if [ "$NONE" = true ]; then
             # Nothing to compare, but a repository whose list is missing, empty or unreadable is still
@@ -266,9 +272,9 @@ jobs:
           # main: prints "ok ..." or "referenced [{path, at}, ...]" or "invalid ...". The guard is
           # tooling/practice_ci/guards/removed_paths.py (inputs in its docstring): the removed paths (both paths of a
           # rename, exact) are read from git for MB..HEAD when DELETED is unset.
-          # TODO: call scripts/practice-ci removed-paths once the core track adds the launcher.
+          # PRACTICE_CI_RUNNER is the launcher (scripts/practice-ci) of the checkout that holds the tooling.
           main() {
-            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" removed-paths
+            python3 -I "${PRACTICE_CI_RUNNER:-scripts/practice-ci}" removed-paths
           }
           ROOT="$GITHUB_WORKSPACE"
           export ROOT HISTORY
@@ -291,9 +297,9 @@ jobs:
           # tooling/practice_ci/guards/release_note.py (inputs in its docstring): the changed paths (both paths of
           # a rename, exact) and the commit messages (every byte) are read from git for MB..HEAD when CHANGED and
           # MESSAGES are unset.
-          # TODO: call scripts/practice-ci release-note once the core track adds the launcher.
+          # PRACTICE_CI_RUNNER is the launcher (scripts/practice-ci) of the checkout that holds the tooling.
           main() {
-            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" release-note
+            python3 -I "${PRACTICE_CI_RUNNER:-scripts/practice-ci}" release-note
           }
           export WATCH CHANGELOG MARKER MB HEAD
           result="$(main)"
@@ -396,9 +402,9 @@ jobs:
           # main: prints "ok <n> non-fixture lines (limit <L>)", "over <n> non-fixture lines, more than <L>: split the
           # pull request" or "invalid ...". The guard is tooling/practice_ci/guards/size.py (inputs in its
           # docstring): when NUMSTAT is unset the counts are read from git for MB..HEAD with exact paths.
-          # TODO: call scripts/practice-ci size once the core track adds the launcher.
+          # PRACTICE_CI_RUNNER is the launcher (scripts/practice-ci) of the checkout that holds the tooling.
           main() {
-            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" size
+            python3 -I "${PRACTICE_CI_RUNNER:-scripts/practice-ci}" size
           }
           export LIMIT FIXTURES MB HEAD
           result="$(main)"

@@ -1,25 +1,31 @@
 - name: The called workflow must say which tooling it is
+  id: tooling-ref
   shell: bash
   env:
     WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
-    WORKFLOW_SHA: ${{ job.workflow_sha }}
+    # A repository that runs its own reusable workflow from its own pull request is a local call: the
+    # workflow and its tooling are the caller's commit, the one the caller's checkout gets (for a pull
+    # request, the merge commit, not the head). Any other call runs the tooling at job.workflow_sha.
+    WORKFLOW_SHA: ${{ job.workflow_repository == github.repository && github.sha || job.workflow_sha }}
   run: |
     set -euo pipefail
     [ -n "$WORKFLOW_REPOSITORY" ] || { echo "::error::job.workflow_repository is empty; the tooling of this workflow cannot be fetched"; exit 1; }
-    [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::job.workflow_sha is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
+    [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the commit of the tooling is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
+    echo "sha=$WORKFLOW_SHA" >> "$GITHUB_OUTPUT"
 - name: Check out the tooling at the commit this workflow runs from
   uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
   with:
     repository: ${{ job.workflow_repository }}
-    ref: ${{ job.workflow_sha }}
+    ref: ${{ steps.tooling-ref.outputs.sha }}
     path: @@selfCheckout.dir@@
     persist-credentials: false
 - name: The tooling is at exactly that commit
   shell: bash
   env:
-    WORKFLOW_SHA: ${{ job.workflow_sha }}
+    WORKFLOW_SHA: ${{ steps.tooling-ref.outputs.sha }}
   run: |
     set -euo pipefail
+    [[ "$WORKFLOW_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::the commit of the tooling is not a 40-hex commit: '$WORKFLOW_SHA'"; exit 1; }
     actual="$(git -C "$GITHUB_WORKSPACE/@@selfCheckout.dir@@" rev-parse HEAD)"
     [ "$actual" = "$WORKFLOW_SHA" ] || { echo "::error::the tooling is at $actual, not at $WORKFLOW_SHA"; exit 1; }
 - name: Check out the caller

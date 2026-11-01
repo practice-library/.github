@@ -38,6 +38,7 @@ jobs:
       issues: write
     env:
       PRACTICE_CI_TOOLING: ${{ github.workspace }}/.practice-ci/tooling
+      PRACTICE_CI_RUNNER: ${{ github.workspace }}/.practice-ci/scripts/practice-ci
     steps:
       - name: Is this issue from a trusted author?
         id: who
@@ -166,9 +167,9 @@ jobs:
           # never printed. The scan is tooling/practice_ci/guards/denylist.py, which reads git as bytes (names,
           # quoted paths and commit messages with a NUL are exact) and judges typed records.
           # Inputs: DENY (JSON, see the module), EVENT, TEXT_FILE (rows "<where><TAB><text>") or MB and HEAD.
-          # TODO: call scripts/practice-ci denylist once the core track adds the launcher.
+          # PRACTICE_CI_RUNNER is the launcher (scripts/practice-ci) of the checkout that holds the tooling.
           main() {
-            python3 -I "${PRACTICE_CI_RUNNER:-tooling/run_practice_ci.py}" denylist
+            python3 -I "${PRACTICE_CI_RUNNER:-scripts/practice-ci}" denylist
           }
           DENY=""
           if [ -f "$LIST" ]; then DENY="$(cat "$LIST")"; fi
@@ -237,7 +238,7 @@ jobs:
           if [ "$KIND" = "" ] && [ -z "$existing" ] && [ "$status" = accepted ]; then
             echo "not a message: no kind:* label"; exit 0
           fi
-          line="$(protocol verdict "$status" "$DIGEST" "$RUN_ID")"
+          line="$(protocol verdict "$status" "$DIGEST" "$RUN_ID" "$(protocol digest "$RUNNER_TEMP/body.md")")"
           text="$line"$'\n'"Protocol verdict ($status) for this revision of the message. It is bound to the body and its GitHub edit identity; a foreign revision is invalid until the author edits again."
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f "body=$text" > /dev/null

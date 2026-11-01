@@ -62,7 +62,7 @@ jobs:
       contents: read
       pull-requests: read
     env:
-      @@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@git.runnerScript@@
+      @@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@tooling.launcher@@
     steps:
       - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
         with:

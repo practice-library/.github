@@ -4,12 +4,11 @@ import json
 import unittest
 import urllib.parse
 
-from tooling.practice_ci import config, protocol_ops
+from tooling.practice_ci import config, protocol, protocol_ops
 
 CFG = config.get("protocol")
 BASE = CFG["api"]["base"]
-MARKER = CFG["verdict"]["marker"]
-BOT = CFG["verdict"]["authors"][0]
+BOT = CFG["verdictAuthor"]
 REPO = "example-org/receiver"
 ME = "receiver"
 BODY = "Please add a mode.\n\n```json\n{\"id\": \"synthetic-request\"}\n```\n"
@@ -19,8 +18,10 @@ def sha(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
-def verdict(body, author=BOT):
-    return {"user": {"login": author}, "body": "<!-- %s%s -->\nAccepted." % (MARKER, sha(body))}
+def verdict(body, author=BOT, status=protocol.ACCEPTED, run_id=1):
+    """A verdict comment exactly as message-check writes it (protocol.render_verdict), never a hand-made format."""
+    line = protocol.render_verdict(status, sha("revision of " + body), run_id, sha(body))
+    return {"user": {"login": author}, "body": line + "\nProtocol verdict."}
 
 
 def labels_for(me=ME):
@@ -213,9 +214,9 @@ class Polling(unittest.TestCase):
         fake = FakeGitHub()
         edited = BODY + "v2\n"
         fake.issues.append({"number": 3, "body": edited, "labels": labels_for()})
-        fake.comments[3] = [verdict(BODY), verdict(edited)]
+        fake.comments[3] = [verdict(BODY, run_id=1), verdict(edited, run_id=2)]
         self.assertEqual([i["number"] for i in protocol_ops.poll(client(fake), REPO, ME)], [3])
-        fake.comments[3] = [verdict(edited), verdict(BODY)]
+        fake.comments[3] = [verdict(edited, run_id=1), verdict(BODY, run_id=2)]
         fake.etag = '"v2"'
         self.assertEqual(protocol_ops.poll(client(fake), REPO, ME), [])
 
@@ -234,6 +235,33 @@ class Polling(unittest.TestCase):
         self.assertEqual(protocol_ops.poll(client(fake), REPO, ME), [])
         found = protocol_ops.poll(client(fake), REPO, ME, app_login="example-app[bot]")
         self.assertEqual([i["number"] for i in found], [4])
+
+
+class VerdictRoundTrip(unittest.TestCase):
+    """verify reads the verdict message-check writes: one format, produced by protocol.render_verdict."""
+
+    def verified(self, comment, body=BODY):
+        fake = FakeGitHub()
+        issue = {"number": 5, "body": body, "labels": labels_for()}
+        fake.comments[5] = [comment]
+        return protocol_ops.verify(client(fake), REPO, issue)
+
+    def test_a_real_accepted_verdict_verifies_its_body_only(self):
+        self.assertTrue(self.verified(verdict(BODY)))
+        self.assertFalse(self.verified(verdict(BODY), body=BODY + "edited\n"))
+
+    def test_a_real_verdict_that_is_not_an_acceptance_does_not_verify(self):
+        for status in (protocol.INVALID, protocol.TAINTED):
+            with self.subTest(status=status):
+                self.assertFalse(self.verified(verdict(BODY, status=status)))
+
+    def test_the_old_marker_format_is_not_a_verdict(self):
+        legacy = {"user": {"login": BOT}, "body": "message-check: accepted sha256=%s" % sha(BODY)}
+        self.assertFalse(self.verified(legacy))
+
+    def test_a_verdict_without_the_body_digest_is_ignored(self):
+        text = '<!-- %s {"run_id":1,"sha256":"%s","status":"accepted"} -->' % (CFG["verdictMarker"], sha(BODY))
+        self.assertFalse(self.verified({"user": {"login": BOT}, "body": text}))
 
 
 class Links(unittest.TestCase):

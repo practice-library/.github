@@ -44,8 +44,7 @@ REST only. A reader polls `GET /repos/{repo}/issues?labels=kind:request,to:<me>,
 
 - `sync_labels` reconciles a repository's labels with the catalog in `policy/constants.json` (`protocol.labels`) over REST. It creates missing labels and fixes colour and description. A second run changes nothing.
 - `poll` lists open `kind:request` messages routed to a repository by its `to:<me>` label. It sends `If-None-Match` for every cached page, reuses cached items and pagination links on `304`, and returns `None` only when every page is unchanged. It follows the `Link` header's `rel="next"` for more pages, up to a capped number. It returns only messages that pass `verify`.
-- `verify` acts on a message only if the sha256 of its body equals the digest message-check accepted. The digest is read from the newest verdict comment by the organisation's workflow identity (or the app login the caller passes), which holds `message-check: accepted sha256=<64 hex>`, for example inside an HTML comment. An edited body, a missing verdict or a `state:invalid` label means the message is not acted on. TODO(protocol track): message-check posts that comment when it lands the digest; until then the format above is the contract.
-
+- `verify` acts on a message only if the sha256 of its body equals the digest message-check accepted. The digest is read from the newest verdict comment by the organisation's workflow identity (or the app login the caller passes), in the one verdict format message-check writes (`protocol.render_verdict`): an HTML comment `<!-- protocol-verdict {"body_sha256":"<64 hex>","run_id":<n>,"sha256":"<64 hex>","status":"accepted"} -->`, where `body_sha256` is the digest of the body bytes and `sha256` the fingerprint of the body and its edit identity. Only a verdict whose status is `accepted` counts. An edited body, a missing verdict or a `state:invalid` label means the message is not acted on.
 `.github/workflows/protocol-canary.yml` is a by-hand canary: it opens one valid and one invalid message in its own repository and asserts the `state:invalid` label lands on the invalid one only.
 
 ## A worked thread
@@ -73,7 +72,7 @@ All names are synthetic. Repository `alpha` asks repository `beta` for a change.
    ```
    ````
 
-2. message-check judges it and, being valid, records `message-check: accepted sha256=<digest of that body>` in a comment.
+2. message-check judges it and, being valid, records an `accepted` verdict, carrying the digest of that body, in a comment.
 3. `beta` polls `labels=kind:request,to:beta,state:open`, gets the issue, recomputes the body's sha256, finds it equal to the accepted digest, and sets `state:ack`.
 4. Someone edits the issue body afterwards: the digest no longer matches, so `beta` does not act on the new text until message-check accepts it again.
 5. The work lands as a pull request in `beta` saying `Refs practice-library/alpha#12`. `beta` answers with a `kind:answer` issue in `alpha`, with the same `id` and `data.refs` pointing at the request, and sets `state:done` on the request.

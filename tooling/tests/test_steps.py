@@ -43,11 +43,17 @@ class SelfCheckoutFragmentTest(unittest.TestCase):
 
     def test_inputs_must_be_present_and_the_sha_40_hex(self):
         script = check_steps.block_named(self.text, NAME_VERIFY_INPUTS)
-        ok = bash(script, {"WORKFLOW_REPOSITORY": "o/r", "WORKFLOW_SHA": SHA})
-        self.assertEqual(ok.returncode, 0, ok.stderr)
-        for repo, sha in (("", SHA), ("o/r", ""), ("o/r", SHA[:39]), ("o/r", SHA + "0"), ("o/r", SHA.upper()), ("o/r", "main"), ("o/r", SHA[:39] + "\n")):
-            with self.subTest(repo=repo, sha=sha):
-                self.assertNotEqual(bash(script, {"WORKFLOW_REPOSITORY": repo, "WORKFLOW_SHA": sha}).returncode, 0)
+        with tempfile.TemporaryDirectory() as tmp:
+            out = os.path.join(tmp, "out")
+            open(out, "w").close()
+            ok = bash(script, {"WORKFLOW_REPOSITORY": "o/r", "WORKFLOW_SHA": SHA, "GITHUB_OUTPUT": out})
+            self.assertEqual(ok.returncode, 0, ok.stderr)
+            self.assertEqual(read(out), "sha=%s\n" % SHA)
+            for repo, sha in (("", SHA), ("o/r", ""), ("o/r", SHA[:39]), ("o/r", SHA + "0"), ("o/r", SHA.upper()), ("o/r", "main"), ("o/r", SHA[:39] + "\n")):
+                with self.subTest(repo=repo, sha=sha):
+                    open(out, "w").close()
+                    self.assertNotEqual(bash(script, {"WORKFLOW_REPOSITORY": repo, "WORKFLOW_SHA": sha, "GITHUB_OUTPUT": out}).returncode, 0)
+                    self.assertEqual(read(out), "", "a refused commit must not be published")
 
     def test_head_of_the_checkout_must_be_the_workflow_sha(self):
         script = check_steps.block_named(self.text, NAME_VERIFY_HEAD)
@@ -60,11 +66,25 @@ class SelfCheckoutFragmentTest(unittest.TestCase):
             self.assertEqual(bash(script, {"WORKFLOW_SHA": head, "GITHUB_WORKSPACE": workspace}).returncode, 0)
             self.assertNotEqual(bash(script, {"WORKFLOW_SHA": SHA, "GITHUB_WORKSPACE": workspace}).returncode, 0)
             self.assertNotEqual(bash(script, {"WORKFLOW_SHA": "", "GITHUB_WORKSPACE": workspace}).returncode, 0)
+            self.assertNotEqual(bash(script, {"WORKFLOW_SHA": head[:7], "GITHUB_WORKSPACE": workspace}).returncode, 0)
+
+    def test_the_commit_is_chosen_once_and_the_same_one_is_checked_out_and_verified(self):
+        # A repository running its own reusable workflow (a local call, from its pull request) has the
+        # caller's commit as job.workflow_sha, the merge commit; checking out any other ref and comparing
+        # with this one failed in CI. The chosen ref is pinned here, and checkout and verification both use it.
+        text = fill(self.text)
+        chosen = "${{ job.workflow_repository == github.repository && github.sha || job.workflow_sha }}"
+        output = "${{ steps.tooling-ref.outputs.sha }}"
+        self.assertEqual(text.count(chosen), 1)
+        self.assertEqual(text.count("WORKFLOW_SHA: " + chosen), 1)
+        self.assertIn("ref: " + output, text)
+        self.assertEqual(text.count("WORKFLOW_SHA: " + output), 1)
+        self.assertNotIn("ref: ${{ job.workflow_sha }}", text)
+        self.assertIn("id: tooling-ref", text)
 
     def test_checkout_is_a_sibling_of_the_caller_and_keeps_no_credentials(self):
         text = fill(self.text)
         self.assertIn("repository: ${{ job.workflow_repository }}", text)
-        self.assertIn("ref: ${{ job.workflow_sha }}", text)
         self.assertEqual(text.count("persist-credentials: false"), 2)
         self.assertIn("path: " + config.get("selfCheckout", "dir"), text)
         self.assertIn("path: " + config.get("selfCheckout", "callerDir"), text)
@@ -81,7 +101,7 @@ class SelfCheckoutFragmentTest(unittest.TestCase):
     def test_guard_uses_the_workflow_checkout_for_approvals_and_git_guards(self):
         guard = read(GUARD)
         self.assertEqual(guard.count("TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling"), 3)
-        self.assertIn("@@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@git.runnerScript@@", guard)
+        self.assertIn("@@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@tooling.launcher@@", guard)
         self.assertNotIn("ref: @@release.tag@@", guard)
 
     def test_every_step_shell_parses(self):
