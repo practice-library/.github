@@ -38,6 +38,7 @@ class FakeGitHub:
         self.issues = []
         self.comments = {}
         self.etag = '"v1"'
+        self.page_etags = {}
         self.page_size = CFG["api"]["perPage"]
 
     def __call__(self, method, url, headers, body):
@@ -59,10 +60,11 @@ class FakeGitHub:
             self.labels[label["name"].lower()] = label
             return 200, {}, json.dumps(label).encode()
         if path == "/repos/%s/issues" % REPO:
-            if headers.get("If-None-Match") == self.etag:
-                return 304, {"ETag": self.etag}, b""
+            etag = self.page_etags.get(int(query.get("page", 1)), self.etag)
+            if headers.get("If-None-Match") == etag:
+                return 304, {"ETag": etag}, b""
             status, h, b = self.page(self.issues, url, query)
-            h["ETag"] = self.etag
+            h["ETag"] = etag
             return status, h, b
         if path.startswith("/repos/%s/issues/" % REPO) and path.endswith("/comments"):
             number = int(path.split("/")[-2])
@@ -142,6 +144,26 @@ class Polling(unittest.TestCase):
             self.issue(fake, n, BODY + str(n))
         found = protocol_ops.poll(client(fake), REPO, ME)
         self.assertEqual([i["number"] for i in found], [1, 2, 3, 4, 5])
+
+    def test_later_page_change_after_first_page_304(self):
+        fake = FakeGitHub()
+        fake.page_size = 1
+        self.issue(fake, 1, BODY)
+        self.issue(fake, 2, BODY + "old")
+        c = client(fake)
+        protocol_ops.poll(c, REPO, ME)
+        edited = BODY + "new"
+        fake.issues[1]["body"] = edited
+        fake.comments[2] = [verdict(edited)]
+        fake.page_etags[2] = '"page-two-v2"'
+        fake.calls.clear()
+        found = protocol_ops.poll(c, REPO, ME)
+        self.assertIsNotNone(found)
+        self.assertEqual([i["body"] for i in found], [BODY, edited])
+        listing = [call for call in fake.calls if call[1] == "/repos/%s/issues" % REPO]
+        self.assertEqual(len(listing), 2)
+        self.assertTrue(all(call[3].get("If-None-Match") == fake.etag for call in listing))
+        self.assertIsNone(protocol_ops.poll(c, REPO, ME))
 
     def test_page_cap_is_enforced(self):
         fake = FakeGitHub()

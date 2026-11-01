@@ -49,8 +49,8 @@ def next_link(headers):
 class Client:
     """A REST client. `settings_` is the "protocol" constants block; `transport` is injectable.
 
-    It remembers the ETag of each first page it has listed, so a repeat listing sends
-    If-None-Match and a 304 comes back as None.
+    It caches each page's ETag, items and next link. Repeat listings revalidate every
+    page and return None only when all pages respond with 304.
     """
 
     def __init__(self, token=None, transport=None, settings_=None):
@@ -82,33 +82,40 @@ class Client:
     def get_all(self, path, params=None, conditional=False):
         """Every item of a paginated listing, following Link rel=next, at most maxPages pages.
 
-        With conditional=True the first request carries the remembered ETag; a 304 returns None.
+        With conditional=True every cached page carries its ETag. A 304 reuses that
+        page's items and next link; only an entirely unchanged listing returns None.
+        Cache updates are committed only after the complete listing succeeds.
         """
         api = self.cfg["api"]
         url = self.url(path, dict(params or {}, per_page=api["perPage"]))
-        key = url
         items = []
-        etag = None
-        for number in range(api["maxPages"]):
-            extra = None
-            if conditional and number == 0 and key in self.etags:
-                extra = {"If-None-Match": self.etags[key]}
+        pending = {}
+        unchanged = True
+        for _ in range(api["maxPages"]):
+            cached = self.etags.get(url) if conditional else None
+            extra = {"If-None-Match": cached[0]} if cached else None
             status, headers, data = self.transport("GET", url, self._headers(extra), None)
-            if status == 304:
-                return None
-            if status != 200:
-                raise ApiError("GET %s -> HTTP %d" % (url, status))
-            if conditional and number == 0 and header(headers, "ETag"):
+            if status == 304 and cached:
+                etag, page_items, following = cached
+                following = next_link(headers) if header(headers, "Link") is not None else following
+            elif status == 200:
+                unchanged = False
                 etag = header(headers, "ETag")
-            items.extend(json.loads(data))
-            url = next_link(headers)
+                page_items = json.loads(data)
+                following = next_link(headers)
+            else:
+                raise ApiError("GET %s -> HTTP %d" % (url, status))
+            if conditional:
+                pending[url] = (etag, page_items, following) if etag else None
+            items.extend(page_items)
+            url = following
             if not url:
-                if conditional:
-                    if etag:
-                        self.etags[key] = etag
+                for page_url, page in pending.items():
+                    if page is None:
+                        self.etags.pop(page_url, None)
                     else:
-                        self.etags.pop(key, None)
-                return items
+                        self.etags[page_url] = page
+                return None if conditional and unchanged else items
         raise ApiError("more than %d pages of %s" % (api["maxPages"], path))
 
 
@@ -185,7 +192,7 @@ def verify(client, repo, issue, app_login=None):
 def poll(client, repo, me, app_login=None, since=None):
     """Open request messages addressed to `me` in `repo` whose body is the accepted revision.
 
-    Returns None when the listing is unchanged since the last poll (304), else the verified issues.
+    Returns None when every listing page is unchanged (304), else the verified issues.
     Edited, unjudged and wrongly routed messages, and pull requests, are left out.
     """
     cfg = client.cfg
