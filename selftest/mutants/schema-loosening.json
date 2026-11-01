@@ -333,5 +333,15 @@
     "name": "uneval-any-dialect",
     "find": "or ($unevalcounts and .unevaluatedProperties == false",
     "replace": "or (.unevaluatedProperties == false"
+  },
+  {
+    "name": "uneval-root-dialect-only",
+    "find": "and all([$old, $new][] | .. | objects | select(has(\"$schema\")) | .[\"$schema\"];",
+    "replace": "and all([$old, $new][] | .[\"$schema\"];"
+  },
+  {
+    "name": "uneval-root-schema-optional",
+    "find": "(([$old, $new] | all(.[]; type == \"object\" and has(\"$schema\")))",
+    "replace": "((true)"
   }
 ]

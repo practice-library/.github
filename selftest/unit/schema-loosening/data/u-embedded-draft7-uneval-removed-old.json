@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "x": {
+      "$id": "https://ex.test/x",
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "type": "object",
+      "unevaluatedProperties": false,
+      "properties": {
+        "a": {
+          "type": "string"
+        },
+        "b": {}
+      }
+    }
+  }
+}

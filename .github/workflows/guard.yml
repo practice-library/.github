@@ -598,8 +598,10 @@ jobs:
                       # may match the name), or a false unevaluatedProperties with neither that nor additionalProperties
                       # nor any keyword that evaluates properties (an allOf or a reference may name the key).
                       # unevaluatedProperties is a keyword only from draft 2019-09: under an older $schema it refuses nothing.
-                      ([$old, $new] | all(.[]; (if type == "object" then .["$schema"] else null end)
-                                               | type == "string" and test("^https?://json-schema\\.org/draft/20(19-09|20-12)/"))) as $unevalcounts
+                      # Every $schema counts, the roots and those of embedded resources, so both roots must declare one.
+                      (([$old, $new] | all(.[]; type == "object" and has("$schema")))
+                       and all([$old, $new][] | .. | objects | select(has("$schema")) | .["$schema"];
+                               type == "string" and test("^https?://json-schema\\.org/draft/20(19-09|20-12)/"))) as $unevalcounts
                       | def refuses($k):
                         type == "object" and ($k | IN("properties", "patternProperties"))
                         and ((if $k == "properties" then "patternProperties" else "properties" end) as $other | has($other) | not)
