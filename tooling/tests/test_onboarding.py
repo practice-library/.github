@@ -99,6 +99,26 @@ class RenderFailureWritesNothing(unittest.TestCase):
         self.assertEqual(status, 2)
         self.assertEqual(gh.writes, [])
 
+    def test_invalid_ruleset_structure_makes_zero_writes(self):
+        root = make_root({})
+        path = os.path.join(root, config.get("onboarding", "rulesetFile"))
+        with open(path) as f:
+            valid = json.load(f)
+        invalid = [{"name": "invalid"}, [], dict(valid, name=None),
+                   dict(valid, target="invalid"), dict(valid, conditions=[]),
+                   dict(valid, bypass_actors={}), dict(valid, rules=[None]),
+                   dict(valid, rules=[{"type": "pull_request", "parameters": {}}]),
+                   dict(valid, rules=[{"type": "required_status_checks", "parameters": {}}])]
+        for payload in invalid:
+            with self.subTest(payload=payload):
+                with open(path, "w") as f:
+                    json.dump(payload, f)
+                gh = FakeGh()
+                status, _, err = run(["demo"], gh, root)
+                self.assertEqual(status, 2)
+                self.assertIn("not a usable ruleset", err)
+                self.assertEqual(gh.writes, [])
+
     def test_bad_pin_makes_zero_writes(self):
         gh = FakeGh()
         out, err = io.StringIO(), io.StringIO()

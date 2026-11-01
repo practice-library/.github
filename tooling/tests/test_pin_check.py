@@ -24,17 +24,17 @@ try:
     out, n = [], 0
     def add(v):
         global n
-        if v is not None:
+        if v is not None or 'has("uses")' in expr:
             n += 1
             out.append({"line": n, "v": v})
     if ".runs.steps" in expr:
         for s in doc["runs"].get("steps") or []:
-            add(s.get("uses"))
+            if "uses" in s: add(s["uses"])
     else:
         for job in (doc.get("jobs") or {}).values():
-            add(job.get("uses"))
+            if "uses" in job: add(job["uses"])
             for s in job.get("steps") or []:
-                add(s.get("uses"))
+                if "uses" in s: add(s["uses"])
     print(json.dumps(out))
 except Exception:
     sys.exit(1)
@@ -124,6 +124,24 @@ class PinCheck(unittest.TestCase):
         self.put(".github/workflows/a.yml", workflow(q("./x")))
         self.put("x/action.yml", action('{"a": 1}'))
         self.assertEqual(self.main(), "invalid x/action.yml:1 uses is not a string")
+
+    def test_null_workflow_step_uses_is_refused(self):
+        self.put(".github/workflows/a.yml", workflow("null"))
+        self.assertEqual(self.main(), "invalid .github/workflows/a.yml:1 uses is not a string")
+
+    def test_null_workflow_job_uses_is_refused(self):
+        self.put(".github/workflows/a.yml", '{"jobs": {"j": {"uses": null}}}')
+        self.assertEqual(self.main(), "invalid .github/workflows/a.yml:1 uses is not a string")
+
+    def test_null_composite_uses_is_refused(self):
+        self.put(".github/workflows/a.yml", workflow(q("./x")))
+        self.put("x/action.yml", action("null"))
+        self.assertEqual(self.main(), "invalid x/action.yml:1 uses is not a string")
+
+    def test_absent_uses_is_allowed_in_workflows_and_actions(self):
+        self.put(".github/workflows/a.yml", '{"jobs": {"j": {"steps": [{"run": "true"}, {"uses": "./x"}]}}}')
+        self.put("x/action.yml", '{"runs": {"steps": [{"run": "true"}]}}')
+        self.assertTrue(self.main().startswith("ok"))
 
     def test_unparseable_local_action_is_refused(self):
         self.put(".github/workflows/a.yml", workflow(q("./x")))

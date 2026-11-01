@@ -16,9 +16,9 @@
 pc_uses() {
   case "$2" in
     workflow) "$yq" -o=json 'explode(.) | [.jobs // {} | to_entries[]
-        | ((.value.uses | select(. != null)), (.value.steps // [] | .[] | .uses | select(. != null)))
+        | ((.value | select(has("uses")) | .uses), (.value.steps // [] | .[] | select(has("uses")) | .uses))
         | {"line": line, "v": .}]' "$1" ;;
-    *) "$yq" -o=json 'explode(.) | [.runs.steps // [] | .[] | .uses | select(. != null) | {"line": line, "v": .}]' "$1" ;;
+    *) "$yq" -o=json 'explode(.) | [.runs.steps // [] | .[] | select(has("uses")) | .uses | {"line": line, "v": .}]' "$1" ;;
   esac
 }
 

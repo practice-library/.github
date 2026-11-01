@@ -181,12 +181,75 @@ def render_files(root, gh, repo, pin, ref):
     return files
 
 
+def validate_ruleset(data):
+    """Validate the branch ruleset payload supported by onboarding before any API write."""
+    def require(ok, field):
+        if not ok:
+            raise ValueError(f"invalid ruleset field {field}")
+
+    def strings(value):
+        return isinstance(value, list) and all(isinstance(v, str) and v for v in value)
+
+    require(isinstance(data, dict), "root")
+    require(isinstance(data.get("name"), str) and bool(data["name"].strip()), "name")
+    require(data.get("target") == "branch", "target")
+    require(data.get("enforcement") == config.get("ruleset", "enforcement"), "enforcement")
+    conditions = data.get("conditions")
+    require(isinstance(conditions, dict), "conditions")
+    refs = conditions.get("ref_name")
+    require(isinstance(refs, dict), "conditions.ref_name")
+    for key in ("include", "exclude"):
+        require(strings(refs.get(key)), f"conditions.ref_name.{key}")
+    # This policy grants no bypass; reject actors rather than partially validating their permissions.
+    require(data.get("bypass_actors") == [], "bypass_actors")
+    rules = data.get("rules")
+    require(isinstance(rules, list) and bool(rules), "rules")
+    seen = set()
+    for rule in rules:
+        require(isinstance(rule, dict), "rules[]")
+        kind = rule.get("type")
+        require(isinstance(kind, str) and kind not in seen, "rules[].type")
+        seen.add(kind)
+        if kind in ("deletion", "non_fast_forward"):
+            require(set(rule) == {"type"}, kind)
+            continue
+        params = rule.get("parameters")
+        require(isinstance(params, dict), f"{kind}.parameters")
+        if kind == "pull_request":
+            count = params.get("required_approving_review_count")
+            require(type(count) is int and count == config.get("ruleset", "requiredApprovals"), kind)
+            for key in ("dismiss_stale_reviews_on_push", "require_code_owner_review",
+                        "require_last_push_approval", "required_review_thread_resolution",
+                        "require_extra_approval_for_unattributed_changes"):
+                require(type(params.get(key)) is bool, f"{kind}.{key}")
+            methods = params.get("allowed_merge_methods")
+            require(strings(methods) and bool(methods) and all(
+                m in config.get("ruleset", "allowedMergeMethods") for m in methods), f"{kind}.allowed_merge_methods")
+            require(params.get("required_reviewers") == [], f"{kind}.required_reviewers")
+            require(params.get("dismissal_restriction") == {"enabled": False, "allowed_actors": []},
+                    f"{kind}.dismissal_restriction")
+        elif kind == "required_status_checks":
+            for key in ("strict_required_status_checks_policy", "do_not_enforce_on_create"):
+                require(type(params.get(key)) is bool, f"{kind}.{key}")
+            checks = params.get("required_status_checks")
+            require(isinstance(checks, list) and bool(checks), kind)
+            for check in checks:
+                require(isinstance(check, dict), f"{kind}.required_status_checks[]")
+                require(isinstance(check.get("context"), str) and bool(check["context"].strip()), kind)
+                require(type(check.get("integration_id")) is int and
+                        check["integration_id"] == config.get("gate", "actionsIntegrationId"), kind)
+        else:
+            raise ValueError(f"unsupported ruleset rule {kind}")
+
+
 def read_ruleset(root):
     path = os.path.join(root, config.get("onboarding", "rulesetFile"))
     try:
         with open(path, encoding="utf-8") as f:
             text = f.read()
-        name = json.loads(text)["name"]
+        data = json.loads(text)
+        validate_ruleset(data)
+        name = data["name"]
     except (OSError, ValueError, KeyError, TypeError) as err:
         raise OnboardError(f"{path}: not a usable ruleset: {err}") from None
     return name, text
