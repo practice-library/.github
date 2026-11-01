@@ -89,6 +89,22 @@ class RenderFailureWritesNothing(unittest.TestCase):
                     self.assertIn("not to PIN", err)
                     self.assertEqual(gh.writes, [])
 
+    def test_different_case_unpinned_references_make_zero_writes(self):
+        org = config.get("org", "name")
+        repo = config.get("org", "repo")
+        for owner, repository in ((org.title(), repo), (org, repo.upper()),
+                                  (org.upper(), repo.upper())):
+            for quote in ("", "'", '"'):
+                for ref in ("main", OTHER):
+                    with self.subTest(owner=owner, repository=repository, quote=quote, ref=ref):
+                        source = f"uses: {quote}{owner}/{repository}/{config.get('gate', 'workflow')}@{ref}{quote}\n"
+                        root = make_root({"w.yml": source.encode()})
+                        gh = FakeGh()
+                        status, _, err = run(["demo"], gh, root)
+                        self.assertEqual(status, 2)
+                        self.assertIn("not to PIN", err)
+                        self.assertEqual(gh.writes, [])
+
     def test_quoted_pinned_references_are_accepted(self):
         prefix = f"{config.get('org', 'name')}/{config.get('org', 'repo')}/"
         for quote in ("'", '"'):

@@ -7,7 +7,7 @@
 # are judged: jobs.<id>.uses and jobs.<id>.steps[].uses.
 # A local uses: (./path) is followed: a directory is a composite action, read from its action.yml or
 # action.yaml (runs.steps[].uses), a file is a reusable workflow. Each file is read once, and nesting deeper
-# than the limit is refused. A local path that leaves the repository (a ".." segment) or names nothing is refused.
+# than the limit is refused. A local path that leaves the repository (including through symlinks) or names nothing is refused.
 # A file that does not parse, a uses: that is not a string, or a local reference that cannot be followed prints
 # "invalid <why>": the check refuses what it cannot read.
 # This check downloads nothing itself; the caller fetches yq (pinned by sha256) before it runs.
@@ -26,7 +26,9 @@ pc_uses() {
 # when something cannot be read.
 pc_scan() {
   local file="$1" kind="$2" depth="$3" rel uses line one local_refs v path target
-  rel="${file#"${ROOT:-.}/"}"
+  file="$(realpath "$file" 2>/dev/null)" || { pc_invalid="cannot resolve $1"; return 1; }
+  case "$file" in "$ROOT"/*) ;; *) pc_invalid="$1 leaves the repository"; return 1 ;; esac
+  rel="${file#"$ROOT/"}"
   case "$pc_seen" in *"|$rel|"*) return 0 ;; esac
   pc_seen="$pc_seen|$rel|"
   uses="$(pc_uses "$file" "$kind" 2>/dev/null)" || { pc_invalid="$rel is not YAML"; return 1; }
@@ -49,7 +51,9 @@ pc_scan() {
     path="${v#./}"
     if [ "$depth" -ge "$pc_max" ]; then pc_invalid="$rel:$line local uses nest deeper than $pc_max"; return 1; fi
     case "/$path/" in */../*) pc_invalid="$rel:$line local uses $v leaves the repository"; return 1 ;; esac
-    target="${ROOT:-.}/$path"
+    target="$(realpath "$ROOT/$path" 2>/dev/null)" \
+      || { pc_invalid="$rel:$line local uses $v cannot be resolved"; return 1; }
+    case "$target" in "$ROOT"|"$ROOT"/*) ;; *) pc_invalid="$rel:$line local uses $v leaves the repository"; return 1 ;; esac
     if [ -d "$target" ]; then
       if [ -f "$target/action.yml" ]; then target="$target/action.yml"
       elif [ -f "$target/action.yaml" ]; then target="$target/action.yaml"
@@ -64,7 +68,9 @@ pc_scan() {
 }
 
 main() {
-  local dir="${ROOT:-.}/.github/workflows" yq="${YQ:-yq}" files=() f
+  local ROOT="${ROOT:-.}" dir yq="${YQ:-yq}" files=() f
+  ROOT="$(realpath "$ROOT" 2>/dev/null)" || { echo "invalid cannot resolve repository root"; return 0; }
+  dir="$ROOT/.github/workflows"
   local pc_found="" pc_invalid="" pc_seen="|" pc_max=@@pinCheck.maxLocalDepth@@
   [ -n "${ORG:-}" ] || { echo "invalid ORG is empty"; return 0; }
   [ -d "$dir" ] || { echo "ok no workflows"; return 0; }

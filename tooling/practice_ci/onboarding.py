@@ -149,8 +149,8 @@ def render_consumer_file(text, rel, pin, ref):
     out = "".join(line for line in out.splitlines(keepends=True) if not line.startswith(cfg["generatedHeaderPrefix"]))
     if cfg["refPlaceholder"] in out or cfg["pinPlaceholder"] in out:
         raise OnboardError(f"{rel}: a placeholder is left after rendering")
-    uses = re.compile(cfg["usesPattern"].format(org=re.escape(config.get("org", "name")),
-                                                repo=re.escape(config.get("org", "repo"))))
+    uses = re.compile(cfg["usesPattern"].format(org="(?i:" + re.escape(config.get("org", "name")) + ")",
+                                                repo="(?i:" + re.escape(config.get("org", "repo")) + ")"))
     # Consumer workflows use single-line YAML scalars. Decode quoted values before
     # checking references; refuse unsupported scalar forms rather than skip them.
     if rel.endswith((".yml", ".yaml")):

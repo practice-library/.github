@@ -156,6 +156,33 @@ class PinCheck(unittest.TestCase):
         self.put(".github/workflows/a.yml", workflow(q("./../outside")))
         self.assertTrue(self.main().startswith("invalid"))
 
+    def test_local_action_directory_symlink_escape_is_refused(self):
+        with tempfile.TemporaryDirectory() as outside:
+            with open(os.path.join(outside, "action.yml"), "w") as f:
+                f.write(action(q(GOOD)))
+            os.symlink(outside, os.path.join(self.root, "linked-action"))
+            self.put(".github/workflows/a.yml", workflow(q("./linked-action")))
+            self.assertIn("leaves the repository", self.main())
+
+    def test_local_action_metadata_symlink_escape_is_refused(self):
+        for name in ("action.yml", "action.yaml"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as outside:
+                target = os.path.join(outside, name)
+                with open(target, "w") as f:
+                    f.write(action(q(GOOD)))
+                self.put("local/keep", "")
+                link = os.path.join(self.root, "local", name)
+                os.symlink(target, link)
+                self.put(".github/workflows/a.yml", workflow(q("./local")))
+                self.assertIn("leaves the repository", self.main())
+                os.unlink(link)
+
+    def test_local_symlink_within_repository_is_followed(self):
+        self.put("actual/action.yml", action(q(BAD)))
+        os.symlink("actual", os.path.join(self.root, "linked-action"))
+        self.put(".github/workflows/a.yml", workflow(q("./linked-action")))
+        self.assertEqual(self.main(), 'unpinned ["actual/action.yml:1 main"]')
+
     def test_missing_local_action_is_refused(self):
         self.put(".github/workflows/a.yml", workflow(q("./nothing")))
         self.assertTrue(self.main().startswith("invalid"))
