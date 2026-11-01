@@ -15,6 +15,22 @@
       "set": 9999999
     },
     {
+      "pointer": "/$defs/host/properties/terms/properties/note/maxLength",
+      "set": 301
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/properties/note/maxLength",
+      "set": 299
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/properties/note/minLength",
+      "set": 0
+    },
+    {
+      "pointer": "/$defs/host/properties/terms/properties/note/minLength",
+      "set": 2
+    },
+    {
       "pointer": "/$defs/host/properties/format/enum",
       "set": [
         "markdown",

@@ -18,6 +18,9 @@ constants="$root/policy/constants.json"
 unit_dir="$root/$(jq -er '.selftest.unitDir' "$constants")"
 lib_dir="$root/$(jq -er '.selftest.libDir' "$constants")"
 cd "$root"
+# A case with a repository runs inside a throwaway directory, so the guards' runner is given by absolute path.
+runner_env="$(jq -er '.git.runnerEnv' "$constants")"
+export "$runner_env=$root/$(jq -er '.git.runnerScript' "$constants")"
 
 failed=0
 total=0
