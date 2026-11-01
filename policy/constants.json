@@ -209,7 +209,9 @@
   },
   "spec": {
     "nodeSchemaId": "https://github.com/practice-library/.github/spec/node/schema.json",
-    "nodeSchemaPath": "spec/node/schema.json"
+    "nodeSchemaPath": "spec/node/schema.json",
+    "sourcesSchemaPath": "spec/sources/schema.json",
+    "termsNoteMaxLength": 300
   },
   "tagRuleset": {
     "name": "release-tags",
@@ -290,6 +292,39 @@
       }
     ]
   },
+  "pluginGateway": {
+    "workflow": "plugin-matrix.yml",
+    "protocol": "0",
+    "operations": {
+      "describe": "describe",
+      "plan": "plan",
+      "runUnit": "run-unit",
+      "merge": "merge"
+    },
+    "maxParallel": 3,
+    "retry": {
+      "exitCode": 75,
+      "attempts": 3,
+      "waitSeconds": 60
+    },
+    "caps": {
+      "timeSeconds": 300,
+      "outputBytes": 10000000
+    },
+    "unitIdPattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+    "files": {
+      "plan": "plan.json",
+      "partialsDir": "partials",
+      "report": "report.json"
+    },
+    "artifacts": {
+      "plan": "gateway-plan",
+      "partialPrefix": "gateway-partial-",
+      "report": "gateway-report",
+      "retentionDays": 7
+    },
+    "module": "tooling.practice_ci.plugin_gateway"
+  },
   "helpers": {
     "yq": {
       "version": "4.44.3",
@@ -298,5 +333,135 @@
       "archive": "tar.gz",
       "bin": "yq_linux_amd64"
     }
+  },
+  "protocol": {
+    "api": {
+      "base": "https://api.github.com",
+      "version": "2022-11-28",
+      "accept": "application/vnd.github+json",
+      "perPage": 100,
+      "maxPages": 50,
+      "timeoutSeconds": 30
+    },
+    "tokenEnv": "GH_TOKEN",
+    "prefixes": {
+      "kind": "kind:",
+      "to": "to:",
+      "from": "from:",
+      "state": "state:"
+    },
+    "poll": {
+      "kind": "request",
+      "state": "open"
+    },
+    "verdict": {
+      "marker": "message-check: accepted sha256=",
+      "authors": [
+        "github-actions[bot]"
+      ],
+      "invalidState": "invalid"
+    },
+    "labels": [
+      {
+        "name": "kind:request",
+        "color": "1d76db",
+        "description": "Protocol message: a request for work"
+      },
+      {
+        "name": "kind:answer",
+        "color": "0e8a16",
+        "description": "Protocol message: an answer to a request"
+      },
+      {
+        "name": "kind:status",
+        "color": "c5def5",
+        "description": "Protocol message: a status update"
+      },
+      {
+        "name": "kind:blocked",
+        "color": "b60205",
+        "description": "Protocol message: the sender is blocked"
+      },
+      {
+        "name": "kind:decision",
+        "color": "5319e7",
+        "description": "Protocol message: records a human decision"
+      },
+      {
+        "name": "kind:proposal",
+        "color": "fbca04",
+        "description": "Protocol message: proposes a protocol change"
+      },
+      {
+        "name": "state:open",
+        "color": "ededed",
+        "description": "Protocol state: not yet acknowledged"
+      },
+      {
+        "name": "state:ack",
+        "color": "bfdadc",
+        "description": "Protocol state: acknowledged by the receiver"
+      },
+      {
+        "name": "state:done",
+        "color": "0e8a16",
+        "description": "Protocol state: the work has landed"
+      },
+      {
+        "name": "state:rejected",
+        "color": "d93f0b",
+        "description": "Protocol state: the receiver declined"
+      },
+      {
+        "name": "state:invalid",
+        "color": "e11d21",
+        "description": "Protocol state: message-check refused the message"
+      }
+    ],
+    "canary": {
+      "tokenSecret": "PROTOCOL_CANARY_TOKEN",
+      "titlePrefix": "protocol-canary",
+      "timeoutMinutes": 10,
+      "waitSeconds": 180,
+      "pollSeconds": 10,
+      "specVersion": "1.0",
+      "messageType": "org.practice-library.protocol.v0.request",
+      "protocolVersion": "0"
+    }
+  },
+  "git": {
+    "runnerScript": "tooling/run_practice_ci.py",
+    "runnerEnv": "PRACTICE_CI_RUNNER",
+    "reportLimit": 20
+  },
+  "approvals": {
+    "apiUrl": "https://api.github.com",
+    "apiVersion": "2022-11-28",
+    "timeoutSeconds": 30,
+    "perPage": 100,
+    "approvedState": "APPROVED",
+    "decisiveStates": [
+      "APPROVED",
+      "CHANGES_REQUESTED",
+      "DISMISSED"
+    ],
+    "allowedRoles": [
+      "admin",
+      "maintain"
+    ],
+    "botType": "Bot",
+    "botSuffix": "[bot]",
+    "kinds": [
+      "schema-loosening",
+      "size",
+      "publication"
+    ],
+    "publicationKind": "publication",
+    "publicationLabel": "publication",
+    "publicationStatement": "I approve this change for publication.",
+    "headPrefix": "Head: ",
+    "toolingPath": ".practice-ci",
+    "schemaLooseningKind": "schema-loosening",
+    "sizeKind": "size"
   }
 }

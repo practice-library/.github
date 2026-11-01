@@ -25,7 +25,11 @@
     "pinCheck",
     "onboarding",
     "guards",
-    "helpers"
+    "pluginGateway",
+    "helpers",
+    "protocol",
+    "git",
+    "approvals"
   ],
   "$defs": {
     "sha1": {
@@ -633,7 +637,9 @@
       "additionalProperties": false,
       "required": [
         "nodeSchemaId",
-        "nodeSchemaPath"
+        "nodeSchemaPath",
+        "sourcesSchemaPath",
+        "termsNoteMaxLength"
       ],
       "properties": {
         "nodeSchemaId": {
@@ -642,6 +648,14 @@
         },
         "nodeSchemaPath": {
           "$ref": "#/$defs/path"
+        },
+        "sourcesSchemaPath": {
+          "$ref": "#/$defs/path"
+        },
+        "termsNoteMaxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The longest spec/sources terms.note; a test holds the schema's maxLength to this value, since a schema file cannot read policy."
         }
       }
     },
@@ -921,11 +935,533 @@
         }
       }
     },
+    "pluginGateway": {
+      "description": "The reusable matrix gateway that runs a contract v0 plugin (templates/.github/workflows/plugin-matrix.yml, tooling/practice_ci/plugin_gateway.py): defaults and caps for its inputs, the plugin's operations, and the file and artifact names its jobs share.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow",
+        "protocol",
+        "operations",
+        "maxParallel",
+        "retry",
+        "caps",
+        "unitIdPattern",
+        "files",
+        "artifacts",
+        "module"
+      ],
+      "properties": {
+        "workflow": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+\\.yml$"
+        },
+        "protocol": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The protocol version a plugin's describe must answer."
+        },
+        "operations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "describe",
+            "plan",
+            "runUnit",
+            "merge"
+          ],
+          "properties": {
+            "describe": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "plan": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "runUnit": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            },
+            "merge": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        },
+        "maxParallel": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "The default of the max-parallel input and the most it may ever be; a plan may ask for fewer."
+        },
+        "retry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "exitCode",
+            "attempts",
+            "waitSeconds"
+          ],
+          "properties": {
+            "exitCode": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 125,
+              "description": "The plugin exit code that means a temporary failure the caller may retry."
+            },
+            "attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of retry-attempts: calls of one unit in all, the first included."
+            },
+            "waitSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "The default of retry-wait-seconds."
+            }
+          }
+        },
+        "caps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "timeSeconds",
+            "outputBytes"
+          ],
+          "properties": {
+            "timeSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of time-seconds: the most one plugin call may run, and the most one unit may spend across its retries and waits."
+            },
+            "outputBytes": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "The default of output-bytes: the most one plugin call may write to stdout."
+            }
+          }
+        },
+        "unitIdPattern": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What a unit id must match; it names a file and an artifact."
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan",
+            "partialsDir",
+            "report"
+          ],
+          "properties": {
+            "plan": {
+              "$ref": "#/$defs/path"
+            },
+            "partialsDir": {
+              "$ref": "#/$defs/path"
+            },
+            "report": {
+              "$ref": "#/$defs/path"
+            }
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "plan",
+            "partialPrefix",
+            "report",
+            "retentionDays"
+          ],
+          "properties": {
+            "plan": {
+              "type": "string",
+              "minLength": 1
+            },
+            "partialPrefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "report": {
+              "type": "string",
+              "minLength": 1
+            },
+            "retentionDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90
+            }
+          }
+        },
+        "module": {
+          "type": "string",
+          "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)+$",
+          "description": "The Python module the workflow runs with -m, from a checkout of this repository."
+        }
+      }
+    },
     "helpers": {
       "description": "Programs a workflow runs to do its job, not checks: fetched by URL and pinned by sha256 like tools (#@fetch), with no finding exit code or expect input.",
       "type": "object",
       "additionalProperties": {
         "$ref": "#/$defs/helper"
+      }
+    },
+    "protocol": {
+      "description": "Protocol operations (docs/protocol.md): the REST client, label catalog, verdict comment format and live canary.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api",
+        "tokenEnv",
+        "prefixes",
+        "poll",
+        "verdict",
+        "labels",
+        "canary"
+      ],
+      "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base",
+            "version",
+            "accept",
+            "perPage",
+            "maxPages",
+            "timeoutSeconds"
+          ],
+          "properties": {
+            "base": {
+              "type": "string",
+              "pattern": "^https://[^/]+$"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "accept": {
+              "type": "string",
+              "minLength": 1
+            },
+            "perPage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        },
+        "tokenEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "prefixes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "to",
+            "from",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "to": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "from": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            }
+          }
+        },
+        "poll": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "verdict": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "marker",
+            "authors",
+            "invalidState"
+          ],
+          "properties": {
+            "marker": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            },
+            "authors": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "invalidState": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "color",
+              "description"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{6}$"
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "canary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tokenSecret",
+            "titlePrefix",
+            "timeoutMinutes",
+            "waitSeconds",
+            "pollSeconds",
+            "specVersion",
+            "messageType",
+            "protocolVersion"
+          ],
+          "properties": {
+            "tokenSecret": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "titlePrefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 360
+            },
+            "waitSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pollSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "specVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "messageType": {
+              "type": "string",
+              "minLength": 1
+            },
+            "protocolVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "runnerScript",
+        "runnerEnv",
+        "reportLimit"
+      ],
+      "properties": {
+        "runnerScript": {
+          "$ref": "#/$defs/path"
+        },
+        "runnerEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "reportLimit": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "approvals": {
+      "description": "Exact-head approval receipts (tooling/practice_ci/approvals.py): an APPROVED review whose commit_id is the current head, by a maintain or admin user other than the author and not a bot. Labels only trigger a re-run.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "apiUrl",
+        "apiVersion",
+        "timeoutSeconds",
+        "perPage",
+        "approvedState",
+        "decisiveStates",
+        "allowedRoles",
+        "botType",
+        "botSuffix",
+        "kinds",
+        "publicationKind",
+        "publicationLabel",
+        "publicationStatement",
+        "headPrefix",
+        "toolingPath",
+        "schemaLooseningKind",
+        "sizeKind"
+      ],
+      "properties": {
+        "apiUrl": {
+          "type": "string",
+          "pattern": "^https://[^\\s/]+$"
+        },
+        "apiVersion": {
+          "type": "string",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        },
+        "perPage": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100
+        },
+        "approvedState": {
+          "const": "APPROVED"
+        },
+        "decisiveStates": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "contains": {
+            "const": "APPROVED"
+          },
+          "items": {
+            "enum": [
+              "APPROVED",
+              "CHANGES_REQUESTED",
+              "DISMISSED"
+            ]
+          }
+        },
+        "allowedRoles": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "admin",
+              "maintain"
+            ]
+          }
+        },
+        "botType": {
+          "type": "string",
+          "minLength": 1
+        },
+        "botSuffix": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kinds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z-]*$"
+          }
+        },
+        "publicationKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publicationLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
+        },
+        "publicationStatement": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n'$]+$"
+        },
+        "headPrefix": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\n]+$"
+        },
+        "toolingPath": {
+          "$ref": "#/$defs/path"
+        },
+        "schemaLooseningKind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sizeKind": {
+          "type": "string",
+          "minLength": 1
+        }
       }
     }
   }
