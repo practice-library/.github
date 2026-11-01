@@ -1,0 +1,8 @@
+{
+  "expect": "unpinned",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/two-files",
+    "ORG": "practice-library"
+  },
+  "output": "unpinned [\".github/workflows/a.yml:3 main\",\".github/workflows/b.yml:3 v2\"]"
+}

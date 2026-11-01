@@ -1,7 +1,7 @@
 # Fills one template from policy/constants.json.
 #   @@a.b.c@@                 a scalar constant (an error when missing or not a scalar)
 #   @@json:a.b@@              any constant, as compact JSON
-#   <indent>#@fetch <tool>    fragments/fetch.yml for tools.<tool>, indented
+#   <indent>#@fetch <tool>    fragments/fetch.yml for tools.<tool> (or helpers.<tool>), indented
 #   <indent>#@expect <tool>   fragments/expect.yml for tools.<tool>, indented
 #   <indent>#@include <file>  fragments/<file> as it is, indented
 #   #@gen jobs                one job per checks row, and one self-test job per row (self.yml)
@@ -32,7 +32,8 @@ def expand:
       elif $m.f == "include" then ($frags[$m.t] // error("missing fragment: " + $m.t)) | indent($m.ind)
       else ($frags[$m.f + ".yml"] // error("missing fragment: " + $m.f + ".yml"))
         | gsub("@@toolname@@"; $m.t)
-        | gsub("@@tool\\.(?<k>[A-Za-z0-9_]+)@@"; "@@tools." + $m.t + "." + .k + "@@")
+        | (if ($c[0].tools // {} | has($m.t)) then "tools." else "helpers." end) as $kind
+        | gsub("@@tool\\.(?<k>[A-Za-z0-9_]+)@@"; "@@" + $kind + $m.t + "." + .k + "@@")
         | indent($m.ind)
       end);
 

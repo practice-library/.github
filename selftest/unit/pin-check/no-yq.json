@@ -1,0 +1,9 @@
+{
+  "expect": "invalid",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/branch",
+    "ORG": "practice-library",
+    "YQ": "/nonexistent/yq"
+  },
+  "output": "invalid no yq to read the workflows"
+}

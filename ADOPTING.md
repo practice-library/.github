@@ -6,7 +6,7 @@ A repository calls this repository's workflows pinned to a commit, with the rele
 
 1. Find the release's commit: `git ls-remote https://github.com/practice-library/.github refs/tags/v2.1.0`. The tag cannot be moved or deleted (`rulesets/tags.json`), but pin the commit it names, not the tag.
 2. In every workflow under `.github/workflows/`, change each `uses: practice-library/.github/.github/workflows/<file>.yml@<old sha> # <old tag>` to the new commit and tag. Dependabot proposes this change on its own when the repository uses `consumer/.github/dependabot.yml`.
-3. Open the pull request. The gate now refuses any `uses:` of a practice-library workflow or action pinned to a branch, a tag, or a short or upper-case SHA, so a missed line fails with its file and line.
+3. Open the pull request. The gate now refuses any `uses:` of a practice-library workflow or action pinned to a branch, a tag, or a short or upper-case SHA, so a missed line fails with its file and line. It reads each workflow as YAML, so an anchor, an alias or a quoted key does not hide a reference, and a workflow that does not parse fails.
 4. Read the CHANGELOG entry between your old tag and the new one. A major release says what each caller must change. A minor release needs no change.
 
 ## From v2.0.0 to v2.1.0

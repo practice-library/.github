@@ -52,11 +52,13 @@ jobs:
           result="$(main)"
           echo "$result"
           [ "${result%% *}" = ok ]
+      #@fetch yq
       - name: Every @@org.name@@ workflow or action is pinned to a commit, not a branch
         shell: bash
         env:
           ROOT: .
           ORG: @@org.name@@
+          YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: |
           set -euo pipefail
           #@include pin-check.sh

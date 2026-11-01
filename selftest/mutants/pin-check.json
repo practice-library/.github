@@ -1,23 +1,23 @@
 [
   {
     "name": "short-sha-accepted",
-    "find": "length(ref) != 40",
-    "replace": "length(ref) < 39"
+    "find": "test(\"^[0-9a-f]{40}$\")",
+    "replace": "test(\"^[0-9a-f]{39,}$\")"
   },
   {
     "name": "upper-hex-accepted",
-    "find": "ref !~ /^[0-9a-f]+$/",
-    "replace": "ref !~ /^[0-9a-fA-F]+$/"
+    "find": "test(\"^[0-9a-f]{40}$\")",
+    "replace": "test(\"^[0-9a-fA-F]{40}$\")"
   },
   {
     "name": "owner-case-sensitive",
-    "find": "if (tolower(owner) != org",
-    "replace": "if (owner != org"
+    "find": "split(\"/\")[0] | ascii_downcase)",
+    "replace": "split(\"/\")[0])"
   },
   {
-    "name": "quotes-kept",
-    "find": "v = substr(v, 2, length(v) - 2)",
-    "replace": "v = v"
+    "name": "spaces-kept",
+    "find": "tostring | gsub(\"^\\\\s+|\\\\s+$\"; \"\")",
+    "replace": "tostring"
   },
   {
     "name": "yaml-extension-skipped",
@@ -26,12 +26,52 @@
   },
   {
     "name": "no-ref-accepted",
-    "find": "else ref = \"(none)\"",
-    "replace": "else ref = \"0123456789abcdef0123456789abcdef01234567\""
+    "find": "else \"(none)\" end",
+    "replace": "else \"0123456789abcdef0123456789abcdef01234567\" end"
   },
   {
     "name": "empty-org-accepted",
-    "find": "[ -n \"${ORG:-}\" ] ||",
-    "replace": "true ||"
+    "find": "[ -n \"${ORG:-}\" ] || { echo \"invalid ORG is empty\"; return 0; }",
+    "replace": "true"
+  },
+  {
+    "name": "steps-unread",
+    "find": ", (.value.steps // [] | .[] | .uses | select(. != null))",
+    "replace": ""
+  },
+  {
+    "name": "job-uses-unread",
+    "find": "((.value.uses | select(. != null)), ",
+    "replace": "(("
+  },
+  {
+    "name": "parse-error-ignored",
+    "find": "|| { echo \"invalid ${f#\"${ROOT:-.}/\"} is not YAML\"; return 0; }",
+    "replace": "|| true"
+  },
+  {
+    "name": "missing-yq-ignored",
+    "find": "command -v \"$yq\" > /dev/null 2>&1 || { echo \"invalid no yq to read the workflows\"; return 0; }",
+    "replace": "true"
+  },
+  {
+    "name": "documents-not-merged",
+    "find": "(add // []) | .[]",
+    "replace": "(.[0] // []) | .[]"
+  },
+  {
+    "name": "files-not-accumulated",
+    "find": "found=\"$found$one\"",
+    "replace": "found=\"$one\""
+  },
+  {
+    "name": "other-owner-judged",
+    "find": "select($owner == $org and",
+    "replace": "select(("
+  },
+  {
+    "name": "aliases-unexpanded",
+    "find": "explode(.) | ",
+    "replace": ""
   }
 ]

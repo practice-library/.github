@@ -1,0 +1,7 @@
+{
+  "expect": "unpinned",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/jobs-alias",
+    "ORG": "practice-library"
+  }
+}
