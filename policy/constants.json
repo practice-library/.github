@@ -233,7 +233,7 @@
     "repoNamePattern": "^[A-Za-z0-9._-]+$",
     "refPattern": "^[A-Za-z0-9._-]+$",
     "pinPattern": "^[0-9a-f]{40}$",
-    "usesPattern": "uses:\\s*{org}/{repo}/\\S+@([^\\s#]+)",
+    "usesPattern": "{org}/{repo}/\\S+@([^\\s#]+)",
     "refPlaceholder": "__REF__",
     "pinPlaceholder": "__PIN__",
     "refComment": " # __REF__",

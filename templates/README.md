@@ -15,9 +15,37 @@ permissions:
 jobs:
   leak-scan:
     uses: @@org.name@@/@@org.repo@@/.github/workflows/leak-scan.yml@<sha> # @@release.tag@@
+  denylist:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/@@guards.workflow@@@<sha> # @@release.tag@@
+    with:
+      guard: denylist
+  removed-paths:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/@@guards.workflow@@@<sha> # @@release.tag@@
+    with:
+      guard: removed-paths
+  release-note:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/@@guards.workflow@@@<sha> # @@release.tag@@
+    with:
+      guard: release-note
+  schema-loosening:
+    permissions:
+      contents: read
+      pull-requests: read
+    uses: @@org.name@@/@@org.repo@@/.github/workflows/@@guards.workflow@@@<sha> # @@release.tag@@
+    with:
+      guard: schema-loosening
   @@gate.callerJob@@:
     if: always()
-    needs: [leak-scan]
+    needs: @@json:gate.mandatoryJobs@@
     uses: @@org.name@@/@@org.repo@@/.github/workflows/gate.yml@<sha> # @@release.tag@@
     with:
       needs: ${{ toJSON(needs) }}

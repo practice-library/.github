@@ -76,6 +76,37 @@ class RenderFailureWritesNothing(unittest.TestCase):
         self.assertIn("not to PIN", err)
         self.assertEqual(gh.writes, [])
 
+    def test_quoted_unpinned_references_make_zero_writes(self):
+        prefix = f"{config.get('org', 'name')}/{config.get('org', 'repo')}/"
+        for quote in ("'", '"'):
+            for ref in ("main", OTHER):
+                with self.subTest(quote=quote, ref=ref):
+                    source = f"jobs:\n  a:\n    uses: {quote}{prefix}{config.get('gate', 'workflow')}@{ref}{quote} # comment\n"
+                    root = make_root({"w.yml": source.encode()})
+                    gh = FakeGh()
+                    status, _, err = run(["demo"], gh, root)
+                    self.assertEqual(status, 2)
+                    self.assertIn("not to PIN", err)
+                    self.assertEqual(gh.writes, [])
+
+    def test_quoted_pinned_references_are_accepted(self):
+        prefix = f"{config.get('org', 'name')}/{config.get('org', 'repo')}/"
+        for quote in ("'", '"'):
+            source = f"uses: {quote}{prefix}{config.get('gate', 'workflow')}@{PIN}{quote} # comment\n"
+            self.assertEqual(onboarding.render_consumer_file(source, "w.yml", PIN, ""), source)
+
+    def test_unreadable_allowlist_makes_zero_writes(self):
+        path = config.get("automerge", "pathsFile")
+        branch = config.get("org", "defaultBranch")
+        for payload in ({"content": "/w=="}, {"content": "%%%"}, {}, None):
+            with self.subTest(payload=payload):
+                gh = FakeGh()
+                gh.reads[f"repos/{REPO}/contents/{path}?ref={branch}"] = payload
+                status, _, err = run(["demo"], gh)
+                self.assertEqual(status, 2)
+                self.assertIn("cannot read remote file", err)
+                self.assertEqual(gh.writes, [])
+
     def test_unreadable_template_makes_zero_writes(self):
         root = make_root({"w.yml": b"\xff\xfe not utf-8"})
         gh = FakeGh()

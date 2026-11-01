@@ -111,11 +111,16 @@ def _commit_sha(gh, repo, ref):
 
 
 def _file_text(gh, repo, path, branch):
-    try:
-        data = _json_read(gh, f"repos/{repo}/contents/{path}?ref={branch}")
-        return base64.b64decode(data["content"]).decode("utf-8")
-    except (ValueError, KeyError, TypeError):
+    response = gh.read(f"repos/{repo}/contents/{path}?ref={branch}")
+    if response is None:
         return None
+    try:
+        data = json.loads(response)
+        # GitHub wraps base64 content in newlines. Reject other invalid encoding.
+        encoded = "".join(data["content"].split())
+        return base64.b64decode(encoded, validate=True).decode("utf-8")
+    except (ValueError, KeyError, TypeError, AttributeError) as err:
+        raise OnboardError(f"{path} on {branch}: cannot read remote file: {err}") from None
 
 
 def resolve_ref(gh, pin, ref_env, plan):
@@ -146,9 +151,32 @@ def render_consumer_file(text, rel, pin, ref):
         raise OnboardError(f"{rel}: a placeholder is left after rendering")
     uses = re.compile(cfg["usesPattern"].format(org=re.escape(config.get("org", "name")),
                                                 repo=re.escape(config.get("org", "repo"))))
-    for found in uses.finditer(out):
-        if found.group(1) != pin:
-            raise OnboardError(f"{rel}: a uses: is pinned to '{found.group(1)}', not to PIN")
+    # Consumer workflows use single-line YAML scalars. Decode quoted values before
+    # checking references; refuse unsupported scalar forms rather than skip them.
+    if rel.endswith((".yml", ".yaml")):
+        for found in re.finditer(r"(?:^|[\s{,])(?:uses|'uses'|\"uses\")\s*:\s*([^\n]*)", out):
+            raw = found.group(1).strip()
+            try:
+                if raw.startswith('"'):
+                    value, end = json.JSONDecoder().raw_decode(raw)
+                    tail = raw[end:].strip()
+                elif raw.startswith("'"):
+                    scalar = re.match(r"'((?:[^']|'')*)'(.*)$", raw)
+                    if scalar is None:
+                        raise ValueError
+                    value, tail = scalar.group(1).replace("''", "'"), scalar.group(2).strip()
+                else:
+                    value = raw.split(" #", 1)[0].strip()
+                    tail = ""
+                    if not value or value[0] in "&*!|>{[":
+                        raise ValueError
+                if tail and not tail.startswith("#"):
+                    raise ValueError
+            except ValueError:
+                raise OnboardError(f"{rel}: unsupported uses: YAML value") from None
+            reference = uses.fullmatch(value)
+            if reference and reference.group(1) != pin:
+                raise OnboardError(f"{rel}: a uses: is pinned to '{reference.group(1)}', not to PIN")
     return out
 
 
