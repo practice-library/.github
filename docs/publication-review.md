@@ -22,7 +22,7 @@ None of these may appear in a file, a commit (message, author, committer), a bra
 
 - [ ] Credentials of any kind: tokens, keys, passwords, cookies, signed URLs, connection strings, key-store item names that identify a credential.
 - [ ] Names of private repositories, private hosts, private paths or private URLs, and links into them (including issue and pull request numbers of private repositories).
-- [ ] Names of people, accounts, seats, agents, machines or sessions other than this organisation's public automation account, its public maintainers team, and a contributor's own public account as it appears on their own pull request, issue or commit.
+- [ ] Names of people, accounts, machines or sessions other than this organisation's public automation account, its public maintainers team, and a contributor's own public account as it appears on their own pull request, issue or commit.
 - [ ] Vendor, provider or tooling choices that are not already public in this organisation, and anything about how the work behind these repositories is organised or run.
 - [ ] Customer, tenant or personal data, real or "anonymised", and real identifiers of any record.
 - [ ] Costs, budgets, quotas, usage figures and capacity numbers that are not published by their owner.
@@ -38,7 +38,7 @@ When in doubt, leave it out and ask a maintainer.
 - [ ] **Conversation:** the pull request title and body, every comment and review body, and the linked issue.
 - [ ] **Fixtures:** each one is synthetic (section 1); hosts use reserved names such as `example.com`, `example.invalid` or `ex.test`.
 - [ ] **Guards:** `leak-scan` and `denylist` are green at this head. A green guard does not replace the read above.
-- [ ] **Licence:** new material can be published under the licence the repository declares, and quoted material carries its source.
+- [ ] **Licence:** new material can be published under the licence the repository declares, and quoted material carries its source. While a repository declares no licence, new material must be the author's own work or a quoted public fact with its source, and the receipt says that no licence is declared.
 
 ## 4. Public CI never receives private material
 
@@ -64,3 +64,5 @@ ACCEPT
 Head: <40-hex head>
 Publication review: sections 1-4 checked at this head.
 ```
+
+The receipt is a comment on the pull request, posted before the pull request merges.
