@@ -263,6 +263,98 @@
       }
     ]
   },
+  "protocol": {
+    "api": {
+      "base": "https://api.github.com",
+      "version": "2022-11-28",
+      "accept": "application/vnd.github+json",
+      "perPage": 100,
+      "maxPages": 50,
+      "timeoutSeconds": 30
+    },
+    "tokenEnv": "GH_TOKEN",
+    "prefixes": {
+      "kind": "kind:",
+      "to": "to:",
+      "from": "from:",
+      "state": "state:"
+    },
+    "poll": {
+      "kind": "request",
+      "state": "open"
+    },
+    "verdict": {
+      "marker": "message-check: accepted sha256=",
+      "authors": [
+        "github-actions[bot]"
+      ],
+      "invalidState": "invalid"
+    },
+    "labels": [
+      {
+        "name": "kind:request",
+        "color": "1d76db",
+        "description": "Protocol message: a request for work"
+      },
+      {
+        "name": "kind:answer",
+        "color": "0e8a16",
+        "description": "Protocol message: an answer to a request"
+      },
+      {
+        "name": "kind:status",
+        "color": "c5def5",
+        "description": "Protocol message: a status update"
+      },
+      {
+        "name": "kind:blocked",
+        "color": "b60205",
+        "description": "Protocol message: the sender is blocked"
+      },
+      {
+        "name": "kind:decision",
+        "color": "5319e7",
+        "description": "Protocol message: records a human decision"
+      },
+      {
+        "name": "kind:proposal",
+        "color": "fbca04",
+        "description": "Protocol message: proposes a protocol change"
+      },
+      {
+        "name": "state:open",
+        "color": "ededed",
+        "description": "Protocol state: not yet acknowledged"
+      },
+      {
+        "name": "state:ack",
+        "color": "bfdadc",
+        "description": "Protocol state: acknowledged by the receiver"
+      },
+      {
+        "name": "state:done",
+        "color": "0e8a16",
+        "description": "Protocol state: the work has landed"
+      },
+      {
+        "name": "state:rejected",
+        "color": "d93f0b",
+        "description": "Protocol state: the receiver declined"
+      },
+      {
+        "name": "state:invalid",
+        "color": "e11d21",
+        "description": "Protocol state: message-check refused the message"
+      }
+    ],
+    "canary": {
+      "tokenSecret": "PROTOCOL_CANARY_TOKEN",
+      "titlePrefix": "protocol-canary",
+      "timeoutMinutes": 10,
+      "waitSeconds": 180,
+      "pollSeconds": 10
+    }
+  },
   "helpers": {
     "yq": {
       "version": "4.44.3",

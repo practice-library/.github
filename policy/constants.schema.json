@@ -23,6 +23,7 @@
     "tagRuleset",
     "release",
     "guards",
+    "protocol",
     "helpers"
   ],
   "$defs": {
@@ -796,6 +797,204 @@
                 "pattern": "^[^'$]+$",
                 "description": "Plain text: no ' or $, since it is rendered into a single-quoted YAML scalar that Actions also reads for expressions."
               }
+            }
+          }
+        }
+      }
+    },
+    "protocol": {
+      "description": "Protocol operations (docs/protocol.md): the REST client, label catalog, verdict comment format and live canary.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "api",
+        "tokenEnv",
+        "prefixes",
+        "poll",
+        "verdict",
+        "labels",
+        "canary"
+      ],
+      "properties": {
+        "api": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "base",
+            "version",
+            "accept",
+            "perPage",
+            "maxPages",
+            "timeoutSeconds"
+          ],
+          "properties": {
+            "base": {
+              "type": "string",
+              "pattern": "^https://[^/]+$"
+            },
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+            },
+            "accept": {
+              "type": "string",
+              "minLength": 1
+            },
+            "perPage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "maxPages": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 300
+            }
+          }
+        },
+        "tokenEnv": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "prefixes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "to",
+            "from",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "to": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "from": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+:$"
+            }
+          }
+        },
+        "poll": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "state"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            },
+            "state": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "verdict": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "marker",
+            "authors",
+            "invalidState"
+          ],
+          "properties": {
+            "marker": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[^\\n]+$"
+            },
+            "authors": {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "invalidState": {
+              "type": "string",
+              "pattern": "^[a-z]+$"
+            }
+          }
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name",
+              "color",
+              "description"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 50
+              },
+              "color": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{6}$"
+              },
+              "description": {
+                "type": "string",
+                "maxLength": 100
+              }
+            }
+          }
+        },
+        "canary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "tokenSecret",
+            "titlePrefix",
+            "timeoutMinutes",
+            "waitSeconds",
+            "pollSeconds"
+          ],
+          "properties": {
+            "tokenSecret": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]*$"
+            },
+            "titlePrefix": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutMinutes": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 360
+            },
+            "waitSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "pollSeconds": {
+              "type": "integer",
+              "minimum": 1
             }
           }
         }

@@ -36,6 +36,46 @@ Only an issue opened by an owner or member of the organisation (author associati
 
 REST only. A reader polls `GET /repos/{repo}/issues?labels=kind:request,to:<me>,state:open&since=<t>` with `If-None-Match`; a `304` costs nothing. One poll per repository per interval, with the interval set by the reader. A sender writes at most 30 messages an hour, well inside GitHub's limits on creating content. A reference `owner/repo#n` links the two threads both ways.
 
+### The reference client
+
+`tooling/practice_ci/protocol_ops.py` is the reference implementation of the transport, with the standard library only:
+
+- `sync_labels` reconciles a repository's labels with the catalog in `policy/constants.json` (`protocol.labels`) over REST. It creates missing labels and fixes colour and description. A second run changes nothing.
+- `poll` lists open `kind:request` messages routed to a repository by its `to:<me>` label. It sends `If-None-Match` and treats `304` as "nothing new" (it returns `None`), and it follows the `Link` header's `rel="next"` for more pages, up to a capped number. It returns only messages that pass `verify`.
+- `verify` acts on a message only if the sha256 of its body equals the digest message-check accepted. The digest is read from the newest verdict comment by the organisation's workflow identity (or the app login the caller passes), which holds `message-check: accepted sha256=<64 hex>`, for example inside an HTML comment. An edited body, a missing verdict or a `state:invalid` label means the message is not acted on. TODO(protocol track): message-check posts that comment when it lands the digest; until then the format above is the contract.
+
+`.github/workflows/protocol-canary.yml` is a by-hand canary: it opens one valid and one invalid message in its own repository and asserts the `state:invalid` label lands on the invalid one only.
+
+## A worked thread
+
+All names are synthetic. Repository `alpha` asks repository `beta` for a change.
+
+1. `alpha` finds no open issue in `beta` with id `add-retry-flag`, so it opens one, labelled `kind:request`, `from:alpha`, `to:beta`, `state:open`:
+
+   ````text
+   Please add a retry flag to the upload step.
+
+   ```json
+   {
+     "specversion": "1.0",
+     "id": "add-retry-flag",
+     "source": "https://github.com/practice-library/alpha",
+     "type": "org.practice-library.protocol.v0.request",
+     "protocol": "0",
+     "data": {
+       "to": "https://github.com/practice-library/beta",
+       "refs": ["practice-library/alpha#12"],
+       "needs": ["A retry flag on the upload step."]
+     }
+   }
+   ```
+   ````
+
+2. message-check judges it and, being valid, records `message-check: accepted sha256=<digest of that body>` in a comment.
+3. `beta` polls `labels=kind:request,to:beta,state:open`, gets the issue, recomputes the body's sha256, finds it equal to the accepted digest, and sets `state:ack`.
+4. Someone edits the issue body afterwards: the digest no longer matches, so `beta` does not act on the new text until message-check accepts it again.
+5. The work lands as a pull request in `beta` saying `Refs practice-library/alpha#12`. `beta` answers with a `kind:answer` issue in `alpha`, with the same `id` and `data.refs` pointing at the request, and sets `state:done` on the request.
+
 ## The guard
 
 [`message-check.yml`](../.github/workflows/message-check.yml) is a reusable workflow for `issues` events (`opened`, `edited`, `labeled`), with `issues: write`. On a message, it checks:
@@ -51,4 +91,4 @@ When any check fails, it adds `state:invalid` and posts one comment saying why. 
 
 A change is a `kind:proposal` issue in this repository, decided by pull request with review and a CHANGELOG line. Until v1, a version may change anything. From v1 on, changes are additive only, and a breaking change is a new major tag.
 
-v0 is the slice above: the message format, the issue forms and the guard. A label-sync script, a polling client and a worked example thread follow in their own pull requests.
+v0 is the slice above: the message format, the issue forms, the guard, the reference client and a worked example thread.
