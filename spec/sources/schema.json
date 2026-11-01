@@ -126,9 +126,10 @@
             "markdown",
             "text",
             "html",
-            "json"
+            "json",
+            "pdf"
           ],
-          "description": "What the fetched pages are; markdown and text are preferred because the quote is matched in plain text."
+          "description": "What the fetched pages are; markdown and text are preferred because the quote is matched in plain text. For pdf the quote is matched in the text extracted from the document, with whitespace collapsed, as for the other formats; a PDF is often larger than a page, so set maxBytes to fit it (a 41-page gazette is about 2.5 MB)."
         },
         "maxRequestsPerRun": {
           "type": "integer",

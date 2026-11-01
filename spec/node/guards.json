@@ -3,13 +3,15 @@
     "../../selftest/fixtures/schema-node-basis/instances",
     "../../selftest/fixtures/schema-node-dates/instances",
     "../../selftest/fixtures/schema-node-absent/instances",
-    "../../selftest/fixtures/schema-node-edges/instances"
+    "../../selftest/fixtures/schema-node-edges/instances",
+    "../../selftest/fixtures/schema-node-status/instances"
   ],
   "counter-examples": [
     "../../selftest/fixtures/schema-node-basis-bad/instances",
     "../../selftest/fixtures/schema-node-dates-bad/instances",
     "../../selftest/fixtures/schema-node-absent-bad/instances",
-    "../../selftest/fixtures/schema-node-edge-unknown/instances"
+    "../../selftest/fixtures/schema-node-edge-unknown/instances",
+    "../../selftest/fixtures/schema-node-status-bad/instances"
   ],
   "mutants": [
     {
@@ -155,6 +157,76 @@
     {
       "pointer": "/additionalProperties",
       "set": true
+    },
+    {
+      "pointer": "/properties/attrs/properties/status",
+      "mutation": "delete"
+    },
+    {
+      "pointer": "/properties/attrs/properties/status",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "repealed"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "In-force"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "draft "
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "notified-not-in-force",
+        "draft",
+        "superseded"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "draft",
+        "superseded"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "superseded"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft"
+      ]
     }
   ]
 }
