@@ -170,10 +170,14 @@ DELETE_LIST=1 BASE_AFTER_LIST="$tree" scenario head-list-deleted-base-moved 1 pu
 BASE_AFTER_LIST="$plain" scenario base-gained-list-after-branch 0 pull_request "" "Contributor" "Add notes" "Clean." ""
 HEAD_LIST="{\"salt\":\"$salt\",\"sha256\":[\"$term\",\"$(hash quokka)\"]}" scenario head-list-grows 0 pull_request "$plain" "Contributor" "Add an entry" "Clean." ""
 # The hash tool refuses a list that is not digests, so its output is never appended to a broken list.
-printf '%s\n' "{\"salt\":\"$salt\",\"sha256\":[\"bogus\"]}" > "$work/bad.json"
-if printf 'zebracorn\n' | bash "$root/scripts/denylist-hash.sh" "$work/bad.json" > /dev/null 2>&1; then
-  echo "FAIL denylist-hash.sh accepted a list that is not digests"; failed=$((failed + 1))
-else echo "ok   denylist-hash.sh refuses a list that is not digests"; fi
+# A digest with a final newline is one too: jq's $ matches before it, so the tool anchors with \z.
+for bad in "not-a-digest|\"sha256\":[\"bogus\"]" "digest-newline|\"sha256\":[\"$term\\n\"]" \
+           "name-newline|\"sha256\":[],\"allowAuthorNames\":[\"$term\\n\"]"; do
+  printf '%s\n' "{\"salt\":\"$salt\",${bad#*|}}" > "$work/bad.json"
+  if printf 'zebracorn\n' | bash "$root/scripts/denylist-hash.sh" "$work/bad.json" > /dev/null 2>&1; then
+    echo "FAIL denylist-hash.sh accepted a list that is not digests: ${bad%%|*}"; failed=$((failed + 1))
+  else echo "ok   denylist-hash.sh refuses a list that is not digests: ${bad%%|*}"; fi
+done
 
 # This repository's own list and the maintainer who merged in the browser: a non-merge commit by them on
 # push is green, and only because of the exemption (without it, the same commit is red).
