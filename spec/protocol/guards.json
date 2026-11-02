@@ -73,6 +73,14 @@
     {
       "pointer": "/properties/time/pattern",
       "set": "^.*Z?$"
+    },
+    {
+      "pointer": "/properties/time/pattern",
+      "set": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
+    },
+    {
+      "pointer": "/properties/data/properties/expires/pattern",
+      "set": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
     }
   ]
 }

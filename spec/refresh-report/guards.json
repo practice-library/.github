@@ -31,6 +31,70 @@
       "set": 498
     },
     {
+      "pointer": "/$defs/robots/allOf/2",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3",
+      "mutation": "true"
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/if/properties/verdict/enum",
+      "set": [
+        "allowed"
+      ]
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/if/properties/verdict/enum",
+      "set": [
+        "disallowed"
+      ]
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/if/properties/verdict/enum",
+      "set": [
+        "allowed",
+        "disallowed",
+        "absent"
+      ]
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/then/properties/httpStatus/minimum",
+      "set": 199
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/then/properties/httpStatus/minimum",
+      "set": 201
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/then/properties/httpStatus/maximum",
+      "set": 300
+    },
+    {
+      "pointer": "/$defs/robots/allOf/2/then/properties/httpStatus/maximum",
+      "set": 298
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3/then/properties/httpStatus/anyOf/0/const",
+      "set": 428
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3/then/properties/httpStatus/anyOf/1/minimum",
+      "set": 499
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3/then/properties/httpStatus/anyOf/1/minimum",
+      "set": 501
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3/then/properties/httpStatus/anyOf/1/maximum",
+      "set": 598
+    },
+    {
+      "pointer": "/$defs/robots/allOf/3/then/properties/httpStatus",
+      "mutation": "true"
+    },
+    {
       "pointer": "/$defs/time/pattern",
       "set": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])T([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\\.[0-9]{1,9})?Z$"
     }

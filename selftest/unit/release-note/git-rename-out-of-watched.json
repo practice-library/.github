@@ -1,0 +1,19 @@
+{
+  "expect": "missing",
+  "env": {
+    "WATCH": "[\"spec/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none"
+  },
+  "repo": {
+    "base": {
+      "spec/a.json": "{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 4}\n",
+      "CHANGELOG.md": "# Changelog\n"
+    },
+    "head": {
+      "spec/a.json": null,
+      "docs/a.json": "{\"a\": 1, \"b\": 2, \"c\": 3, \"d\": 4}\n"
+    },
+    "message": "Move a file"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/local-action-missing",
+    "ORG": "practice-library"
+  }
+}

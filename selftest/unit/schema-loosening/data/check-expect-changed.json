@@ -1,0 +1,18 @@
+[
+  {
+    "schema": "schema.json",
+    "instances": "examples"
+  },
+  {
+    "schema": "schema.json",
+    "instances": "counter-examples",
+    "expect": "pass",
+    "each": "true"
+  },
+  {
+    "schema": "schema.json",
+    "instances": "examples",
+    "mode": "guards",
+    "guards": "guards.json"
+  }
+]

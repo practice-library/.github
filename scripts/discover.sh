@@ -10,6 +10,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 constants="$root/policy/constants.json"
 fixtures_dir="$(jq -er '.selftest.fixturesDir' "$constants")"
 case_file="$(jq -er '.selftest.caseFile' "$constants")"
+templates_dir="$(jq -er '.render.templatesDir' "$constants")"
 cd "$root"
 lib="$root/$(jq -er '.selftest.libDir' "$constants")/discover-targets.sh"
 
@@ -29,7 +30,8 @@ unknown="$(jq -c --slurpfile c "$constants" '[.[].check] - [$c[0].checks[].id] |
 
 while IFS= read -r row; do
   id="$(jq -r '.id' <<<"$row")"
-  result="$(ROW="$row" EXCLUDE="^$fixtures_dir/" bash -c 'source "$1"; main' _ "$lib")"
+  # Neither the fixtures nor the templates are targets: a template's check.json holds @@placeholders@@, not JSON.
+  result="$(ROW="$row" EXCLUDE="^($fixtures_dir|$templates_dir)/" bash -c 'source "$1"; main' _ "$lib")"
   [ "${result%% *}" = ok ] || { echo "$id: ${result#* }" >&2; exit 1; }
   targets="${result#ok }"
   [ "$(jq 'length' <<<"$targets")" -gt 0 ] || { echo "$id: no targets" >&2; exit 1; }

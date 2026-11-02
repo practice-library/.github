@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "output": "invalid the block is not one JSON object",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/nan-constant.md"
+  }
+}

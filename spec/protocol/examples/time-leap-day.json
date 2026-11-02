@@ -1,0 +1,12 @@
+{
+  "specversion": "1.0",
+  "id": "schema-check-metaschema-mode",
+  "source": "https://github.com/practice-library/machinery",
+  "type": "org.practice-library.protocol.v0.request",
+  "protocol": "0",
+  "time": "2028-02-29T23:59:59Z",
+  "data": {
+    "to": "https://github.com/practice-library/.github",
+    "expires": "2028-03-01T00:00:00Z"
+  }
+}

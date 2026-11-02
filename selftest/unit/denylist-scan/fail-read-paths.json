@@ -12,6 +12,6 @@
       "notes.md": "Clean notes.\n"
     },
     "message": "Add notes",
-    "failGit": "--name-only"
+    "failGit": "--name-status"
   }
 }

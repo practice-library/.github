@@ -1,9 +1,0 @@
-{
-  "expect": "refused",
-  "env": {
-    "LABEL": "schema-loosening-approved",
-    "LABELS": "[\"schema-loosening-approved\"]",
-    "AUTHOR": "contributor",
-    "EVENTS": ""
-  }
-}

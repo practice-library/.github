@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "env": {
+    "ROOT": "selftest/unit/pin-check/data/null-workflow-job",
+    "ORG": "practice-library"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "output": "invalid a control, format, line-separator or paragraph-separator character, or a lone surrogate, in the block",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/unsafe-in-list.md"
+  }
+}

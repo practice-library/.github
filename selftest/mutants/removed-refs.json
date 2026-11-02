@@ -1,12 +1,51 @@
-[
-  {
-    "name": "existing-dir-counts",
-    "find": "if [ ! -e \"$ROOT/$d\" ]; then",
-    "replace": "if true; then"
-  },
-  {
-    "name": "file-term-dropped",
-    "find": "      printf '%s\\n' \"$p\"\n",
-    "replace": "\n"
-  }
-]
+{
+  "target": "tooling/practice_ci/guards/removed_paths.py",
+  "unit": "removed-refs",
+  "mutants": [
+    {
+      "name": "existing-dir-counts",
+      "find": "if not os.path.exists(os.path.join(root, d)):",
+      "replace": "if True:"
+    },
+    {
+      "name": "file-term-dropped",
+      "find": "        terms.add(p)\n",
+      "replace": "        pass\n"
+    },
+    {
+      "name": "dir-without-slash-dropped",
+      "find": "terms.update((d + \"/\", d))",
+      "replace": "terms.update((d + \"/\",))"
+    },
+    {
+      "name": "preceded-by-path-char-counts",
+      "find": "(?<![A-Za-z0-9._/-])",
+      "replace": ""
+    },
+    {
+      "name": "followed-by-name-char-counts",
+      "find": "(?![A-Za-z0-9_-])",
+      "replace": ""
+    },
+    {
+      "name": "history-ignored",
+      "find": "        if rel in history:",
+      "replace": "        if False:"
+    },
+    {
+      "name": "line-number-off-by-one",
+      "find": "data.count(b\"\\n\", 0, match.start()) + 1",
+      "replace": "data.count(b\"\\n\", 0, match.start())"
+    },
+    {
+      "name": "renamed-away-new-path",
+      "find": "deleted.append(c.old_path if c.old_path is not None else c.path)",
+      "replace": "deleted.append(c.path)"
+    },
+    {
+      "name": "history-not-a-list",
+      "find": "assert isinstance(deleted, list) and isinstance(history, list)",
+      "replace": "assert isinstance(deleted, list)"
+    }
+  ]
+}

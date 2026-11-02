@@ -1,0 +1,9 @@
+{
+  "expect": "ok",
+  "output": "ok nothing loosened",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/check-base.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/check-base.json",
+    "FILE_PATH": "spec/ratchet/check.json"
+  }
+}

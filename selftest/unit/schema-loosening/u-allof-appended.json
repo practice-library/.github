@@ -1,0 +1,8 @@
+{
+  "expect": "ok",
+  "output": "ok nothing loosened",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-allof-append-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-allof-append-new.json"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "expect": "missing",
+  "env": {
+    "CHANGED": "[\"spec/node/schema.json\"]",
+    "WATCH": "[\"spec/\"]",
+    "CHANGELOG": "CHANGELOG.md",
+    "MARKER": "Release: none",
+    "MESSAGES": "Change",
+    "CHANGELOG_ADDED": "1"
+  }
+}
