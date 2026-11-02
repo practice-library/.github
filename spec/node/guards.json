@@ -187,7 +187,10 @@
         "notified-not-in-force",
         "draft",
         "superseded",
-        "repealed"
+        "expired",
+        "repealed",
+        "never-effective",
+        "obsolete"
       ]
     },
     {
@@ -197,6 +200,9 @@
         "notified-not-in-force",
         "draft",
         "superseded",
+        "expired",
+        "repealed",
+        "never-effective",
         "In-force"
       ]
     },
@@ -207,6 +213,9 @@
         "notified-not-in-force",
         "draft",
         "superseded",
+        "expired",
+        "repealed",
+        "never-effective",
         "draft "
       ]
     },
@@ -215,7 +224,10 @@
       "set": [
         "notified-not-in-force",
         "draft",
-        "superseded"
+        "superseded",
+        "expired",
+        "repealed",
+        "never-effective"
       ]
     },
     {
@@ -223,7 +235,10 @@
       "set": [
         "in-force",
         "draft",
-        "superseded"
+        "superseded",
+        "expired",
+        "repealed",
+        "never-effective"
       ]
     },
     {
@@ -231,7 +246,10 @@
       "set": [
         "in-force",
         "notified-not-in-force",
-        "superseded"
+        "superseded",
+        "expired",
+        "repealed",
+        "never-effective"
       ]
     },
     {
@@ -239,7 +257,43 @@
       "set": [
         "in-force",
         "notified-not-in-force",
-        "draft"
+        "draft",
+        "expired",
+        "repealed",
+        "never-effective"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "repealed",
+        "never-effective"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "expired",
+        "never-effective"
+      ]
+    },
+    {
+      "pointer": "/properties/attrs/properties/status/enum",
+      "set": [
+        "in-force",
+        "notified-not-in-force",
+        "draft",
+        "superseded",
+        "expired",
+        "repealed"
       ]
     },
     {

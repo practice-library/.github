@@ -2,6 +2,15 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
+## v3.1.0
+
+Additive. One schema change, reviewed as a loosening (it needs the `schema-loosening-approved` label).
+
+- API changes: spec/node/schema.json: `attrs.status` may also be `expired` (ended by its own terms), `repealed` (ended by another text) or `never-effective` (replaced or withdrawn before it commenced), for a legal text that has ended. Any other value still fails, and so does any other unknown attribute. A domain schema may still narrow the list or forbid `status`.
+- Enforcement changes: none; the change is additive, and no check refuses anything it accepted before.
+- Permissions and downloads: none.
+- Consumer steps: optional. Repin to the v3.1.0 commit (ADOPTING.md) to accept the three values; a repository pinned to v3.0.0 is unaffected.
+
 ## v3.0.0
 
 Breaking. There is no backward compatibility: a renamed check or input replaces the old one.

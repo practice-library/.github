@@ -15,39 +15,39 @@ permissions:
   contents: read
 jobs:
   leak-scan:
-    uses: practice-library/.github/.github/workflows/leak-scan.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/leak-scan.yml@<sha> # v3.1.0
   denylist:
     permissions:
       contents: read
       pull-requests: read
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.1.0
     with:
       guard: denylist
   removed-paths:
     permissions:
       contents: read
       pull-requests: read
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.1.0
     with:
       guard: removed-paths
   release-note:
     permissions:
       contents: read
       pull-requests: read
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.1.0
     with:
       guard: release-note
   schema-loosening:
     permissions:
       contents: read
       pull-requests: read
-    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/guard.yml@<sha> # v3.1.0
     with:
       guard: schema-loosening
   gate:
     if: always()
     needs: ["leak-scan","denylist","removed-paths","release-note","schema-loosening"]
-    uses: practice-library/.github/.github/workflows/gate.yml@<sha> # v3.0.0
+    uses: practice-library/.github/.github/workflows/gate.yml@<sha> # v3.1.0
     with:
       needs: ${{ toJSON(needs) }}
 ```
