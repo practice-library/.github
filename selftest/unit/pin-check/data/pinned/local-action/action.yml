@@ -1,0 +1,7 @@
+name: local-action
+description: a local composite action whose organisation reference is pinned to a commit
+runs:
+  using: composite
+  steps:
+    - uses: practice-library/.github/.github/workflows/leak-scan.yml@3267684c2fbf40a655a64942437e806423cce9fb # v2.1.0
+    - uses: actions/checkout@v4

@@ -92,11 +92,23 @@ class SelfCheckoutFragmentTest(unittest.TestCase):
         pin = config.get("actions", "checkout")
         self.assertEqual(text.count("uses: %s@%s # %s" % (pin["repo"], pin["sha"], pin["version"])), 2)
 
-    def test_the_guard_has_the_include_point_after_its_own_checkout(self):
+    def test_the_guard_checks_out_only_through_the_fragment_and_before_its_first_step(self):
         guard = read(GUARD)
-        include = guard.index("#@include self-checkout.yml")
-        self.assertGreater(include, guard.index("persist-credentials: false"))
-        self.assertLess(include, guard.index("- name: " + NAME_RANGE))
+        self.assertNotIn("uses: @@actions.checkout", guard, "the caller is checked out by the fragment, once")
+        self.assertLess(guard.index("#@include self-checkout.yml"), guard.index("- name: " + NAME_RANGE))
+
+    def test_every_guard_step_runs_and_scans_in_the_caller_checkout_only(self):
+        # The tooling checkout holds its own CHANGELOG and templates; scanning the workspace reported them
+        # as the caller's references to removed paths.
+        guard = read(GUARD)
+        steps = guard.split("\n      - name: ")[1:]
+        self.assertGreaterEqual(len(steps), 6)
+        caller = "working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@"
+        for step in steps:
+            with self.subTest(step=step.splitlines()[0]):
+                self.assertIn(caller, step)
+        self.assertIn('ROOT="$GITHUB_WORKSPACE/@@selfCheckout.callerDir@@"', guard)
+        self.assertNotIn('ROOT="$GITHUB_WORKSPACE"', guard)
 
     def test_guard_uses_the_workflow_checkout_for_approvals_and_git_guards(self):
         guard = read(GUARD)
