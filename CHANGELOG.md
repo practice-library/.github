@@ -4,12 +4,12 @@ One line per change to the surface other repositories depend on. A rename or rem
 
 ## v3.1.0
 
-Additive. One schema change, reviewed as a loosening (it needs the `schema-loosening-approved` label).
+Additive. One schema change, reviewed as a loosening: the `schema-loosening` check passes only after a maintainer who is neither the author nor a bot approves the exact head; the `schema-loosening-approved` label only re-runs the check.
 
-- API changes: spec/node/schema.json: `attrs.status` may also be `expired` (ended by its own terms), `repealed` (ended by another text) or `never-effective` (replaced or withdrawn before it commenced), for a legal text that has ended. Any other value still fails, and so does any other unknown attribute. A domain schema may still narrow the list or forbid `status`.
+- API changes: spec/node/schema.json: `attrs.status` may also be `expired` (ended by its own terms), `repealed` (ended by another text) or `never-effective` (replaced or withdrawn before it commenced), for a legal text that has ended. Any other value still fails, and so does any other unknown attribute. A domain schema may still narrow the list or forbid `status`; a narrowed list still refuses a new value it leaves out (fixture `schema-node-status-domain`).
 - Enforcement changes: none; the change is additive, and no check refuses anything it accepted before.
 - Permissions and downloads: none.
-- Consumer steps: optional. Repin to the v3.1.0 commit (ADOPTING.md) to accept the three values; a repository pinned to v3.0.0 is unaffected.
+- Consumer steps: to accept the three values, repin to the v3.1.0 commit (ADOPTING.md); code that branches on `attrs.status` then handles the three new values or narrows them away. A repository pinned to v3.0.0 needs no step and is unaffected.
 
 ## v3.0.0
 
