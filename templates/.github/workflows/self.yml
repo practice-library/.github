@@ -72,7 +72,9 @@ jobs:
             '($p | split("/")) as $k | [($o[0] | getpath($k)), ($n[0] | getpath($k))]' | sha256sum | cut -d' ' -f1; }
           fixtures="$( { pair node-v2.0.0.json node-v2.1.0.json properties/measuredAt/pattern
             pair node-v2.0.0.json node-v2.1.0.json properties/attrs/properties/fetched_at/pattern
-            pair time-graphs-75e4e77.json time-v2.1.0.json '$defs/time/pattern'; } | sort)"
+            pair time-graphs-75e4e77.json time-v2.1.0.json '$defs/time/pattern'
+            # message time and data.expires share one pattern change, so one pair covers both
+            pair protocol-message-v2.6.0.json protocol-message-v3.0.0.json properties/time/pattern; } | sort)"
           shipped="$(jq -r '.[].sha256' <<<"$TIGHTEN" | sort)"
           [ "$fixtures" = "$shipped" ] || { echo "::error::the shipped tightening list and the reviewed fixture pairs differ"; exit 1; }
           echo "shipped tightenings: $(wc -l <<<"$shipped" | tr -d ' '), each a fixture pair"
