@@ -64,7 +64,7 @@ jobs:
         if: steps.who.outputs.trusted == 'true'
         with:
           repository: practice-library/.github
-          ref: v3.0.0
+          ref: v3.1.0
           path: .practice-ci
           persist-credentials: false
       - name: Whose revision is this body?

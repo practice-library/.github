@@ -105,9 +105,12 @@
             "in-force",
             "notified-not-in-force",
             "draft",
-            "superseded"
+            "superseded",
+            "expired",
+            "repealed",
+            "never-effective"
           ],
-          "description": "Optional, for a fact that is a rule with a legal or published state: in-force (it applies now), notified-not-in-force (published, with a later start), draft (proposed, not adopted) or superseded (replaced by a later rule). Absent means the domain does not track it. A domain schema may narrow the list or forbid status, never add a value."
+          "description": "Optional, for a fact that is a rule with a legal or published state: in-force (it applies now), notified-not-in-force (published, with a later start), draft (proposed, not adopted), superseded (replaced by a later rule), expired (ended by its own terms), repealed (ended by another text) or never-effective (replaced or withdrawn before it commenced). Absent means the domain does not track it. A domain schema may narrow the list or forbid status, never add a value."
         }
       },
       "if": {

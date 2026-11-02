@@ -36,7 +36,7 @@ on:
       tooling-ref:
         description: The ref of practice-library/.github to take the gateway helpers from; pass the commit the workflow is pinned at.
         type: string
-        default: v3.0.0
+        default: v3.1.0
     outputs:
       report:
         description: The merged report as JSON.

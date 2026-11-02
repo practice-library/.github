@@ -231,6 +231,9 @@ jobs:
           TIGHTEN: '@@json:guards.tighteningPairs@@'
           LABEL: ${{ inputs.label }}
           TOOLING: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling
+          # The classifier imports the package from here. The step runs in the caller's checkout, which has no
+          # tooling directory of its own, so the fragment's relative default cannot be used.
+          PRACTICE_CI_DIR: ${{ github.workspace }}/@@selfCheckout.dir@@/tooling
           NUMBER: ${{ github.event.pull_request.number }}
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}

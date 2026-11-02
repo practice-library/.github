@@ -12,7 +12,7 @@
     "unit": "jobs",
     "scope": "example plan, total concurrent jobs",
     "basis": "documented",
-    "status": "repealed"
+    "status": "obsolete"
   },
   "edges": []
 }

@@ -352,7 +352,7 @@
     ]
   },
   "release": {
-    "tag": "v3.0.0",
+    "tag": "v3.1.0",
     "changelogHeadingPattern": "^## (v[0-9]+\\.[0-9]+\\.[0-9]+)\\s*$"
   },
   "pinCheck": {
