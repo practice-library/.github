@@ -64,16 +64,14 @@ jobs:
     env:
       @@git.runnerEnv@@: ${{ github.workspace }}/@@selfCheckout.dir@@/@@tooling.launcher@@
     steps:
-      - uses: @@actions.checkout.repo@@@@@actions.checkout.sha@@ # @@actions.checkout.version@@
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      # The include point for the called workflow's own tooling: it must come after the checkout above,
-      # which cleans the workspace. Checks wire their commands to the tooling it provides.
+      # The called workflow's own tooling is checked out beside the caller, and the caller is checked out
+      # there too: the one place the guards read. Every step below runs in the caller checkout, so nothing
+      # in the tooling checkout is ever scanned or diffed as the caller's content.
       #@include self-checkout.yml
       - name: The change to check
         id: range
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           GUARD: ${{ inputs.guard }}
           GUARDS: '@@gen:guardidsjson@@'
@@ -99,6 +97,7 @@ jobs:
       - name: denylist
         if: inputs.guard == 'denylist'
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           NONE: ${{ steps.range.outputs.none }}
           BASE: ${{ steps.range.outputs.base }}
@@ -189,6 +188,7 @@ jobs:
       - name: removed-paths
         if: inputs.guard == 'removed-paths' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -196,7 +196,7 @@ jobs:
         run: |
           set -euo pipefail
           #@include removed-refs.sh
-          ROOT="$GITHUB_WORKSPACE"
+          ROOT="$GITHUB_WORKSPACE/@@selfCheckout.callerDir@@"
           export ROOT HISTORY
           result="$(main)"
           echo "$result"
@@ -205,6 +205,7 @@ jobs:
       - name: release-note
         if: inputs.guard == 'release-note' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -222,6 +223,7 @@ jobs:
       - name: schema-loosening
         if: inputs.guard == 'schema-loosening' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
@@ -269,6 +271,7 @@ jobs:
       - name: size
         if: inputs.guard == 'size' && steps.range.outputs.none == 'false'
         shell: bash
+        working-directory: ${{ github.workspace }}/@@selfCheckout.callerDir@@
         env:
           MB: ${{ steps.range.outputs.mb }}
           HEAD: ${{ steps.range.outputs.head }}
