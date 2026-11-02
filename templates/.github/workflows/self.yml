@@ -60,7 +60,8 @@ jobs:
           TIGHTEN: '@@json:guards.tighteningPairs@@'
         run: |
           set -euo pipefail
-          source @@selftest.libDir@@/schema-loosening.sh
+          # Fill the fragment's policy placeholders exactly as scripts/unit.sh does, then load it.
+          source /dev/stdin <<<"$(jq -Rrs --slurpfile c policy/constants.json 'gsub("@@(?<key>[A-Za-z0-9_.]+)@@"; .key as $key | $c[0] | getpath($key | split(".")) // error("missing constant: " + $key) | tostring)' @@selftest.libDir@@/schema-loosening.sh)"
           data=selftest/unit/schema-loosening/data
           got="$(OLD_FILE="$data/node-v2.0.0.json" NEW_FILE="$data/node-v2.1.0.json" main)"
           want='loose ["properties/attrs/properties/verdict/enum","properties/edges/items/properties/rel/enum","properties/attrs/properties/basis"]'
