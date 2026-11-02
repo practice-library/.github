@@ -21,7 +21,7 @@ fi
 workflow="${1:-$root/.github/workflows/guard.yml}"
 # The scenarios run in throwaway repositories, so the guards' runner is given by absolute path.
 runner_env="$(jq -er '.git.runnerEnv' "$root/policy/constants.json")"
-runner_path="$root/$(jq -er '.git.runnerScript' "$root/policy/constants.json")"
+runner_path="$root/$(jq -er '.tooling.launcher' "$root/policy/constants.json")"
 
 # The run block of the step named denylist, without its indentation.
 step="$(awk '

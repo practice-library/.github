@@ -34,6 +34,15 @@ class ThisRepository(unittest.TestCase):
             top = release.top_version(f.read())
         self.assertEqual(config.get("release", "tag"), top)
 
+    def test_the_released_changelog_has_no_unreleased_heading_and_every_heading_is_set_off(self):
+        # v3 breaking entries under "Unreleased" were outside the v3.0.0 notes that ADOPTING.md points to.
+        with open(os.path.join(release.ROOT, config.get("guards", "changelog")), encoding="utf-8") as f:
+            lines = f.read().split("\n")
+        self.assertEqual([l for l in lines if l.lower().startswith("## unreleased")], [])
+        for i, line in enumerate(lines):
+            if line.startswith("## ") and i > 0:
+                self.assertEqual(lines[i - 1], "", "no blank line before: " + line)
+
     def test_historical_v2_4_0_note_is_recorded(self):
         with open(os.path.join(release.ROOT, config.get("guards", "changelog")), encoding="utf-8") as f:
             text = f.read()

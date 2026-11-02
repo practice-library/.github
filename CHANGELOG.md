@@ -2,10 +2,6 @@
 
 One line per change to the surface other repositories depend on. A rename or removal is breaking; an added optional input is not.
 
-## Unreleased
-
-- Breaking (v3): `selftest/lib/` and `templates/selftest/lib/` are removed; `scripts/unit.sh` loads `templates/fragments/*.sh` directly (`selftest.libDir` is now `templates/fragments`). `scripts/mutants.sh` counts a mutant as killed only by a behavioural failure (a jq or bash parse error, or a step that does not parse, is an error) and also mutates the shell inside workflow steps (#71).
-- New: `templates/fragments/self-checkout.yml` (the called workflow's own tooling, checked out at `job.workflow_sha` beside the caller), `scripts/practice-ci` with `tooling/practice_ci/` (`lint-literals`, `check-steps`), and `AGENTS.md`. Constants gain `selfCheckout`, `tooling`, `runner.unitTimeoutMinutes`, `runner.fetchRetries`, `selftest.mutantsDir` and `selftest.parseErrorPatterns`.
 ## v3.0.0
 
 Breaking. There is no backward compatibility: a renamed check or input replaces the old one.
@@ -17,8 +13,12 @@ Breaking changes:
 - Exact-head approvals: an approval counts only for the exact head commit it was given on; a later push needs a new one.
 - Protocol trust: a message is trusted by who sent it under `docs/protocol.md`, not by its text.
 - Removed paths: the label-approval library, fragment and unit cases (`selftest/lib/label-approval.sh`, `templates/fragments/label-approval.sh`, `selftest/unit/label-approval/`), and the plugin-matrix `plan`, `unit` and `merge` jobs, now one `run` job.
+- `selftest/lib/` and `templates/selftest/lib/` are removed; `scripts/unit.sh` loads `templates/fragments/*.sh` directly (`selftest.libDir` is now `templates/fragments`). `scripts/mutants.sh` counts a mutant as killed only by a behavioural failure (a jq or bash parse error, or a step that does not parse, is an error) and also mutates the shell inside workflow steps (#71).
+- The protocol verdict has one format, the `protocol-verdict` comment that message-check writes, now with the plain `body_sha256`; `verify` reads that comment, and the `protocol.verdict.marker` and `protocol.verdict.authors` constants are removed. The guards run through `scripts/practice-ci` (`git.runnerScript` and `tooling/run_practice_ci.py` are removed).
 
 Other changes:
+
+- New: `templates/fragments/self-checkout.yml` (the called workflow's own tooling, checked out beside the caller at `job.workflow_sha`, or at the caller's own commit when a repository runs its own workflow), `scripts/practice-ci` with `tooling/practice_ci/` (`lint-literals`, `check-steps`), and `AGENTS.md`. Constants gain `selfCheckout`, `tooling`, `runner.unitTimeoutMinutes`, `runner.fetchRetries`, `selftest.mutantsDir` and `selftest.parseErrorPatterns`.
 
 - Releases (#52, #66): `release.tag` in `policy/constants.json` is now the release being cut (it stayed at v2.0.0 through v2.6.0). `python3 -m practice_ci.release <tag>` fails unless the intended tag, the top version heading of this changelog and `release.tag` are the same. ADOPTING.md is rewritten: a minor release may enforce more strictly, and every release lists its API changes, enforcement changes, permissions and downloads, and consumer steps.
 - Onboarding (#38, #62): `scripts/onboard.sh` wraps `tooling/practice_ci/onboarding.py`, which reads, renders and validates every file before it makes any API write; a render failure makes none. The `schema-loosening-approved` label colour and description come from `onboarding.label` in the policy.

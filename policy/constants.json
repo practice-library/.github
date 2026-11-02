@@ -414,10 +414,6 @@
       "state": "open"
     },
     "verdict": {
-      "marker": "message-check: accepted sha256=",
-      "authors": [
-        "github-actions[bot]"
-      ],
       "invalidState": "invalid"
     },
     "labels": [
@@ -578,7 +574,6 @@
     }
   },
   "git": {
-    "runnerScript": "tooling/run_practice_ci.py",
     "runnerEnv": "PRACTICE_CI_RUNNER",
     "reportLimit": 20
   },

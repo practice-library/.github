@@ -10,7 +10,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from . import config
+from . import config, protocol
 
 _NEXT = re.compile(r'<([^>]+)>\s*;\s*rel="next"')
 
@@ -160,21 +160,13 @@ def body_digest(body):
 
 
 def accepted_digest(comments, cfg, app_login=None):
-    """The digest message-check last accepted, or None: the newest verdict comment by a trusted author.
+    """The body digest message-check last accepted, or None.
 
-    TODO(protocol track): read the digest message-check records itself once that lands; until then the
-    verdict comment (`<marker><64 hex>`, documented in docs/protocol.md) is the contract.
+    It reads the verdict message-check writes (protocol.render_verdict): the newest one, by the verdict
+    author or the app login; a verdict that is not an acceptance yields None.
     """
-    pattern = re.compile(re.escape(cfg["verdict"]["marker"]) + "([0-9a-f]{64})")
-    trusted = set(cfg["verdict"]["authors"]) | ({app_login} if app_login else set())
-    found = None
-    for comment in comments:
-        if (comment.get("user") or {}).get("login") not in trusted:
-            continue
-        match = pattern.search(comment.get("body") or "")
-        if match:
-            found = match.group(1)
-    return found
+    trusted = {cfg["verdictAuthor"]} | ({app_login} if app_login else set())
+    return protocol.accepted_body_digest(comments, trusted)
 
 
 def verify(client, repo, issue, app_login=None):

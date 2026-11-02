@@ -37,6 +37,7 @@ jobs:
       issues: write
     env:
       PRACTICE_CI_TOOLING: ${{ github.workspace }}/@@protocol.toolingCheckout@@/@@protocol.toolingDir@@
+      @@git.runnerEnv@@: ${{ github.workspace }}/@@protocol.toolingCheckout@@/@@tooling.launcher@@
     steps:
       - name: Is this issue from a trusted author?
         id: who
@@ -171,7 +172,7 @@ jobs:
           if [ "$KIND" = "" ] && [ -z "$existing" ] && [ "$status" = accepted ]; then
             echo "not a message: no kind:* label"; exit 0
           fi
-          line="$(protocol verdict "$status" "$DIGEST" "$RUN_ID")"
+          line="$(protocol verdict "$status" "$DIGEST" "$RUN_ID" "$(protocol digest "$RUNNER_TEMP/body.md")")"
           text="$line"$'\n'"Protocol verdict ($status) for this revision of the message. It is bound to the body and its GitHub edit identity; a foreign revision is invalid until the author edits again."
           if [ -n "$existing" ]; then
             gh api -X PATCH "repos/$REPO/issues/comments/$existing" -f "body=$text" > /dev/null

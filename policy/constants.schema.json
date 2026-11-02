@@ -1086,25 +1086,9 @@
           "type": "object",
           "additionalProperties": false,
           "required": [
-            "marker",
-            "authors",
             "invalidState"
           ],
           "properties": {
-            "marker": {
-              "type": "string",
-              "minLength": 1,
-              "pattern": "^[^\\n]+$"
-            },
-            "authors": {
-              "type": "array",
-              "minItems": 1,
-              "uniqueItems": true,
-              "items": {
-                "type": "string",
-                "minLength": 1
-              }
-            },
             "invalidState": {
               "type": "string",
               "pattern": "^[a-z]+$"
@@ -1600,15 +1584,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "runnerScript",
         "runnerEnv",
         "reportLimit"
       ],
       "properties": {
-        "runnerScript": {
-          "$ref": "#/$defs/path"
-        },
         "runnerEnv": {
+          "description": "The environment variable that holds the path of the launcher (tooling.launcher) the guard fragments run; unset, the launcher of the working directory.",
           "type": "string",
           "pattern": "^[A-Z][A-Z0-9_]*$"
         },

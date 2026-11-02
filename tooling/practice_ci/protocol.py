@@ -10,7 +10,7 @@ Command line (used by templates/fragments/message-extract.sh and message-check.y
   extract <body-file>
   digest <body-file>
   decide <action> <actor> <author> <digest> <verdict-comments-json-file>
-  verdict <status> <digest> <run-id>
+  verdict <status> <revision-digest> <run-id> <body-digest>
   can-record <run-id> <verdict-comments-json-file>
   verdict-id <verdict-comments-json-file>
 """
@@ -171,14 +171,22 @@ def extract(body):
     return "ok " + json.dumps(value, separators=(",", ":"), ensure_ascii=False)
 
 
-# Revision-bound trust. The verdict is a comment by config protocol.verdictAuthor holding
-# <!-- <marker> {"status": ..., "sha256": ...} -->; the digest is the body revision it speaks for.
+# Revision-bound trust. The verdict is the one format of this protocol: a comment by config
+# protocol.verdictAuthor holding <!-- <marker> {"body_sha256", "run_id", "sha256", "status"} -->.
+# sha256 is the fingerprint of the body and its GitHub edit identity (the revision the run judged);
+# body_sha256 is the plain digest of the body bytes, which a REST reader can recompute from the issue.
 
-def render_verdict(status, body_digest, run_id):
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+
+def render_verdict(status, revision_digest, run_id, body_sha256):
     if status not in STATUSES:
         raise ValueError("unknown verdict status: " + status)
+    if not _DIGEST.fullmatch(body_sha256):
+        raise ValueError("body_sha256 is not a sha256 hex digest")
     marker = config.get("protocol", "verdictMarker")
-    return "<!-- %s %s -->" % (marker, json.dumps({"status": status, "sha256": body_digest, "run_id": int(run_id)}, sort_keys=True, separators=(",", ":")))
+    verdict = {"status": status, "sha256": revision_digest, "body_sha256": body_sha256, "run_id": int(run_id)}
+    return "<!-- %s %s -->" % (marker, json.dumps(verdict, sort_keys=True, separators=(",", ":")))
 
 
 def parse_verdict(comments):
@@ -187,13 +195,24 @@ def parse_verdict(comments):
     return found[1] if found else None
 
 
-def find_verdict(comments):
-    """The latest verdict comment as (comment, verdict), or None. Only the verdict author's comments count."""
-    author = config.get("protocol", "verdictAuthor")
+def accepted_body_digest(comments, authors=None):
+    """The body digest the latest verdict accepted, or None when there is none or it is not an acceptance.
+
+    authors: the logins whose comments count (default: config protocol.verdictAuthor only).
+    """
+    found = find_verdict(comments, authors)
+    if found is None or found[1]["status"] != ACCEPTED:
+        return None
+    return found[1]["body_sha256"]
+
+
+def find_verdict(comments, authors=None):
+    """The latest verdict comment as (comment, verdict), or None. Only the verdict authors' comments count."""
+    authors = {config.get("protocol", "verdictAuthor")} if authors is None else set(authors)
     pattern = re.compile(r"\A<!-- " + re.escape(config.get("protocol", "verdictMarker")) + r" (\{.*?\}) -->")
     found = None
     for comment in comments:
-        if (comment.get("user") or {}).get("login") != author:
+        if (comment.get("user") or {}).get("login") not in authors:
             continue
         m = pattern.match(comment.get("body") or "")
         if not m:
@@ -202,7 +221,9 @@ def find_verdict(comments):
             verdict = json.loads(m.group(1))
         except ValueError:
             continue
-        if isinstance(verdict, dict) and verdict.get("status") in STATUSES and isinstance(verdict.get("sha256"), str) and type(verdict.get("run_id")) is int:
+        if isinstance(verdict, dict) and verdict.get("status") in STATUSES and isinstance(verdict.get("sha256"), str) \
+                and isinstance(verdict.get("body_sha256"), str) and _DIGEST.fullmatch(verdict["body_sha256"]) \
+                and type(verdict.get("run_id")) is int:
             if found is None or verdict["run_id"] > found[1]["run_id"]:
                 found = (comment, verdict)
     return found
@@ -301,8 +322,8 @@ def main(argv):
         with open(args[1], encoding="utf-8") as f:
             print("true" if can_record(args[0], json.load(f)) else "false")
     elif cmd == "verdict":
-        print(render_verdict(args[0], args[1], args[2]))
+        print(render_verdict(args[0], args[1], args[2], args[3]))
     else:
-        print("usage: protocol.py extract|digest|decide|verdict ...", file=sys.stderr)
+        print("usage: protocol.py extract|snapshot|digest|decide|verdict|verdict-id|can-record ...", file=sys.stderr)
         return 2
     return 0
