@@ -7,7 +7,8 @@ One line per change to the surface other repositories depend on. A rename or rem
 Additive. One schema change, reviewed as a loosening: the `schema-loosening` check passes only after a maintainer who is neither the author nor a bot approves the exact head; the `schema-loosening-approved` label only re-runs the check.
 
 - API changes: spec/node/schema.json: `attrs.status` may also be `expired` (ended by its own terms), `repealed` (ended by another text) or `never-effective` (replaced or withdrawn before it commenced), for a legal text that has ended. Any other value still fails, and so does any other unknown attribute. A domain schema may still narrow the list or forbid `status`; a narrowed list still refuses a new value it leaves out (fixture `schema-node-status-domain`).
-- Enforcement changes: none; the change is additive, and no check refuses anything it accepted before.
+- Enforcement changes: none from the schema; the change is additive, and no check refuses anything it accepted before.
+- Fix: in a calling repository, the `schema-loosening` guard failed on v3.0.0 before judging anything (`No module named 'practice_ci'`), because its step runs in the caller's checkout and looked for the package at the relative default `tooling`. The step now sets `PRACTICE_CI_DIR` to the tooling checkout. A caller pinned to v3.0.0 still has the failure; repinning to v3.1.0 makes its `schema-loosening` job run again.
 - Permissions and downloads: none.
 - Consumer steps: to accept the three values, repin to the v3.1.0 commit (ADOPTING.md); code that branches on `attrs.status` then handles the three new values or narrows them away. A repository pinned to v3.0.0 needs no step and is unaffected.
 
