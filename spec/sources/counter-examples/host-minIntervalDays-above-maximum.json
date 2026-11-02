@@ -1,0 +1,27 @@
+{
+  "userAgent": "practice-library-graphs/1 (+https://github.com/practice-library/graphs)",
+  "maxRequestsPerRun": 50,
+  "retryAfterMaxSeconds": 60,
+  "unreadableRunsBeforeIssue": 3,
+  "hosts": [
+    {
+      "host": "docs.example.com",
+      "vendor": "example",
+      "robots": {
+        "url": "https://docs.example.com/robots.txt",
+        "checkedAt": "2026-10-31T12:00:00Z",
+        "verdict": "allowed"
+      },
+      "terms": {
+        "url": "https://example.com/terms",
+        "checkedAt": "2026-10-31T12:00:00Z",
+        "quote": "You may read and link to the documentation."
+      },
+      "format": "markdown",
+      "maxRequestsPerRun": 20,
+      "minIntervalDays": 91,
+      "maxBytes": 2000000,
+      "timeoutSeconds": 30
+    }
+  ]
+}

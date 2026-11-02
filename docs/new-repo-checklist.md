@@ -16,7 +16,7 @@ Do these once, in order, when a repository joins practice-library. The automatio
 - [ ] Dependabot alerts: `gh api -X PUT repos/$R/vulnerability-alerts`. Confirm: a `GET` of the same path returns 204.
 - [ ] A denylist, `.github/denylist.json` (`{"salt": "<random hex>", "sha256": []}`, then `scripts/denylist-hash.sh .github/denylist.json < terms` for the entries); without one, `denylist` fails as unguarded. Confirm: the file has at least one entry.
 - [ ] If a maintainer's account name, or any name that merges or commits, holds a denied word: its hash in the list's `allowAuthorNames` (`scripts/denylist-hash.sh --names .github/denylist.json < names`), so that name never fails `denylist`. Confirm: a commit by that name in a pull request passes `denylist`.
-- [ ] The label `schema-loosening-approved`, which lets a loosened JSON schema through: `gh api -X POST repos/$R/labels -f name=schema-loosening-approved -f color=d93f0b`. Confirm: `GET repos/$R/labels/schema-loosening-approved` returns it.
+- [ ] The label `schema-loosening-approved`, which lets a loosened JSON schema through: `gh api -X POST repos/$R/labels -f name=schema-loosening-approved -f color=d93f0b -f 'description=A maintainer reviewed a loosened JSON schema'`. Confirm: `GET repos/$R/labels/schema-loosening-approved` returns it.
 
 ## 2. Merge settings
 

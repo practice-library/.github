@@ -1,0 +1,8 @@
+{
+  "expect": "loose",
+  "output": "loose [\"allOf/0/required\",\"allOf/1/if/properties/a/const\",\"allOf/1/then/required\",\"allOf/1/if\",\"allOf/1/then\"]",
+  "env": {
+    "OLD_FILE": "selftest/unit/schema-loosening/data/u-allof-append-old.json",
+    "NEW_FILE": "selftest/unit/schema-loosening/data/u-allof-swapped-new.json"
+  }
+}

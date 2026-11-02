@@ -1,0 +1,16 @@
+{
+  "expect": "ok",
+  "output": "ok 2 non-fixture lines (limit 600)",
+  "env": {
+    "FIXTURES": "[\"README.md\"]",
+    "LIMIT": "600"
+  },
+  "repo": {
+    "base": {
+      "a.txt": "a\n"
+    },
+    "head": {
+      "README.md\n0\t0\tq": "a\nb\n"
+    }
+  }
+}

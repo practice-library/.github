@@ -1,0 +1,38 @@
+{
+  "counter-examples/empty-check.json": {
+    "keyword": "minLength",
+    "instanceLocation": "/check"
+  },
+  "counter-examples/empty-key.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/entries/0/key"
+  },
+  "counter-examples/no-entries.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  },
+  "counter-examples/no-key.json": {
+    "keyword": "required",
+    "instanceLocation": "/entries/0"
+  },
+  "counter-examples/reason-number.json": {
+    "keyword": "type",
+    "instanceLocation": "/entries/0/reason"
+  },
+  "counter-examples/spaced-key.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/entries/0/key"
+  },
+  "counter-examples/unknown-entry-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": "/entries/0"
+  },
+  "counter-examples/unknown-top-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": ""
+  },
+  "counter-examples/version-2.json": {
+    "keyword": "const",
+    "instanceLocation": "/ratchet"
+  }
+}

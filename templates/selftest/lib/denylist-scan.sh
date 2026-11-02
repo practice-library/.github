@@ -1,1 +1,0 @@
-#@include denylist-scan.sh

@@ -118,6 +118,12 @@
               "minLength": 1,
               "maxLength": 500,
               "description": "The sentence of the site's terms that bears on automated reading, copied exactly."
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "description": "Optional. Set when the terms page has no clause on automated reading: says so, and the quote is then the nearest relevant sentence. The bound is spec.termsNoteMaxLength in policy/constants.json."
             }
           }
         },

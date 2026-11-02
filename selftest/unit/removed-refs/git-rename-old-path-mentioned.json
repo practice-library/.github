@@ -1,0 +1,19 @@
+{
+  "expect": "referenced",
+  "env": {
+    "ROOT": ".",
+    "HISTORY": "[]"
+  },
+  "repo": {
+    "base": {
+      "old/a.md": "alpha beta gamma delta epsilon\n",
+      "doc.md": "nothing here\n"
+    },
+    "head": {
+      "old/a.md": null,
+      "new/a.md": "alpha beta gamma delta epsilon\n",
+      "doc.md": "see old/a.md\n"
+    },
+    "message": "Move a file"
+  }
+}

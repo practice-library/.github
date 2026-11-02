@@ -7,6 +7,7 @@ Each contract is a JSON Schema (2020-12) whose `$id` is its URL in this reposito
 | node | `spec/node/schema.json` | The envelope every fact node shares. A domain schema references it and declares only its type values. |
 | refresh-report | `spec/refresh-report/schema.json` | The report a fact-refresh run writes: robots.txt verdicts, the requests made, and one outcome per fact. |
 | sources | `spec/sources/schema.json` | The list of hosts a graph may cite, with the per-host and run-wide limits a refresh run keeps. |
+| drill-report | `spec/drill-report/schema.json` | The report of an incident-detection drill: when the incident was injected and detected, the time to detect measured and projected, and whether anyone was notified. Its arithmetic is checked by `tooling/practice_ci/drill_check.py` ([drill-report/README.md](drill-report/README.md)). |
 | ratchet | `spec/ratchet/schema.json` | A shrink-only baseline that lets a check keep today's findings and refuse new ones. |
 | protocol message | `spec/protocol/message.schema.json` | The JSON block of an issue-based message between repositories ([docs/protocol.md](../docs/protocol.md)). |
 
@@ -35,11 +36,15 @@ What the consumer does with each outcome (pull requests, issues, auto-merge) is 
 A graph's sources list holds the run-wide request cap, the Retry-After limit and how many unreadable runs open an issue. Then it lists every host a node may cite, with:
 
 - its robots.txt verdict when it was added;
-- the sentence of its terms that bears on automated reading;
+- the sentence of its terms that bears on automated reading, and, when the terms page has no such clause, an optional `terms.note` (1 to `spec.termsNoteMaxLength` characters in `policy/constants.json`, 300) that says so, so the quote is read as the nearest relevant sentence and not as a clause;
 - the page format: `markdown`, `text`, `html`, `json` or `pdf` (the quote is matched in the text extracted from the PDF, with whitespace collapsed);
 - the per-host limits.
 
 The robots.txt verdict is evidence for adding the host; the run still re-reads robots.txt every time. A host whose robots.txt disallows the reader is not listed.
+
+## drill-report
+
+See [drill-report](drill-report/README.md).
 
 ## ratchet
 

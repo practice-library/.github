@@ -1,0 +1,122 @@
+{
+  "counter-examples/aborted-with-results.json": {
+    "keyword": "maxItems",
+    "instanceLocation": "/results"
+  },
+  "counter-examples/absent-on-399.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/absent-on-500.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/absent-without-status.json": {
+    "keyword": "required",
+    "instanceLocation": "/robots/0"
+  },
+  "counter-examples/allowed-on-199.json": {
+    "keyword": "minimum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/allowed-on-300.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/allowed-on-404.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/changed-without-reason.json": {
+    "keyword": "required",
+    "instanceLocation": "/results/1"
+  },
+  "counter-examples/disallowed-on-404.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/disallowed-without-abort.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  },
+  "counter-examples/future-version.json": {
+    "keyword": "const",
+    "instanceLocation": "/schemaVersion"
+  },
+  "counter-examples/graph-without-vendor.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/graph"
+  },
+  "counter-examples/no-robots-record.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  },
+  "counter-examples/requests-beyond-any-cap.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/requests"
+  },
+  "counter-examples/robots-429-absent.json": {
+    "keyword": "const",
+    "instanceLocation": "/robots/0/verdict"
+  },
+  "counter-examples/robots-429-allowed.json": {
+    "keyword": "const",
+    "instanceLocation": "/robots/0/verdict"
+  },
+  "counter-examples/robots-500-allowed.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/robots-500-disallowed.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/robots-503-allowed.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/robots-599-allowed.json": {
+    "keyword": "maximum",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/short-commit.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/commit"
+  },
+  "counter-examples/started-at-feb-31.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/run/startedAt"
+  },
+  "counter-examples/started-at-garbage.json": {
+    "keyword": "pattern",
+    "instanceLocation": "/run/startedAt"
+  },
+  "counter-examples/unchanged-without-hash.json": {
+    "keyword": "required",
+    "instanceLocation": "/results/0"
+  },
+  "counter-examples/unknown-field.json": {
+    "keyword": "additionalProperties",
+    "instanceLocation": ""
+  },
+  "counter-examples/unknown-outcome.json": {
+    "keyword": "enum",
+    "instanceLocation": "/results/0/outcome"
+  },
+  "counter-examples/unreachable-on-200.json": {
+    "keyword": "anyOf",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/unreachable-on-404.json": {
+    "keyword": "anyOf",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/unreachable-on-499.json": {
+    "keyword": "anyOf",
+    "instanceLocation": "/robots/0/httpStatus"
+  },
+  "counter-examples/unreachable-robots-without-abort.json": {
+    "keyword": "required",
+    "instanceLocation": ""
+  }
+}

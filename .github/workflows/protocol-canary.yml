@@ -1,0 +1,66 @@
+# Generated from templates/.github/workflows/protocol-canary.yml and policy/constants.json by scripts/render.sh. Do not edit.
+name: protocol-canary
+# Live canary for the protocol guard (docs/protocol.md). Run by hand. It opens two messages in this
+# repository, one valid and one invalid, waits for message-check to judge them, asserts the labels and
+# closes both. It needs a token that is not the workflow token, because issues the workflow token opens
+# trigger no workflow runs; the token is the secret named below and needs issues: write only.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: protocol-canary
+  cancel-in-progress: false
+jobs:
+  canary:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Open a valid and an invalid message, assert the labels
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PROTOCOL_CANARY_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN: ${{ github.run_id }}
+          PREFIX: protocol-canary
+          WAIT_SECONDS: 180
+          POLL_SECONDS: 10
+          KIND_LABEL: kind:request
+          INVALID_LABEL: state:invalid
+          SPEC_VERSION: '1.0'
+          TYPE: 'org.practice-library.protocol.v0.request'
+          PROTOCOL: '0'
+        run: |
+          set -euo pipefail
+          [ -n "$GH_TOKEN" ] || { echo "::error::the canary token secret is not set"; exit 1; }
+          valid="" invalid=""
+          cleanup() {
+            for n in $valid $invalid; do
+              gh api -X PATCH "repos/$REPO/issues/$n" -f state=closed > /dev/null || true
+            done
+          }
+          trap cleanup EXIT
+          fence='```'
+          block="$(jq -n --arg id "$PREFIX-$RUN" --arg src "https://github.com/$REPO" --arg to "https://github.com/$REPO" \
+            --arg sv "$SPEC_VERSION" --arg type "$TYPE" --arg proto "$PROTOCOL" \
+            '{specversion: $sv, id: $id, source: $src, type: $type, protocol: $proto, data: {to: $to}}')"
+          valid_body="$(printf 'Canary message, valid.\n\n%sjson\n%s\n%s\n' "$fence" "$block" "$fence")"
+          invalid_body="Canary message, invalid: it has a kind label and no message block."
+          open() {
+            gh api -X POST "repos/$REPO/issues" -f "title=$PREFIX $RUN $1" -f "body=$2" \
+              -f "labels[]=$KIND_LABEL" "${@:3}" --jq .number
+          }
+          valid="$(open valid "$valid_body" -f "labels[]=$INVALID_LABEL")"
+          invalid="$(open invalid "$invalid_body")"
+          has_label() {
+            gh api "repos/$REPO/issues/$1" --jq '[.labels[].name] | index(env.INVALID_LABEL) != null'
+          }
+          deadline=$(( $(date +%s) + WAIT_SECONDS ))
+          until [ "$(has_label "$invalid")" = true ] && [ "$(has_label "$valid")" = false ]; do
+            [ "$(date +%s)" -lt "$deadline" ] || { echo "::error::both canary verdicts were not observed"; exit 1; }
+            sleep "$POLL_SECONDS"
+          done
+          echo "invalid message #$invalid is labelled $INVALID_LABEL"
+          # The valid issue started with the invalid label; its removal proves it was judged.
+          [ "$(has_label "$valid")" = false ] || { echo "::error::valid message #$valid was labelled $INVALID_LABEL"; exit 1; }
+          echo "valid message #$valid carries no $INVALID_LABEL"

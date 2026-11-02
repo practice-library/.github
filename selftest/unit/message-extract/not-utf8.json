@@ -1,0 +1,7 @@
+{
+  "expect": "invalid",
+  "output": "invalid the body is not UTF-8",
+  "env": {
+    "BODY_FILE": "selftest/unit/message-extract/data/not-utf8.md"
+  }
+}

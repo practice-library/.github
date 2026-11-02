@@ -22,7 +22,7 @@
   {
     "name": "comments-kept",
     "find": "| sub(\"#.*$\"; \"\") ",
-    "replace": "| "
+    "replace": ""
   },
   {
     "name": "file-in-dir-missed",

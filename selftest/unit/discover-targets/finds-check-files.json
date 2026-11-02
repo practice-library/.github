@@ -2,6 +2,6 @@
   "expect": "ok",
   "env": {
     "ROW": "{\"id\":\"schema-check\",\"workflow\":\"schema-check.yml\",\"inputs\":[\"schema\",\"instances\"],\"targetFile\":\"check.json\",\"tool\":\"jsonschema\",\"optionalInputs\":[\"expect\",\"each\",\"mode\",\"resolve-ids\"],\"optionalPathInputs\":[\"resolve\",\"guards\"]}",
-    "EXCLUDE": "^selftest/fixtures/"
+    "EXCLUDE": "^(selftest/fixtures|templates)/"
   }
 }

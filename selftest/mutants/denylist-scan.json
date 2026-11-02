@@ -1,137 +1,156 @@
-[
-  {
-    "name": "spaced-pair-dropped",
-    "find": "            terms.add(a + \" \" + b)\n",
-    "replace": ""
-  },
-  {
-    "name": "joined-pair-dropped",
-    "find": "            terms.add(a + b)\n",
-    "replace": ""
-  },
-  {
-    "name": "pairs-not-adjacent",
-    "find": "zip(words, words[1:])",
-    "replace": "zip(words, words[2:])"
-  },
-  {
-    "name": "exempt-line-number-kept",
-    "find": "line_row = re.compile(r\"(.+):([0-9]+)\")",
-    "replace": "line_row = re.compile(r\"(.+)\")"
-  },
-  {
-    "name": "exempt-prefix-match",
-    "find": "if rx.fullmatch(m.group(1)) and",
-    "replace": "if rx.match(m.group(1)) and"
-  },
-  {
-    "name": "exempt-star-crosses-slash",
-    "find": "\"[^/]*\" if c == \"*\"",
-    "replace": "\".*\" if c == \"*\""
-  },
-  {
-    "name": "exempt-question-crosses-slash",
-    "find": "\"[^/]\" if c == \"?\"",
-    "replace": "\".\" if c == \"?\""
-  },
-  {
-    "name": "exempt-double-star-not-empty",
-    "find": "\"(?:[^/]+/)*\"",
-    "replace": "\"(?:[^/]+/)+\""
-  },
-  {
-    "name": "exempt-trailing-double-star-one-segment",
-    "find": "\".+\" if last else",
-    "replace": "\"[^/]+\" if last else"
-  },
-  {
-    "name": "exempt-terms-any",
-    "find": "(t is None or hit <= t)",
-    "replace": "(t is None or bool(hit & t))"
-  },
-  {
-    "name": "exempt-leading-wildcard-allowed",
-    "find": "assert not re.search(r\"[*?]\", segs[0]) and",
-    "replace": "assert"
-  },
-  {
-    "name": "exempt-dotdot-allowed",
-    "find": "\"..\" not in segs and \".\" not in segs",
-    "replace": "\".\" not in segs"
-  },
-  {
-    "name": "exempt-dot-allowed",
-    "find": "\"..\" not in segs and \".\" not in segs",
-    "replace": "\"..\" not in segs"
-  },
-  {
-    "name": "exempt-partial-double-star-allowed",
-    "find": "assert all(s == \"**\" or \"**\" not in s for s in segs)",
-    "replace": "assert True"
-  },
-  {
-    "name": "exempt-extra-keys-allowed",
-    "find": "assert isinstance(r, dict) and set(r) <= {\"glob\", \"terms\"}",
-    "replace": "assert isinstance(r, dict)"
-  },
-  {
-    "name": "exempt-terms-unchecked",
-    "find": "(isinstance(t, list) and t and all(isinstance(x, str) and re.fullmatch(r\"[0-9a-f]{64}\", x) for x in t))",
-    "replace": "True"
-  },
-  {
-    "name": "exempt-terms-empty-allowed",
-    "find": "(isinstance(t, list) and t and all(",
-    "replace": "(isinstance(t, list) and all("
-  },
-  {
-    "name": "exempt-glob-charset-open",
-    "find": "re.fullmatch(r\"[A-Za-z0-9._*?-]+(/[A-Za-z0-9._*?-]+)*\", g)",
-    "replace": "re.fullmatch(r\".*\", g)"
-  },
-  {
-    "name": "exempt-note-dropped",
-    "find": "    note = \"; exempt %d: %s\" % (len(let_through), \", \".join(let_through[:20]))",
-    "replace": "    note = \"\""
-  },
-  {
-    "name": "exempt-unmatched-dropped",
-    "find": "            else:\n                found.append(where)\n        else:",
-    "replace": "            else:\n                pass\n        else:"
-  },
-  {
-    "name": "exempt-other-rows",
-    "find": "        else:\n            found.append(where)\nnote = \"\"",
-    "replace": "        else:\n            pass\nnote = \"\""
-  },
-  {
-    "name": "renames-detected",
-    "find": "--no-prefix --no-renames --unified=0",
-    "replace": "--no-prefix --unified=0"
-  },
-  {
-    "name": "exempt-dot-wildcard",
-    "find": "else re.escape(c) for c in seg",
-    "replace": "else c for c in seg"
-  },
-  {
-    "name": "rows-split-on-cr",
-    "find": "encoding=\"utf-8\", errors=\"replace\", newline=\"\\n\") as f:",
-    "replace": "encoding=\"utf-8\", errors=\"replace\") as f:"
-  },
-  {
-    "name": "marker-lines-dropped",
-    "find": "      printf 'commit %s\\t%s\\n' \"$sha\" \"$line\"",
-    "replace": "      [[ \"$line\" == ::* ]] || printf 'commit %s\\t%s\\n' \"$sha\" \"$line\""
-  },
-  {
-    "name": "hashes-not-digests",
-    "find": "assert all(isinstance(h, str) and re.fullmatch(r\"[0-9a-f]{64}\", h) for h in terms)",
-    "replace": "assert all(isinstance(h, str) for h in terms)"
-  },
-  {
-    "name": "hashes-any-iterable",
-    "find": "isinstance(salt, str) and salt and isinstance(terms, list) and isinstance(allow, list)",
-    "replace": "isinstance(salt, str) and salt and isinstance(allow, list)"
-  }
-]
+{
+  "target": "tooling/practice_ci/guards/denylist.py",
+  "unit": "denylist-scan",
+  "mutants": [
+    {
+      "name": "spaced-pair-dropped",
+      "find": "            terms.add(a + \" \" + b)\n",
+      "replace": ""
+    },
+    {
+      "name": "joined-pair-dropped",
+      "find": "            terms.add(a + b)\n",
+      "replace": ""
+    },
+    {
+      "name": "pairs-not-adjacent",
+      "find": "zip(words, words[1:])",
+      "replace": "zip(words, words[2:])"
+    },
+    {
+      "name": "exempt-star-crosses-slash",
+      "find": "\"[^/]*\" if c == \"*\"",
+      "replace": "\".*\" if c == \"*\""
+    },
+    {
+      "name": "exempt-question-crosses-slash",
+      "find": "\"[^/]\" if c == \"?\"",
+      "replace": "\".\" if c == \"?\""
+    },
+    {
+      "name": "exempt-double-star-not-empty",
+      "find": "\"(?:[^/]+/)*\"",
+      "replace": "\"(?:[^/]+/)+\""
+    },
+    {
+      "name": "exempt-trailing-double-star-one-segment",
+      "find": "\".+\" if last else",
+      "replace": "\"[^/]+\" if last else"
+    },
+    {
+      "name": "exempt-terms-any",
+      "find": "(t is None or hit <= t)",
+      "replace": "(t is None or bool(hit & t))"
+    },
+    {
+      "name": "exempt-leading-wildcard-allowed",
+      "find": "assert not re.search(r\"[*?]\", segs[0]) and",
+      "replace": "assert"
+    },
+    {
+      "name": "exempt-dotdot-allowed",
+      "find": "\"..\" not in segs and \".\" not in segs",
+      "replace": "\".\" not in segs"
+    },
+    {
+      "name": "exempt-dot-allowed",
+      "find": "\"..\" not in segs and \".\" not in segs",
+      "replace": "\"..\" not in segs"
+    },
+    {
+      "name": "exempt-partial-double-star-allowed",
+      "find": "assert all(s == \"**\" or \"**\" not in s for s in segs)",
+      "replace": "assert True"
+    },
+    {
+      "name": "exempt-extra-keys-allowed",
+      "find": "assert isinstance(r, dict) and set(r) <= {\"glob\", \"terms\"}",
+      "replace": "assert isinstance(r, dict)"
+    },
+    {
+      "name": "exempt-unmatched-dropped",
+      "find": "            else:\n                found.append(where)\n        else:",
+      "replace": "            else:\n                pass\n        else:"
+    },
+    {
+      "name": "exempt-dot-wildcard",
+      "find": "else re.escape(c) for c in seg",
+      "replace": "else c for c in seg"
+    },
+    {
+      "name": "exempt-terms-unchecked",
+      "find": "assert t is None or (t and _all_digests(t))",
+      "replace": "assert True"
+    },
+    {
+      "name": "exempt-terms-empty-allowed",
+      "find": "assert t is None or (t and _all_digests(t))",
+      "replace": "assert t is None or _all_digests(t)"
+    },
+    {
+      "name": "exempt-glob-charset-open",
+      "find": "assert isinstance(g, str) and _GLOB.fullmatch(g)",
+      "replace": "assert isinstance(g, str)"
+    },
+    {
+      "name": "exempt-note-dropped",
+      "find": "note = \"; exempt %d: %s\" % (len(let_through), \", \".join(let_through[:limit]))",
+      "replace": "note = \"\""
+    },
+    {
+      "name": "exempt-other-rows",
+      "find": "        else:\n            found.append(where)\n    note = \"\"",
+      "replace": "        else:\n            pass\n    note = \"\""
+    },
+    {
+      "name": "exempt-prefix-match",
+      "find": "rx.fullmatch(rec.path)",
+      "replace": "rx.match(rec.path)"
+    },
+    {
+      "name": "hashes-not-digests",
+      "find": "salt and _all_digests(terms) and _all_digests(allow)",
+      "replace": "salt and isinstance(terms, list) and isinstance(allow, list)"
+    },
+    {
+      "name": "allowed-names-not-digests",
+      "find": "isinstance(h, str) and _DIGEST.fullmatch(h) for h in items",
+      "replace": "isinstance(h, str) for h in items"
+    },
+    {
+      "name": "empty-list-guarded-off",
+      "find": "    if not hashes:\n        return \"unguarded",
+      "replace": "    if False:\n        return \"unguarded"
+    },
+    {
+      "name": "allowed-name-ignored",
+      "find": "if rec.kind in NAME_KINDS and h(\" \".join(words)) in allow:",
+      "replace": "if False:"
+    },
+    {
+      "name": "allowed-name-any-kind",
+      "find": "if rec.kind in NAME_KINDS and h(",
+      "replace": "if h("
+    },
+    {
+      "name": "terms-not-lowercased",
+      "find": "re.findall(r\"[a-z0-9]+\", rec.payload.lower())",
+      "replace": "re.findall(r\"[a-z0-9]+\", rec.payload)"
+    },
+    {
+      "name": "push-merge-author-judged",
+      "find": "skip_merge_authors=env.get(\"EVENT\") == \"push\"",
+      "replace": "skip_merge_authors=False"
+    },
+    {
+      "name": "text-file-ignored",
+      "find": "if env.get(\"TEXT_FILE\"):",
+      "replace": "if False:"
+    },
+    {
+      "name": "no-denylist-judged-ok",
+      "find": "    if not deny:\n        return \"unguarded",
+      "replace": "    if False:\n        return \"unguarded"
+    }
+  ]
+}

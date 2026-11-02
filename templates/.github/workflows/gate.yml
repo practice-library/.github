@@ -61,6 +61,7 @@ jobs:
           YQ: ${{ runner.temp }}/tools/yq/@@helpers.yq.bin@@
         run: |
           set -euo pipefail
+          echo "::notice::this job downloaded yq @@helpers.yq.version@@ from @@helpers.yq.url@@ (sha256 @@helpers.yq.sha256@@) to read the workflows"
           #@include pin-check.sh
           export ROOT ORG
           result="$(main)"

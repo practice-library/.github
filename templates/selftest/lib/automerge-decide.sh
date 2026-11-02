@@ -1,1 +1,0 @@
-#@include automerge-decide.sh
